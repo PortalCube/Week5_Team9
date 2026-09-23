@@ -1,0 +1,29 @@
+# Build outputs
+Binaries/
+Intermediate/
+obj/
+
+# Visual Studio
+.vs/
+*.sln
+*.slnx
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# Dear ImGui
+imgui.ini
+
+# Editor Config
+editor.ini
+
+# Cursor / VS Code / clangd (local IntelliSense)
+.vscode/
+.clangd
+compile_flags.txt
+compile_commands.json
+.cache/
+
+# Contents
+Content/**/*.dds
+Content/**/*.cso

@@ -1,0 +1,286 @@
+{
+    "NextUUID": 216,
+    "Scene": {
+        "Actors": [
+            {
+                "RootComponent": {
+                    "Location": [
+                        0.9900000095367432,
+                        0.6899999976158142,
+                        2.299999952316284
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 192
+                },
+                "Type": "ACubeActor",
+                "UUID": 193
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        2.7799999713897705,
+                        0.4699999988079071,
+                        -0.3100000023841858
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 194
+                },
+                "Type": "ACubeActor",
+                "UUID": 195
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        1.2999999523162842,
+                        -2.4800000190734863,
+                        -1.4700000286102295
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 196
+                },
+                "Type": "ACubeActor",
+                "UUID": 197
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        0.5,
+                        0.8500000238418579,
+                        0.5699999928474426
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 198
+                },
+                "Type": "ACubeActor",
+                "UUID": 199
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -1.25,
+                        -0.2199999988079071,
+                        2.5399999618530273
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 200
+                },
+                "Type": "ACubeActor",
+                "UUID": 201
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -1.309999942779541,
+                        -1.2699999809265137,
+                        -2.2300000190734863
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 202
+                },
+                "Type": "ACubeActor",
+                "UUID": 203
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -2.7699999809265137,
+                        1.590000033378601,
+                        -0.9599999785423279
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 204
+                },
+                "Type": "ACubeActor",
+                "UUID": 205
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -1.340000033378601,
+                        -1.940000057220459,
+                        -2.5899999141693115
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 206
+                },
+                "Type": "ACubeActor",
+                "UUID": 207
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -1.5099999904632568,
+                        1.6299999952316284,
+                        -0.9700000286102295
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 208
+                },
+                "Type": "ACubeActor",
+                "UUID": 209
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -0.8100000023841858,
+                        -1.399999976158142,
+                        2.869999885559082
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 210
+                },
+                "Type": "ACubeActor",
+                "UUID": 211
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -1.8799999952316284,
+                        -0.05999999865889549,
+                        2.509999990463257
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 212
+                },
+                "Type": "ACubeActor",
+                "UUID": 213
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        1.1699999570846558,
+                        1.6200000047683716,
+                        2.3399999141693115
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 214
+                },
+                "Type": "ACubeActor",
+                "UUID": 215
+            }
+        ],
+        "Type": "UScene",
+        "UUID": 191
+    },
+    "Version": 2
+}

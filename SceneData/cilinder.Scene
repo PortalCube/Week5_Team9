@@ -1,0 +1,171 @@
+{
+    "NextUUID": 176,
+    "Scene": {
+        "Actors": [
+            {
+                "RootComponent": {
+                    "Location": [
+                        -2.940000057220459,
+                        -3.0,
+                        0.75
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 162
+                },
+                "Type": "ACylinderActor",
+                "UUID": 163
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        0.7900000214576721,
+                        1.7100000381469727,
+                        -0.9800000190734863
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 164
+                },
+                "Type": "ACylinderActor",
+                "UUID": 165
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        0.6299999952316284,
+                        2.309999942779541,
+                        -0.5099999904632568
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 166
+                },
+                "Type": "ACylinderActor",
+                "UUID": 167
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        2.819999933242798,
+                        -2.5199999809265137,
+                        -2.759999990463257
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 168
+                },
+                "Type": "ACylinderActor",
+                "UUID": 169
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -2.1500000953674316,
+                        -2.049999952316284,
+                        -1.7599999904632568
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 170
+                },
+                "Type": "ACylinderActor",
+                "UUID": 171
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -2.130000114440918,
+                        1.5399999618530273,
+                        -2.559999942779541
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 172
+                },
+                "Type": "ACylinderActor",
+                "UUID": 173
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -0.7400000095367432,
+                        -2.6500000953674316,
+                        -2.069999933242798
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 174
+                },
+                "Type": "ACylinderActor",
+                "UUID": 175
+            }
+        ],
+        "Type": "UScene",
+        "UUID": 161
+    },
+    "Version": 2
+}

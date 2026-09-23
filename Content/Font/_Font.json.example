@@ -1,0 +1,7 @@
+{
+    "Version": 1,
+    "Name": "Example_Font",
+    "AssetType": "Font",
+    "UTextureID": "Texture/Fonts/Example_Font_Texture.json",
+    "GlyphData": {}
+}

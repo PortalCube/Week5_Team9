@@ -1,0 +1,8 @@
+{
+    "Version": 1,
+    "Name": "SelectedActor_Text",
+    "AssetType": "Material",
+    "UPipelineID": "Pipeline/SelectedActor_Text.json",
+    "UTextureID": "Texture/Fonts/BazziOTF.json",
+    "TextureSampler": { "FilterMode": "Bilinear", "WrapMode": "Wrap" }
+}

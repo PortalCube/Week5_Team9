@@ -1,0 +1,21 @@
+{
+    "Version": 1,
+    "Name": "Spotlight",
+    "AssetType": "Pipeline",
+    "VertexShaderFilePath": "Shader/ExampleVS.cso",
+    "PixelShaderFilePath": "Shader/SpotlightPS.cso",
+    "Rasterizer": {
+        "FillMode": "Solid",
+        "CullMode": "None",
+        "FrontFaceMode": "Clockwise",
+        "Multisample": false,
+        "AntialiasedLine": false
+    },
+    "Blend": { "BlendMode": "Additive" },
+    "DepthStencil": {
+        "DepthEnable": true,
+        "StencilEnable": true,
+        "DepthWriteMode": "Disable"
+    },
+    "Instancing": false
+}

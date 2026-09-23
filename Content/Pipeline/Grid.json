@@ -1,0 +1,21 @@
+{
+    "Version": 1,
+    "Name": "Grid",
+    "AssetType": "Pipeline",
+    "VertexShaderFilePath": "Shader/GridVS.cso",
+    "PixelShaderFilePath": "Shader/GridPS.cso",
+    "Rasterizer": {
+        "FillMode": "Solid",
+        "CullMode": "None",
+        "FrontFaceMode": "Clockwise",
+        "Multisample": false,
+        "AntialiasedLine": false
+    },
+    "Blend": { "BlendMode": "Translucent" },
+    "DepthStencil": {
+        "DepthEnable": true,
+        "StencilEnable": true,
+        "DepthWriteMode": "Disable"
+    },
+    "Instancing": false
+}

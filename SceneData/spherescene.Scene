@@ -1,0 +1,263 @@
+{
+    "NextUUID": 161,
+    "Scene": {
+        "Actors": [
+            {
+                "RootComponent": {
+                    "Location": [
+                        2.4100000858306885,
+                        -0.23999999463558197,
+                        -0.7699999809265137
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 139
+                },
+                "Type": "ASphereActor",
+                "UUID": 140
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        0.4300000071525574,
+                        0.11999999731779099,
+                        0.5299999713897705
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 141
+                },
+                "Type": "ASphereActor",
+                "UUID": 142
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -2.119999885559082,
+                        1.3300000429153442,
+                        1.940000057220459
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 143
+                },
+                "Type": "ASphereActor",
+                "UUID": 144
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -2.859999895095825,
+                        -1.4700000286102295,
+                        -1.940000057220459
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 145
+                },
+                "Type": "ASphereActor",
+                "UUID": 146
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -1.850000023841858,
+                        0.3100000023841858,
+                        0.7200000286102295
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 147
+                },
+                "Type": "ASphereActor",
+                "UUID": 148
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        0.6499999761581421,
+                        -0.8199999928474426,
+                        -0.20000000298023224
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 149
+                },
+                "Type": "ASphereActor",
+                "UUID": 150
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -1.6200000047683716,
+                        -0.30000001192092896,
+                        0.6000000238418579
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 151
+                },
+                "Type": "ASphereActor",
+                "UUID": 152
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -0.550000011920929,
+                        -1.840000033378601,
+                        2.4700000286102295
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 153
+                },
+                "Type": "ASphereActor",
+                "UUID": 154
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        0.4099999964237213,
+                        -0.5400000214576721,
+                        -2.740000009536743
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 155
+                },
+                "Type": "ASphereActor",
+                "UUID": 156
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -2.309999942779541,
+                        2.549999952316284,
+                        2.5899999141693115
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 157
+                },
+                "Type": "ASphereActor",
+                "UUID": 158
+            },
+            {
+                "RootComponent": {
+                    "Location": [
+                        -0.14000000059604645,
+                        2.6600000858306885,
+                        1.8799999952316284
+                    ],
+                    "Rotation": [
+                        -0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "Scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    "Type": "UStaticMeshComponent",
+                    "UUID": 159
+                },
+                "Type": "ASphereActor",
+                "UUID": 160
+            }
+        ],
+        "Type": "UScene",
+        "UUID": 56
+    },
+    "Version": 2
+}

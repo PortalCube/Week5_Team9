@@ -1,0 +1,6 @@
+{
+  "Version": 1,
+  "Name": "roadcone",
+  "AssetType": "StaticMesh",
+  "MeshFilePath": "./StaticMesh/roadcone/roadcone.obj"
+}

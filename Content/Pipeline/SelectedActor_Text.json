@@ -1,0 +1,21 @@
+{
+    "Version": 1,
+    "Name": "SelectedActor_Text",
+    "AssetType": "Pipeline",
+    "VertexShaderFilePath": "Shader/InstanceVS.cso",
+    "PixelShaderFilePath": "Shader/MsdfTextPS.cso",
+    "Rasterizer": {
+        "FillMode": "Solid",
+        "CullMode": "Back",
+        "FrontFaceMode": "Clockwise",
+        "Multisample": false,
+        "AntialiasedLine": false
+    },
+    "Blend": { "BlendMode": "Translucent" },
+    "DepthStencil": {
+        "DepthEnable": true,
+        "StencilEnable": true,
+        "DepthWriteMode": "Disable"
+    },
+    "Instancing": true
+}

@@ -1,0 +1,21 @@
+{
+    "Version": 1,
+    "Name": "UVScroll",
+    "AssetType": "Pipeline",
+    "VertexShaderFilePath": "Shader/UVScrollVS.cso",
+    "PixelShaderFilePath": "Shader/TexturedPS.cso",
+    "Rasterizer": {
+        "FillMode": "Solid",
+        "CullMode": "Back",
+        "FrontFaceMode": "Clockwise",
+        "Multisample": false,
+        "AntialiasedLine": false
+    },
+    "Blend": { "BlendMode": "Translucent" },
+    "DepthStencil": {
+        "DepthEnable": true,
+        "StencilEnable": true,
+        "DepthWriteMode": "Enable"
+    },
+    "Instancing": false
+}

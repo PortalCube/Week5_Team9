@@ -1,0 +1,8 @@
+{
+    "Version": 1,
+    "Name": "Text",
+    "AssetType": "Material",
+    "UPipelineID": "Pipeline/Text.json",
+    "UTextureID": "Texture/Fonts/BazziOTF.json",
+    "TextureSampler": { "FilterMode": "Bilinear", "WrapMode": "Wrap" }
+}

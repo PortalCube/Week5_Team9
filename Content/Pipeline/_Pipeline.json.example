@@ -1,0 +1,21 @@
+{
+    "Version": 1,
+    "Name": "Example_Pipeline",
+    "AssetType": "Pipeline",
+    "VertexShaderFilePath": "Shader/ExampleVertexShader.cso",
+    "PixelShaderFilePath": "Shader/ExamplePixelShader.cso",
+    "Rasterizer": {
+        "FillMode": "Solid",
+        "CullMode": "Back",
+        "FrontFaceMode": "Clockwise",
+        "Multisample": false,
+        "AntialiasedLine": false
+    },
+    "Blend": { "BlendMode": "Translucent" },
+    "DepthStencil": {
+        "DepthEnable": true,
+        "StencilEnable": true,
+        "DepthWriteMode": "Enable"
+    },
+    "Instancing": false
+}

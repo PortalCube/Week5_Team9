@@ -1,0 +1,21 @@
+{
+    "Version": 1,
+    "Name": "Textured",
+    "AssetType": "Pipeline",
+    "VertexShaderFilePath": "Shader/ExampleVS.cso",
+    "PixelShaderFilePath": "Shader/TexturedPS.cso",
+    "Rasterizer": {
+        "FillMode": "Solid",
+        "CullMode": "Back",
+        "FrontFaceMode": "Clockwise",
+        "Multisample": false,
+        "AntialiasedLine": false
+    },
+    "Blend": { "BlendMode": "Translucent" },
+    "DepthStencil": {
+        "DepthEnable": true,
+        "StencilEnable": true,
+        "DepthWriteMode": "Enable"
+    },
+    "Instancing": false
+}

@@ -1,0 +1,21 @@
+{
+    "Version": 1,
+    "Name": "Simple_Solid",
+    "AssetType": "Pipeline",
+    "VertexShaderFilePath": "Shader/ExampleVS.cso",
+    "PixelShaderFilePath": "Shader/ExamplePS.cso",
+    "Rasterizer": {
+        "FillMode": "Solid",
+        "CullMode": "Back",
+        "FrontFaceMode": "Clockwise",
+        "Multisample": false,
+        "AntialiasedLine": false
+    },
+    "Blend": { "BlendMode": "Opaque" },
+    "DepthStencil": {
+        "DepthEnable": true,
+        "StencilEnable": true,
+        "DepthWriteMode": "Enable"
+    },
+    "Instancing": false
+}

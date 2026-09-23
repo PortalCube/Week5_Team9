@@ -1,0 +1,6 @@
+{
+  "Version": 1,
+  "Name": "Rover",
+  "AssetType": "StaticMesh",
+  "MeshFilePath": "./StaticMesh/Rover/model.obj"
+}
