@@ -36,17 +36,19 @@ project "OiiaiiEngine"
     staticruntime "Off"
 
     files {
-	"**.h",
-	"**.cpp",
+        "**.h",
+        "**.cpp",
         "Source/**.h",
         "Source/**.hpp",
         "Source/**.cpp",
         "Shader/**.hlsl",
-        "Shader/**.hlsli"
+        "Shader/**.hlsli",
     }
 
     removefiles {
-        "Source/ThirdParty/DirectXTK/**"
+        "Source/ThirdParty/DirectXTK/**",
+        "Source/ThirdParty/Catch2/**",
+        "Tests/**"
     }
 
     includedirs {
@@ -54,7 +56,7 @@ project "OiiaiiEngine"
         "Source",
         "Source/ThirdParty/DirectXTK",
         "Source/ThirdParty/DirectXTK/Inc",
-        "Source/ThirdParty/DirectXTK/Src"
+        "Source/ThirdParty/DirectXTK/Src",
     }
     
     defines { "NOMINMAX", "_CONSOLE" }
@@ -84,7 +86,7 @@ project "OiiaiiEngine"
 	prebuildcommands {
 		'powershell -NoProfile -ExecutionPolicy Bypass -File "%{wks.location}Scripts/PreBuild.ps1"'
 	}
-	
+
 	postbuildmessage "빌드 후처리 단계를 실행합니다..."
     postbuildcommands {
 		'powershell -NoProfile -ExecutionPolicy Bypass -File "%{wks.location}Scripts/PostBuild.ps1" -TargetDirectory "%{cfg.targetdir}"'
@@ -108,7 +110,7 @@ project "OiiaiiEngine"
 		stringpooling "Off"
 		linktimeoptimization "Off"
 
-   filter "configurations:ObjViewer"
+    filter "configurations:ObjViewer"
         defines { "_OBJVIEWER", "NDEBUG" }
         --symbols "On"
 		symbols "Off"
@@ -130,6 +132,7 @@ project "OiiaiiEngine"
         targetdir "Binaries/x64/%{cfg.buildcfg}"
         objdir "Intermediate/%{prj.name}/x64/%{cfg.buildcfg}"
 
+    -- 외부 라이브러리에 엔진 PCH를 강제하지 않음
     filter "files:Source/ThirdParty/Imgui/**.cpp"
         warnings "Off"
         enablepch "Off"
@@ -149,5 +152,78 @@ project "OiiaiiEngine"
 
     filter "files:**.hlsli"
         buildaction "None"
+
+    filter {}
+
+project "OiiaiiEngine.Test"
+    uuid "2873B3DD-002B-4CF0-87AF-BE16CE15A1F5"
+    kind "ConsoleApp"
+    language "C++"
+    cppdialect "C++20"
+    characterset "Unicode"
+    staticruntime "Off"
+
+    targetdir "Binaries/%{cfg.platform}/%{cfg.buildcfg}"
+    objdir "Intermediate/%{prj.name}/%{cfg.platform}/%{cfg.buildcfg}"
+
+    files {
+        "Tests/**.h",
+        "Tests/**.cpp",
+
+        -- Catch2 구현과 기본 main()
+        "Source/ThirdParty/Catch2/catch_amalgamated.cpp",
+        "Source/ThirdParty/Catch2/catch_amalgamated.hpp",
+
+        -- 테스트할 실제 제품 코드
+        "Source/Runtime/Utility/WindowsUtil.cpp",
+        "Source/Runtime/Utility/EngineUtil.cpp",
+        "Source/Runtime/Engine/FArchive.cpp",
+        "Source/Editor/Core/FConfigArchive.cpp",
+        "Source/Editor/Core/FEditorState.cpp",
+    }
+
+    includedirs {
+        ".",
+        "Source",
+        "Source/ThirdParty/Catch2"
+    }
+
+    defines {
+        "NOMINMAX",
+        "_CONSOLE"
+    }
+
+    links {
+        "user32"
+    }
+
+    buildoptions {
+        "/utf-8",
+        "/FS"
+    }
+
+    warnings "Default"
+    multiprocessorcompile "On"
+
+    filter "configurations:Debug"
+        defines { "_DEBUG" }
+        symbols "On"
+
+    filter "configurations:Release"
+        defines { "NDEBUG" }
+        symbols "Off"
+        optimize "Off"
+
+    filter "platforms:x86"
+        architecture "x86"
+        defines { "WIN32" }
+
+    filter "platforms:x64"
+        architecture "x86_64"
+
+    -- 외부 라이브러리에 엔진 PCH를 강제하지 않음
+    filter "files:Source/ThirdParty/Catch2/**.cpp"
+        enablepch "Off"
+        removeforceincludes { "pch.h" }
 
     filter {}
