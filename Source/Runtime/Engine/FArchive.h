@@ -125,12 +125,14 @@ inline T FArchive::GetEnum(const FString& Key, TMap<FString, T>& EnumMap)
 template<typename T>
 inline void FArchive::SetEnum(const FString& Key, T Value, TMap<T, FString>& EnumMap)
 {
-	auto& It = EnumMap.find(Key);
+	auto It = EnumMap.find(Value);
 
 	if (It == EnumMap.end())
 	{
-		throw EngineUtil::CreateError("[FArchive::SetEnum] 키 {}에서 대해서 EnumMap에 없는 값이 있습니다. ({})", Key, Value);
+		throw EngineUtil::CreateError(
+			"[FArchive::SetEnum] 키 {}에서 대해서 EnumMap에 없는 값이 있습니다. ({})",
+			Key, static_cast<int>(Value));
 	}
 
-	SetString(Key, It.second);
+	SetString(Key, It->second);
 }
