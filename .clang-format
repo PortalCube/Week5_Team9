@@ -1,0 +1,45 @@
+Language: Cpp
+BasedOnStyle: LLVM
+
+# 들여쓰기
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+ContinuationIndentWidth: 4
+AlignAfterOpenBracket: DontAlign
+
+# 중괄호
+BreakBeforeBraces: Allman
+
+# 포인터와 참조
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+
+# 클래스 접근 지정자
+AccessModifierOffset: -4
+
+# namespace 내부는 들여쓰기
+NamespaceIndentation: All
+
+# switch와 case를 같은 깊이에 배치
+IndentCaseLabels: false
+IndentCaseBlocks: false
+
+# FVector{ 1.0f, 2.0f } 형태 유지
+Cpp11BracedListStyle: false
+SpaceBeforeCpp11BracedList: false
+
+# 기존 include 순서를 보존
+SortIncludes: Never
+
+# 기존 긴 줄을 강제로 분할하지 않음
+ColumnLimit: 0
+
+# 클래스 내부의 짧은 getter/setter 허용
+AllowShortFunctionsOnASingleLine: Inline
+
+# 일반 블록과 if문은 여러 줄로 통일
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
