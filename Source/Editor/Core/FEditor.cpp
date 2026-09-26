@@ -49,7 +49,7 @@ void FEditor::Process() {
     }
     
   if (SceneManager && SceneManager->CurrentScene) {
-    SceneManager->CurrentScene->Update(FTimeManager::Get().GetDeltaTime());
+    SceneManager->CurrentScene->Update(FTimeManager::GetDeltaTime());
   }
 
   if (SelectedActor) {
@@ -57,7 +57,7 @@ void FEditor::Process() {
   }
 
   SaveState();
-  State.Tick(FTimeManager::Get().GetDeltaTime());
+  State.Tick(FTimeManager::GetDeltaTime());
 }
 
 void FEditor::SaveState() {

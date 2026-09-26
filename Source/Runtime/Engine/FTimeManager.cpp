@@ -1,45 +1,19 @@
-#include <windows.h>
-#include <chrono>
 #include "FTimeManager.h"
 
-float FTimeManager::GetTime() const
+float FTimeManager::GetTime()
 {
-    //TimePoint Clock = SteadyClock::now();
-    //return Duration(Clock - StartTime).count();
-    return TempTime;
+	return Time;
 }
 
-float FTimeManager::GetDeltaTime() const
+float FTimeManager::GetDeltaTime()
 {
-    //TimePoint Clock = SteadyClock::now();
-    //return Duration(Clock - PrevTime).count();
-    return TempDeltaTime;
-}
-
-FTimeManager::FTimeManager()
-{
-    StartTime = SteadyClock::now();
-    PrevTime = SteadyClock::now();
+	return DeltaTime;
 }
 
 void FTimeManager::Update()
 {
-    float TargetTime = 1.0f / FPS;
-    float DeltaTime;
-
-    TimePoint Clock = SteadyClock::now();
-    DeltaTime = Duration(Clock - PrevTime).count();
-
-    //while (DeltaTime < TargetTime)
-    //{
-    //    _mm_pause();
-
-    //    Clock = SteadyClock::now();
-    //    DeltaTime = Duration(Clock - PrevTime).count();
-    //}
-
-    TempDeltaTime = DeltaTime;
-    TempTime = Duration(Clock - StartTime).count();
-
-    PrevTime = SteadyClock::now();
+	const TimePoint Clock = SteadyClock::now();
+	Time = Duration(Clock - StartTime).count();
+	DeltaTime = Duration(Clock - PrevTime).count();
+	PrevTime = Clock;
 }

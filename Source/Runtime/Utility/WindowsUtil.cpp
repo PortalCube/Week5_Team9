@@ -1,6 +1,6 @@
 #include "WindowsUtil.h"
 
-FString WindowsUtil::ToString(const FWString& WStr)
+FString WindowsUtil::ToString(FWStringView WStr)
 {
 	if (WStr.empty()) { return ""; }
 
@@ -13,7 +13,7 @@ FString WindowsUtil::ToString(const FWString& WStr)
 	return Result;
 }
 
-FWString WindowsUtil::ToWString(const FString& Str)
+FWString WindowsUtil::ToWString(FStringView Str)
 {
 	if (Str.empty()) { return L""; }
 

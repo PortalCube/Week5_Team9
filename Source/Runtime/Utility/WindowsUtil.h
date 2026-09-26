@@ -6,7 +6,7 @@
 namespace WindowsUtil
 {
 
-	FString ToString(const FWString& WStr);
+	FString ToString(FWStringView WStr);
 
-	FWString ToWString(const FString& Str);
+	FWString ToWString(FStringView Str);
 };

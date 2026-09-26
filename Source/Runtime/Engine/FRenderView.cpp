@@ -123,8 +123,8 @@ void FRenderView::PrepareRender()
 {
     FFrameConstants FrameConstants
     {
-        .Time = FTimeManager::Get().GetTime(),
-        .DeltaTime = FTimeManager::Get().GetDeltaTime(),
+        .Time = FTimeManager::GetTime(),
+        .DeltaTime = FTimeManager::GetDeltaTime(),
     };
 
     Renderer.UpdateFrameConstants(FrameConstants);

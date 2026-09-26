@@ -2,32 +2,15 @@
 
 #include <chrono>
 
-class FTimeManager final
+class FTimeManager
 {
 public:
+	FTimeManager() = delete;
 
-	static FTimeManager& Get()
-	{
-		static FTimeManager Instance;
-		return Instance;
-	}
+	static float GetTime();
+	static float GetDeltaTime();
 
-	void Initialize();
-
-	void Resume() { bIsRunning = true; }
-	void Pause() { bIsRunning = false; }
-
-	float GetTime() const;
-	float GetDeltaTime() const;
-
-	void Update();
-	void SetFPS(float InFPS) { FPS = InFPS; }
-
-	FTimeManager(const FTimeManager&) = delete;
-	FTimeManager& operator=(const FTimeManager&) = delete;
-
-	FTimeManager(FTimeManager&&) = delete;
-	FTimeManager&& operator=(FTimeManager&&) = delete;
+	static void Update();
 
 private:
 
@@ -35,17 +18,9 @@ private:
 	using TimePoint = std::chrono::steady_clock::time_point;
 	using Duration = std::chrono::duration<float>;
 
-	FTimeManager();
-	~FTimeManager() = default;
+	inline static TimePoint StartTime = SteadyClock::now();
+	inline static TimePoint PrevTime = StartTime;
 
-	TimePoint StartTime;
-	TimePoint PrevTime;
-	
-	float FPS = 60.0f;
-	float DeltaTime = 0.0f;
-
-	float TempTime = 0.0f;
-	float TempDeltaTime = 0.0f;
-
-	bool bIsRunning = false;
+	inline static float Time = 0.0f;
+	inline static float DeltaTime = 0.0f;
 };

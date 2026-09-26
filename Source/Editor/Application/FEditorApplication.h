@@ -1,4 +1,5 @@
 #pragma once
+#include "Editor/Application/IApplication.h"
 #include "Editor/Core/FEditor.h"
 #include "Editor/UI/Imgui/FImguiManager.h"
 #include "Editor/UI/Imgui/FImguiToolBar.h"
@@ -15,7 +16,7 @@
 #include "Editor/Visualizer/FVisualizerRegistry.h"
 #include "Runtime/UI/SWindow.h"
 
-class FEditorApplication final {
+class FEditorApplication final : public IApplication {
 	FEditor Editor;
 
 	USceneManager* SceneManager = nullptr;
@@ -37,7 +38,9 @@ class FEditorApplication final {
 
 	SWindow EditorViewports;
 public:
-	
+	FEditorApplication() = default;
+	~FEditorApplication() override = default;
+
 	static FEditorApplication& Get()
 	{
 		static FEditorApplication Instance;
@@ -52,16 +55,14 @@ public:
 
 	void Initialize_ImguiWin32DX11(HWND& Window, ID3D11Device* Device, ID3D11DeviceContext* Context);
 	void Initialize_Runtime(USceneManager* SceneManager, FRenderView* RenderView);
-	void Shutdown();
-	void Update(float DeltaTime);
-	void Render();
-	void OnWindowSize(UINT Width, UINT Height);
+	void Shutdown() override;
+	void Update(float DeltaTime) override;
+	void Render() override;
+	void OnWindowSize(UINT Width, UINT Height) override;
 
 	void ExecuteCommand(const char* Command);
 	
 private:
-	FEditorApplication() = default;
-	~FEditorApplication() = default;
 	void BeginFrame();
 	void Tick(float DeltaTime);
 };

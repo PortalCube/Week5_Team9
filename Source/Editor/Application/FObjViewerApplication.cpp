@@ -65,55 +65,51 @@ void FObjViewerApplication::Render()
 		Context->ClearRenderTargetView(BackBuffer, BackgroundColor);
 	}
 
-	if (!CurrentMesh)
+	if (CurrentMesh)
 	{
-		return;
-	}
+		FMatrix ViewProj = Camera.CreateViewProjectionMatrix();
+		FMatrix World = FMatrix::GetIdentity();
 
-	FMatrix ViewProj = Camera.CreateViewProjectionMatrix();
-	FMatrix World = FMatrix::GetIdentity();
+		Renderer->UpdateLightConstants(Light, EViewModeIndex::VMI_Lit);
 
-	Renderer->UpdateLightConstants(Light, EViewModeIndex::VMI_Lit);
+		FObjectConstants Constants;
+		Constants.World = World;
+		Constants.MVP = World * ViewProj;
+		Constants.DisableShading = 0.3f;
 
-	FObjectConstants Constants;
-	Constants.World = World;
-	Constants.MVP = World * ViewProj;
-	Constants.DisableShading = 0.3f;
-
-	// Set Material on all sections
-	auto SimpleMaterial = FRenderResourceLibrary::Get().GetMaterial(FName("Simple"));
-	auto TextureMaterial = FRenderResourceLibrary::Get().GetMaterial(FName("Textured"));
-	for (const auto& Section : Sections)
-	{
-		auto It = MtlMap.find(Section.SectionName);
-		if (It == MtlMap.end())
+		// Set Material on all sections
+		auto SimpleMaterial = FRenderResourceLibrary::Get().GetMaterial(FName("Simple"));
+		auto TextureMaterial = FRenderResourceLibrary::Get().GetMaterial(FName("Textured"));
+		for (const auto& Section : Sections)
 		{
-			continue;
-		}
-	
-		const FMtlData& Mtl = It->second;
-		
-		if (!Mtl.map_Kd.empty())
-		{
-			// TODO : Set texture
-			auto TexIt = TextureMap.find(Mtl.map_Kd);
-			if (TexIt != TextureMap.end())
+			auto It = MtlMap.find(Section.SectionName);
+			if (It == MtlMap.end())
 			{
-				TextureMaterial->SetTexture(TexIt->second.get());
-				Constants.Color = FVector4{ Mtl.Kd, 0.0f };
-				Renderer->DrawSection(*CurrentMesh, *TextureMaterial, Constants, Section.StartIndex, Section.IndexCount);
+				continue;
 			}
 
-			continue;			
-		}
-		// No Texture file
-		else
-		{			
-			Constants.Color = FVector4{ Mtl.Kd, 1.0f };
-		}
+			const FMtlData& Mtl = It->second;
 
-		Renderer->DrawSection(*CurrentMesh, *SimpleMaterial, Constants, Section.StartIndex, Section.IndexCount);
+			if (!Mtl.map_Kd.empty())
+			{
+				// TODO : Set texture
+				auto TexIt = TextureMap.find(Mtl.map_Kd);
+				if (TexIt != TextureMap.end())
+				{
+					TextureMaterial->SetTexture(TexIt->second.get());
+					Constants.Color = FVector4{ Mtl.Kd, 0.0f };
+					Renderer->DrawSection(*CurrentMesh, *TextureMaterial, Constants, Section.StartIndex, Section.IndexCount);
+				}
+
+				continue;
+			}
+
+			Constants.Color = FVector4{ Mtl.Kd, 1.0f };
+			Renderer->DrawSection(*CurrentMesh, *SimpleMaterial, Constants, Section.StartIndex, Section.IndexCount);
+		}
 	}
+
+	RenderUI();
 }
 
 void FObjViewerApplication::RenderUI()
