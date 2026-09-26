@@ -13,7 +13,7 @@
 #include "Runtime/Input/FCameraInputController.h"
 
 #include "Editor/Visualizer/FVisualizerRegistry.h"
-#include "SWindow.h"
+#include "Runtime/UI/SWindow.h"
 
 class FEditorApplication final {
 	FEditor Editor;

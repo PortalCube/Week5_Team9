@@ -13,7 +13,7 @@
 #include "Runtime/CoreUObject/UTextInstanceComponent.h"
 
 
-#include "SSplitter.h"
+#include "Runtime/UI/SSplitter.h"
 enum class EEditorPrimitiveType : uint8 {
   Cube,
   Cylinder,
