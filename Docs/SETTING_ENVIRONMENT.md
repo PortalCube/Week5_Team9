@@ -69,6 +69,8 @@ Premake5가 정상적으로 설치되었다면, 프로젝트 루트 디렉토리
 2. Visual Studio에 외부 도구로 등록하기
     - 아래 동영상을 참고해서 등록하시면 됩니다.
 
+    https://github.com/user-attachments/assets/f1de5b58-538d-4f1e-9f6e-087c286d28b8
+
     <video controls src="./Resources/Register_Premake.mp4" width="720"></video>
 
 ## 3. 빌드 스크립트

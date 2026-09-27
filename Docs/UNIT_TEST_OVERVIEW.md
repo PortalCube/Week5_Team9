@@ -16,11 +16,15 @@ OiiaiiEngine.Test 프로젝트에서 단위 테스트나 통합 테스트 등을
 
 그냥 프로젝트를 직접 빌드 후 실행해서 콘솔 창에서 결과를 확인할 수 있습니다. Test 프로젝트를 우클릭해서 실행하면 됩니다.
 
+https://github.com/user-attachments/assets/e1ac2e66-9b79-47c8-8bab-82a19ee69db4
+
 <video controls src="./Resources/Run_Test_1.mp4" width="720"></video>
 
 ### 테스트 탐색기에서 실행하기
 
 조금 귀찮지만 화려한 UI로 결과를 확인할 수 있습니다.
+
+https://github.com/user-attachments/assets/1237fcb9-e626-4a05-80c7-e7161b8e7f1b
 
 <video controls src="./Resources/Run_Test_2.mp4" width="720"></video>
 
