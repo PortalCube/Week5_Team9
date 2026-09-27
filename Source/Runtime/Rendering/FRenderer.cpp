@@ -31,6 +31,9 @@ bool FRenderer::Initialize(HWND Window) {
 
   LineBatcher.Initialize(Device.Get()); // batch line
 
+  // 실패해도 렌더링은 되므로 GPU Time 스탯만 0으로 남는다.
+  InitializeGPUTimerQueries();
+
   return true;
 }
 
@@ -54,12 +57,22 @@ void FRenderer::Shutdown() {
   DepthStencilView.Reset();
   DepthStencilBuffer.Reset();
 
+  for (FGPUTimerQuery &Query : GPUTimerQueries) {
+    Query.Disjoint.Reset();
+    Query.Start.Reset();
+    Query.End.Reset();
+    Query.bPending = false;
+    Query.InputStartTick = 0;
+  }
+
   SwapChain.Reset();
   Context.Reset();
   Device.Reset();
 }
 
 void FRenderer::BeginFrame() {
+  BeginGPUTimer();
+
   Context->RSSetViewports(1, &Viewport);
   BindEditorViewportRenderTargets();
 
@@ -133,7 +146,12 @@ void FRenderer::ClearDepth() {
       DepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 }
 
-void FRenderer::SwapBuffer() { SwapChain->Present(0u, 0u); }
+void FRenderer::SwapBuffer() {
+  EndGPUTimer();
+  ResolveGPUTimer();
+
+  SwapChain->Present(0u, 0u);
+}
 
 void FRenderer::OnWindowSize(UINT Width, UINT Height) {
   Context->OMSetRenderTargets(0, nullptr, nullptr);
@@ -328,7 +346,7 @@ FRenderer::CreateRenderPipeline(const FRenderPipelineDesc &Desc, EViewModeIndex 
   }
 
   size_t VSSize = Blob->GetBufferSize();
-  FStatsManager::Get().AddMemory(EStatMemoryCategory::VertexShader, Blob->GetBufferSize());
+  INC_MEMORY_STAT_BY("VertexShaderMemory", Blob->GetBufferSize());
   
   Microsoft::WRL::ComPtr<ID3D11InputLayout> InputLayout;
   if (ClonedDesc.bIsInstancing) {
@@ -360,7 +378,7 @@ FRenderer::CreateRenderPipeline(const FRenderPipelineDesc &Desc, EViewModeIndex 
   }
 
   size_t PSSize = Blob->GetBufferSize();
-  FStatsManager::Get().AddMemory(EStatMemoryCategory::PixelShader, Blob->GetBufferSize());
+  INC_MEMORY_STAT_BY("PixelShaderMemory", Blob->GetBufferSize());
 
   auto RasterizerState = GetOrCreateRasterizerState(ClonedDesc.Rasterizer);
   auto DepthStencilState = GetOrCreateDepthStencilState(ClonedDesc.DepthStencil);
@@ -600,7 +618,7 @@ TSharedPtr<FTexture> FRenderer::CreateTexture(const wchar_t *path) {
   Texture->MipLevels = desc.MipLevels;
   Texture->MemorySize = Texture->GetMemorySize();
 
-  FStatsManager::Get().AddMemory(EStatMemoryCategory::Texture, Texture->MemorySize);
+  INC_MEMORY_STAT_BY("TextureMemory", Texture->MemorySize);
 
   return Texture;
 }
@@ -989,9 +1007,12 @@ void FRenderer::DrawInstances(const FCamera &Camera) {
     if (Mesh->HasIndices()) {
       Context->DrawIndexedInstanced(Mesh->GetIndexCount(), InstanceCount, 0, 0,
                                     0);
+      INC_DWORD_STAT_BY("Prims", Mesh->GetIndexCount() / 3u * InstanceCount);
     } else {
       Context->DrawInstanced(Mesh->VertexCount, InstanceCount, 0, 0);
+      INC_DWORD_STAT_BY("Prims", Mesh->VertexCount / 3u * InstanceCount);
     }
+    INC_DWORD_STAT("Draws");
   }
 }
 
@@ -1063,9 +1084,12 @@ void FRenderer::DrawTextInstances(const FDrawCommand &Command) {
   if (Mesh->HasIndices()) {
     Context->DrawIndexedInstanced(Mesh->GetIndexCount(), InstanceCount, 0, 0,
                                   0);
+    INC_DWORD_STAT_BY("Prims", Mesh->GetIndexCount() / 3u * InstanceCount);
   } else {
     Context->DrawInstanced(Mesh->VertexCount, InstanceCount, 0, 0);
+    INC_DWORD_STAT_BY("Prims", Mesh->VertexCount / 3u * InstanceCount);
   }
+  INC_DWORD_STAT("Draws");
 }
 
 void FRenderer::ClearTextInstances() {
@@ -1098,8 +1122,105 @@ void FRenderer::RenderOutline() {
       .GetPipeline(FName("#PostProcess"))
       ->Bind(*Context.Get());
   Context->Draw(3, 0);
+  INC_DWORD_STAT("Draws");
+  INC_DWORD_STAT_BY("Prims", 1);
 
   // 슬롯 해제
   ID3D11ShaderResourceView *NullSRVs[] = {nullptr, nullptr};
   Context->PSSetShaderResources(0, 2, NullSRVs);
+}
+
+bool FRenderer::InitializeGPUTimerQueries() {
+  constexpr D3D11_QUERY_DESC DisjointDesc{D3D11_QUERY_TIMESTAMP_DISJOINT, 0};
+  constexpr D3D11_QUERY_DESC TimestampDesc{D3D11_QUERY_TIMESTAMP, 0};
+
+  for (FGPUTimerQuery &Query : GPUTimerQueries) {
+    if (FAILED(Device->CreateQuery(&DisjointDesc, &Query.Disjoint)) ||
+        FAILED(Device->CreateQuery(&TimestampDesc, &Query.Start)) ||
+        FAILED(Device->CreateQuery(&TimestampDesc, &Query.End))) {
+      UE_LOG("GPU Time: 타임스탬프 쿼리 생성에 실패했습니다.");
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void FRenderer::BeginGPUTimer() {
+  FGPUTimerQuery &Query = GPUTimerQueries[GPUTimerFrameIndex];
+
+  if (!Query.Disjoint) {
+    return;
+  }
+
+  Context->Begin(Query.Disjoint.Get());
+  Context->End(Query.Start.Get());
+}
+
+void FRenderer::EndGPUTimer() {
+  FGPUTimerQuery &Query = GPUTimerQueries[GPUTimerFrameIndex];
+
+  // 쿼리가 없어 보고할 수 없더라도 입력 시각은 반드시 비운다.
+  // 안 그러면 Trigger()가 계속 튕겨서 Input이 0에 영구 고정된다.
+  const int64 InputStartTick = FInputLatencyTimer::Get().ConsumePendingStart();
+
+  if (!Query.Disjoint) {
+    return;
+  }
+
+  Context->End(Query.End.Get());
+  Context->End(Query.Disjoint.Get());
+
+  Query.InputStartTick = InputStartTick;
+  Query.bPending = true;
+
+  // 다음 프레임은 다음 쿼리 세트를 쓴다.
+  GPUTimerFrameIndex = (GPUTimerFrameIndex + 1u) % GPUTimerFrameCount;
+}
+
+void FRenderer::ResolveGPUTimer() {
+  for (uint32 Offset = 0u; Offset < GPUTimerFrameCount; ++Offset)
+  {
+    const uint32 Index = (GPUTimerFrameIndex + Offset) % GPUTimerFrameCount;
+    FGPUTimerQuery &Query = GPUTimerQueries[Index];
+
+    if (!Query.bPending) {
+      continue;
+    }
+
+    // 아직 안 끝났으면 S_FALSE. 기다리지 않고 다음 프레임에 다시 시도한다.
+    D3D11_QUERY_DATA_TIMESTAMP_DISJOINT DisjointData{};
+    if (Context->GetData(Query.Disjoint.Get(), &DisjointData,
+                         sizeof(DisjointData),
+                         D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK) {
+      break;
+    }
+
+    Query.bPending = false;
+
+    // Disjoint 쿼리가 끝났다는 건 GPU가 이 프레임 마지막 커맨드를 지났다는 뜻이다.
+    // 입력 지연은 클럭 안정성과 무관하므로 Disjoint 여부와 상관없이 보고한다.
+    FInputLatencyTimer::Get().Report(Query.InputStartTick);
+    Query.InputStartTick = 0;
+
+    // 측정 중 GPU 클럭이 바뀌었다면 시간 값은 믿을 수 없다.
+    if (DisjointData.Disjoint || DisjointData.Frequency == 0u) {
+      continue;
+    }
+
+    UINT64 StartTick = 0u;
+    UINT64 EndTick = 0u;
+
+    if (Context->GetData(Query.Start.Get(), &StartTick, sizeof(StartTick), 0) != S_OK ||
+        Context->GetData(Query.End.Get(), &EndTick, sizeof(EndTick), 0) != S_OK ||
+        EndTick < StartTick) {
+      continue;
+    }
+
+    LastGPUTimeMs = (EndTick - StartTick) * 1000.0 /
+                    static_cast<double>(DisjointData.Frequency);
+  }
+
+  // 한 프레임에 세트를 여러 개 회수할 수 있으므로, 누적이 아니라 프레임당 한 번만 넣는다.
+  SET_CYCLE_COUNTER("GPU Time", LastGPUTimeMs);
 }

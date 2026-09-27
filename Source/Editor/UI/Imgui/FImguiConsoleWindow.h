@@ -31,6 +31,15 @@ private:
 	// 하단 명령어 입력 칸.
 	void ShowCommandLine();
 
+	// 현재 입력으로 자동완성 후보를 다시 만든다.
+	void UpdateSuggestions();
+
+	// 후보 팝업. 콘솔과 별개의 창으로 입력 칸 바로 위에 띄운다.
+	void DrawSuggestionPopup(const ImVec2& InputMin);
+
+	// 후보를 클릭해 잃은 포커스를 입력 칸으로 되돌려 달라고 요청한다.
+	void RequestFocus() { bFocusInputRequested = true; }
+
 	// InputText 콜백을 멤버 함수로 넘기기 위한 정적 우회.
 	static int TextEditCallbackStub(ImGuiInputTextCallbackData* Data);
 	int TextEditCallback(ImGuiInputTextCallbackData* Data);
@@ -46,6 +55,11 @@ private:
 	ImVector<const char*> Commands;  // 자동완성 후보. 문자열 리터럴이라 해제 불필요
 	ImVector<char*> History;         // Strdup 으로 잡은 버퍼. 소멸자에서 MemFree
 	int HistoryPos = -1;             // -1 이면 새 줄, 0..Size-1 이면 히스토리 탐색 중
+
+	// 자동완성 팝업
+	ImVector<const char*> Suggestions;  // 이번 프레임의 후보. Commands 의 리터럴을 가리킨다
+	int SuggestionIndex = -1;           // 목록이 뜨면 0 부터 시작한다
+	bool bFocusInputRequested = false;  // 후보를 클릭한 다음 프레임에 입력 칸으로 포커스를 되돌린다
 
 	// 스크롤
 	ImGuiTextFilter Filter;

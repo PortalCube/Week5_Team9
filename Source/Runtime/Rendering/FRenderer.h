@@ -7,6 +7,7 @@
 #include "Runtime/Core/IntTypes.h"
 #include "Runtime/Core/PointerTypes.h"
 #include "Runtime/Core/TMap.h"
+#include "Runtime/CoreUObject/FStatsManager.h"
 #include "Runtime/Material/FTextureSamplerDesc.h"
 #include "Runtime/Math/FVector2.h"
 #include "Runtime/Rendering/FLineBatcher.h"
@@ -89,6 +90,13 @@ private:
   bool InitializeDeviceAndSwapChain(HWND Window);
   bool InitializeBackBufferAndDepthStencil();
   bool InitializeConstantBuffers();
+  bool InitializeGPUTimerQueries();
+
+  // GPU 타임스탬프. 결과를 같은 프레임에 바로 읽으면 CPU가 GPU를 기다리게 되므로
+  // 쿼리 세트를 돌려 쓰고 가장 오래된 것만 회수한다.
+  void BeginGPUTimer();
+  void EndGPUTimer();
+  void ResolveGPUTimer();
 
   Microsoft::WRL::ComPtr<ID3D11RasterizerState>
   GetOrCreateRasterizerState(const FRasterizerDesc& Desc);
@@ -137,6 +145,22 @@ private:
   UINT TextInstanceBufferSize = 0;
 
   EViewModeIndex CurrentRenderMode = EViewModeIndex::VMI_Lit;
+
+  struct FGPUTimerQuery {
+    Microsoft::WRL::ComPtr<ID3D11Query> Disjoint;
+    Microsoft::WRL::ComPtr<ID3D11Query> Start;
+    Microsoft::WRL::ComPtr<ID3D11Query> End;
+    // 이 프레임이 반영한 입력의 QPC 시각. 입력이 없었으면 0.
+    int64 InputStartTick = 0;
+    bool bPending = false;
+  };
+
+  static constexpr uint32 GPUTimerFrameCount = 3u;
+  FGPUTimerQuery GPUTimerQueries[GPUTimerFrameCount];
+  uint32 GPUTimerFrameIndex = 0u;
+
+  // 회수에 실패한 프레임에 0을 넣으면 평균이 눌리므로 직전 값을 들고 있는다.
+  double LastGPUTimeMs = 0.0;
   
 public:
   template <typename TConstants>
@@ -173,9 +197,12 @@ public:
 
     if (Mesh.HasIndices()) {
       Context->DrawIndexed(Mesh.IndexCount, 0, 0);
+      INC_DWORD_STAT_BY("Prims", Mesh.IndexCount / 3u);
     } else {
       Context->Draw(Mesh.VertexCount, 0);
+      INC_DWORD_STAT_BY("Prims", Mesh.VertexCount / 3u);
     }
+    INC_DWORD_STAT("Draws");
   }
 
   template <typename TConstants>
@@ -204,10 +231,13 @@ public:
 
       if (Mesh.HasIndices()) {
           Context->DrawIndexed(IndexCount, StartIndex, 0);
+          INC_DWORD_STAT_BY("Prims", IndexCount / 3u);
       }
       else {
           Context->Draw(Mesh.VertexCount, 0);
+          INC_DWORD_STAT_BY("Prims", Mesh.VertexCount / 3u);
       }
+      INC_DWORD_STAT("Draws");
   }
 
   // Constant Buffer를 갱신한다.

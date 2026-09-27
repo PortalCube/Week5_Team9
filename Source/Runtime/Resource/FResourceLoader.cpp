@@ -108,7 +108,7 @@ void FResourceLoader::LoadDefaultStaticMeshAssets()
 				ID.ToString());
 		}
 
-		FStatsManager::Get().AddMemory(EStatMemoryCategory::StaticMesh, Mesh->GetBufferSize());
+		INC_MEMORY_STAT_BY("StaticMeshMemory", Mesh->GetBufferSize());
 
 		UStaticMesh* StaticMesh = NewObject<UStaticMesh>();
 		UStaticMeshDesc StaticMeshDesc{};
@@ -549,7 +549,7 @@ void FResourceLoader::LoadStaticMeshAsset(const FArchive& Archive, const FName& 
 	const size_t IndexBufferSize = sizeof(uint32) * Indices.size();
 	const size_t GPUResourceSize = VertexBufferSize + IndexBufferSize;
 
-	FStatsManager::Get().AddMemory(EStatMemoryCategory::StaticMesh, GPUResourceSize);
+	INC_MEMORY_STAT_BY("StaticMeshMemory", GPUResourceSize);
 
 	// Load mtl
 

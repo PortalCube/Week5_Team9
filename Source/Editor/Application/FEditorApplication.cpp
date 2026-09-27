@@ -23,6 +23,10 @@
 
 #include "Editor/Visualizer/IVisualizer.h"
 #include "Editor/Core/FEditor.h"
+#include <Editor/UI/Imgui/FImguiStatsWindow.h>
+#include <Runtime/CoreUObject/FStatsManager.h>
+
+
 void FEditorApplication::Initialize_ImguiWin32DX11(
     HWND &Window, ID3D11Device *Device, ID3D11DeviceContext *Context) {
   ImguiManager.Initialize_ImplWin32DX11(Window, Device, Context);
@@ -34,7 +38,6 @@ void FEditorApplication::Initialize_Runtime(USceneManager *SceneManager,
   this->SceneManager = SceneManager;
   this->CurrentScene = SceneManager->CurrentScene;
 
-  //
   Editor.Initialize(SceneManager);
   Editor.InitMultiViewport(FEditorViewportClient{});
   Editor.LoadState();
@@ -48,7 +51,10 @@ void FEditorApplication::Update(float DeltaTime) {
   Tick(DeltaTime);
 }
 
-void FEditorApplication::BeginFrame() { ImguiManager.NewFrame(); }
+void FEditorApplication::BeginFrame()
+{ 
+    ImguiManager.NewFrame();
+}
 
 void FEditorApplication::Tick(float DeltaTime) {
   ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
@@ -58,7 +64,6 @@ void FEditorApplication::Tick(float DeltaTime) {
   PropertyWindow.Process(Editor);
   ConsoleWindow.Process(Editor, [this](const char* Command) {ExecuteCommand(Command);});
   ContentsDrawer.Process(Editor);
-  StatsWindow.Process(Editor, DeltaTime); // deltatime 전달 필요
   Editor.Process();
 }
 
@@ -161,13 +166,17 @@ void FEditorApplication::ExecuteCommand(const char* Command) {
 
     if (lowerCmd.compare("stat memory") == 0) {
         UE_LOG("Stat Memory Command is executed!");
-        EditorViewportWindow.SetOpen(FImguiEditorViewportWindow::EStatsWindow::Memory, true);
-        //StatsWindow.SetOpen(FImguiStatsWindow::EStatsWindow::Memory, true);
+        EditorViewportWindow.Toggle(FImguiStatsWindow::EStatsWindow::Memory);
     }
 
     else if (lowerCmd.compare("stat fps") == 0) {
         UE_LOG("Stat FPS Command is executed!");
-        EditorViewportWindow.SetOpen(FImguiEditorViewportWindow::EStatsWindow::FPS, true);
+        EditorViewportWindow.Toggle(FImguiStatsWindow::EStatsWindow::FPS);
+    }
+
+    else if (lowerCmd.compare("stat unit") == 0) {
+        UE_LOG("Stat unit Command is executed!");
+        EditorViewportWindow.Toggle(FImguiStatsWindow::EStatsWindow::Unit);
     }
 
     else if (lowerCmd.compare("stat none") == 0) {

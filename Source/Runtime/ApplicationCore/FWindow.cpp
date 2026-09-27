@@ -3,6 +3,7 @@
 #include <windowsx.h>
 
 #include "Runtime/Input/FInputManager.h"
+#include "Runtime/CoreUObject/FStatsManager.h"
 
 #include "Runtime/Utility/EngineUtil.h"
 #include "Runtime/Utility/WindowsUtil.h"
@@ -79,6 +80,23 @@ LRESULT FWindow::GlobalMessageCallback(HWND Window, UINT Message, WPARAM WParam,
 	{
 		CREATESTRUCT* Create = reinterpret_cast<CREATESTRUCT*>(LParam);
 		SetWindowLongPtr(Window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(Create->lpCreateParams));
+	}
+
+	switch (Message)
+	{
+	case WM_KEYDOWN:   case WM_KEYUP:
+	case WM_SYSKEYDOWN: case WM_SYSKEYUP:
+	case WM_CHAR:
+	case WM_LBUTTONDOWN: case WM_LBUTTONUP:
+	case WM_RBUTTONDOWN: case WM_RBUTTONUP:
+	case WM_MBUTTONDOWN: case WM_MBUTTONUP:
+	case WM_MOUSEMOVE:
+	case WM_MOUSEWHEEL:
+		//입력 지연 측정 시작 시간 기록
+		FInputLatencyTimer::Get().Trigger();
+		break;
+	default:
+		break;
 	}
 
 	// ImGui에서 처리해야 하는 이벤트 체크
