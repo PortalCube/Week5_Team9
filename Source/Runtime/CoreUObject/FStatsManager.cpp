@@ -4,6 +4,9 @@
 #include <d3d11.h>
 #include <windows.h>
 #include <psapi.h>
+#include <cmath>
+#include <algorithm>
+
 #pragma comment(lib, "Psapi.lib")
 
 void FStatsManager::Initialize(ID3D11Device* Device)
@@ -25,20 +28,30 @@ void FStatsManager::Initialize(ID3D11Device* Device)
     {
         return;
     }
+   
+    // --- Cycle: 구간별 소요 시간(ms) ---
+    Register(FName("Frame"), EStatType::Cycle);
 
-    for (size_t i = 0; i < static_cast<size_t>(EStatMemoryCategory::COUNT); ++i)
-    {
-        MemoryStats[static_cast<EStatMemoryCategory>(i)] = 0;
-    }
+    Register(FName("Game"), EStatType::Cycle);
+    Register(FName("Draw"), EStatType::Cycle);
+    Register(FName("GPU Time"), EStatType::Cycle);
+    Register(FName("Input"), EStatType::Cycle);
+
+    // --- Counter: 프레임당 개수 ---
+    Register(FName("Draws"), EStatType::Counter);
+    Register(FName("Prims"), EStatType::Counter);
+
+    // --- Memory: 현재 총량(byte). 프레임마다 리셋되지 않는다 ---
+    Register(FName("VertexShaderMemory"), EStatType::Memory);
+    Register(FName("PixelShaderMemory"), EStatType::Memory);
+    Register(FName("TextureMemory"), EStatType::Memory);
+    Register(FName("StaticMeshMemory"), EStatType::Memory);
+    Register(FName("MemoryPool"), EStatType::Memory);
+    Register(FName("MemoryPoolUsed"), EStatType::Memory);
+    Register(FName("MemoryPoolFree"), EStatType::Memory);
 
     DxgiAdapter.As(&Adapter);
 }
-
-//  SYSTEM MEMORY
-//  Total RAM       32.0 GB
-//  Used RAM        13.6 GB
-//  Available RAM   18.4 GB
-//
 
 size_t FStatsManager::GetProcessMemoryUsed() const
 {
@@ -91,19 +104,6 @@ size_t FStatsManager::GetGPUMemoryUsed() const
         return 0;
     }
 
-
-    /*DXGI_QUERY_VIDEO_MEMORY_INFO Info{};
-
-    if (FAILED(Adapter->QueryVideoMemoryInfo(
-        0,
-        DXGI_MEMORY_SEGMENT_GROUP_LOCAL,
-        &Info)))
-    {
-        return 0;
-    }
-
-    return static_cast<size_t>(Info.CurrentUsage);*/
-
     DXGI_QUERY_VIDEO_MEMORY_INFO LocalInfo{};
     DXGI_QUERY_VIDEO_MEMORY_INFO NonLocalInfo{};
 
@@ -123,9 +123,6 @@ size_t FStatsManager::GetGPUMemoryUsed() const
     {
         return 0;
     }
-
-    //UE_LOG("GPU Local: %.2f MB", LocalInfo.CurrentUsage / (1024.0 * 1024.0));
-    //UE_LOG("GPU NonLocal: %.2f MB", NonLocalInfo.CurrentUsage / (1024.0 * 1024.0));
 
     return static_cast<size_t>(LocalInfo.CurrentUsage + NonLocalInfo.CurrentUsage);
 }
@@ -148,37 +145,78 @@ size_t FStatsManager::GetGPUMemoryBudget() const
     return static_cast<size_t>(Info.Budget);
 }
 
-size_t FStatsManager::GetVertexShaderMemoryUsed() const
+int32 FStatsManager::Register(const FName& Name, EStatType Type)
 {
-    return MemoryStats.at(EStatMemoryCategory::VertexShader);
+    auto It = NameToIndex.find(Name);
+    if (It != NameToIndex.end())
+    {
+        return It->second;
+    }
+
+    FStatEntry Entry;
+    Entry.Type = Type;
+
+    // 메모리는 총량이라 항상 수집한다. 나머지는 패널이 켜질 때 활성화된다.
+    Entry.bEnabled = (Type == EStatType::Memory);
+
+    const int32 Index = static_cast<int32>(Entries.size());
+    Entries.push_back(Entry);
+    NameToIndex.insert({ Name, Index });
+
+    return Index;
 }
 
-size_t FStatsManager::GetPixelShaderMemoryUsed() const
+void FStatsManager::SetUnitStatsEnabled(bool bEnable)
 {
-    return MemoryStats.at(EStatMemoryCategory::PixelShader);
+    for (FStatEntry& Entry : Entries)
+    {
+        // 메모리는 현재 총량이라 건드리지 않는다. 껐다 켜면 그 사이의
+        // 할당/해제가 통째로 빠져 총량이 영구히 틀어진다.
+        if (Entry.Type == EStatType::Memory)
+        {
+            continue;
+        }
+
+        Entry.bEnabled = bEnable;
+    }
 }
 
-size_t FStatsManager::GetTextureMemoryUsed() const
+void FStatsManager::ResetFrame()
 {
-    return MemoryStats.at(EStatMemoryCategory::Texture);
-}
+    for (FStatEntry& Entry : Entries)
+    {
+        // 메모리는 현재 총량이므로 평활하지 않고 리셋도 하지 않는다.
+        if (Entry.Type == EStatType::Memory)
+        {
+            Entry.Max = std::max(Entry.Max, Entry.Accum);
+            Entry.Display = Entry.Accum;
+            Entry.DisplayCalls = Entry.Calls;
+            continue;
+        }
 
-size_t FStatsManager::GetStaticMeshMemoryUsed() const
-{
-    return MemoryStats.at(EStatMemoryCategory::StaticMesh);
-}
+        // 꺼진 Cycle/Counter는 Accum이 계속 0이라, 그대로 두면 Avg만 매 프레임
+        // 0.9배로 줄어 "0은 아닌 극소값"으로 남는다. 다시 켰을 때 그 값이 한 프레임
+        // 동안 표시되면서 1000/FrameMs 같은 계산을 폭주시킨다. 아예 비워둔다.
+        if (!Entry.bEnabled)
+        {
+            Entry.Avg = 0.0;
+            Entry.Max = 0.0;
+            Entry.Display = 0.0;
+            Entry.DisplayCalls = 0;
+            Entry.Accum = 0.0;
+            Entry.Calls = 0;
+            continue;
+        }
 
-size_t FStatsManager::GetMemoryPool() const
-{
-    return MemoryStats.at(EStatMemoryCategory::MemoryPool);
-}
+        Entry.Avg = Entry.Avg * 0.9 + Entry.Accum * 0.1;
+        Entry.Max = std::max(Entry.Max * 0.995, Entry.Accum);
 
-size_t FStatsManager::GetMemoryPoolUsed() const
-{
-    return MemoryStats.at(EStatMemoryCategory::MemoryPoolUsed);
-}
+        // 이번 프레임에 완성된 값을 표시용으로 넘긴다. HUD는 이걸 읽는다.
+        // 평활은 시간에만. 개수는 정확한 값이라 평균을 내면 안 된다.
+        Entry.Display = (Entry.Type == EStatType::Cycle) ? Entry.Avg : Entry.Accum;
+        Entry.DisplayCalls = Entry.Calls;
 
-size_t FStatsManager::GetMemoryPoolFree() const
-{
-    return MemoryStats.at(EStatMemoryCategory::MemoryPoolFree);
+        Entry.Accum = 0.0;
+        Entry.Calls = 0;
+    }
 }

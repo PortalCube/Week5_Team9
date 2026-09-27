@@ -51,6 +51,7 @@ void FEngine::Init()
 
 void FEngine::Tick(float DeltaTime)
 {
+	FStatsManager::Get().ResetFrame();
 	if (Globals::bIsRequestingResize)
 	{
 		Renderer.OnWindowSize(Globals::ResizeWidth, Globals::ResizeHeight);
@@ -59,10 +60,23 @@ void FEngine::Tick(float DeltaTime)
 	}
 
 	FInputManager::Get().BeginFrame();
-	Application->Update(DeltaTime);
-	Renderer.BeginFrame();
-	Application->Render();
-	Renderer.SwapBuffer();
+
+	{
+		SCOPE_CYCLE_COUNTER("Game");
+		Application->Update(DeltaTime);
+	}
+
+	{
+		SCOPE_CYCLE_COUNTER("Draw");
+		Renderer.BeginFrame();
+		Application->Render();
+		Renderer.SwapBuffer();
+	}
+
+	SET_CYCLE_COUNTER("Frame", FTimeManager::GetDeltaTime() * 1000.0f);
+
+	// 입력 메시지 수신 ~ 프레임 종료까지의 지연. 프레임의 맨 마지막이어야 한다.
+	FInputLatencyTimer::Get().Tick();
 }
 
 void FEngine::Exit()

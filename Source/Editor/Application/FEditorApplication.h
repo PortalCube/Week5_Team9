@@ -31,7 +31,6 @@ class FEditorApplication final : public IApplication {
 	FImguiConsoleWindow ConsoleWindow;
 	FImguiWorldOutliner WorldOutliner;
 	FImguiContentsDrawer ContentsDrawer;
-	FImguiStatsWindow StatsWindow;
 	FVisualizerRegistry VisualizerRegistry;
 
 	FRenderView* RenderView = nullptr;

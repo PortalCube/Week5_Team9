@@ -41,6 +41,20 @@ static int   Strnicmp(const char* s1, const char* s2, int n) { int d = 0; while 
 static char* Strdup(const char* s) { IM_ASSERT(s); size_t len = strlen(s) + 1; void* buf = ImGui::MemAlloc(len); IM_ASSERT(buf); return (char*)memcpy(buf, (const void*)s, len); }
 static void  Strtrim(char* s) { char* str_end = s + strlen(s); while (str_end > s && str_end[-1] == ' ') str_end--; *str_end = 0; }
 
+// 대소문자 구분 없는 부분 문자열 검색. 후보를 접두사가 아니라 포함으로 찾는다.
+static const char* Stristr(const char* haystack, const char* needle)
+{
+	if (!*needle) return haystack;
+	for (; *haystack; haystack++)
+	{
+		const char* h = haystack;
+		const char* n = needle;
+		while (*h && *n && toupper((unsigned char)*h) == toupper((unsigned char)*n)) { h++; n++; }
+		if (!*n) return haystack;
+	}
+	return nullptr;
+}
+
 void FImguiConsoleWindow::Process(FEditor& Editor, std::function<void(const char*)> f)
 {
 	ImGui::Begin("Console Window", nullptr, ImGuiWindowFlags_MenuBar);
@@ -143,11 +157,97 @@ void FImguiConsoleWindow::ShowLogLine(const char* Line) const
 		ImGui::PopStyleColor();
 }
 
+void FImguiConsoleWindow::UpdateSuggestions()
+{
+	Suggestions.clear();
+
+	if (!InputBuf[0])
+	{
+		SuggestionIndex = -1;
+		return;
+	}
+
+	const int Length = static_cast<int>(strlen(InputBuf));
+
+	// 앞에서부터 맞는 후보를 먼저 담는다.
+	for (int i = 0; i < Commands.Size; i++)
+		if (Strnicmp(Commands[i], InputBuf, Length) == 0)
+			Suggestions.push_back(Commands[i]);
+
+	// 중간에 끼어 있기만 한 후보는 그 뒤로 밀어둔다. 안 그러면 "st" 를 쳤을 때
+	// HI(ST)ORY 가 Stat 들보다 먼저 잡혀 엉뚱한 항목이 선택된다.
+	for (int i = 0; i < Commands.Size; i++)
+		if (Strnicmp(Commands[i], InputBuf, Length) != 0
+			&& Stristr(Commands[i], InputBuf) != nullptr)
+			Suggestions.push_back(Commands[i]);
+
+	// 목록이 뜨는 순간 첫 항목을 골라 둔다. -1 로 두면 첫 방향키가 선택을
+	// 만드는 데만 쓰여서 한 번 씹힌 것처럼 보인다.
+	if (Suggestions.empty())
+		SuggestionIndex = -1;
+	else if (SuggestionIndex < 0 || SuggestionIndex >= Suggestions.Size)
+		SuggestionIndex = 0;
+}
+
+void FImguiConsoleWindow::DrawSuggestionPopup(const ImVec2& InputMin)
+{
+	const ImGuiStyle& style = ImGui::GetStyle();
+	const float RowHeight = ImGui::GetTextLineHeight() + style.ItemSpacing.y;
+	const int VisibleCount = ImMin(Suggestions.Size, 8);
+	const ImVec2 PopupSize(300.0f, RowHeight * VisibleCount + style.WindowPadding.y * 2.0f);
+
+	// 콘솔 창과 별개의 창이라 로그 영역 레이아웃을 밀지 않는다.
+	ImGui::SetNextWindowPos(ImVec2(InputMin.x, InputMin.y - PopupSize.y));
+	ImGui::SetNextWindowSize(PopupSize);
+
+	constexpr ImGuiWindowFlags PopupFlags =
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+		ImGuiWindowFlags_NoNav;
+
+	ImGui::Begin("##ConsoleSuggestions", nullptr, PopupFlags);
+
+	for (int i = 0; i < Suggestions.Size; i++)
+	{
+		const bool bSelected = (i == SuggestionIndex);
+		ImGui::PushID(i);
+
+		if (ImGui::Selectable(Suggestions[i], bSelected))
+		{
+			// 클릭하면 입력 칸이 포커스를 잃어 비활성이 된다. 그래서 버퍼를
+			// 직접 써도 안전하고, 다시 포커스를 받을 때 ImGui 가 버퍼에서 읽어간다.
+			strcpy_s(InputBuf, IM_COUNTOF(InputBuf), Suggestions[i]);
+			SuggestionIndex = i;
+			RequestFocus();
+		}
+
+		// 방향키로 화면 밖 항목까지 내려가도 따라간다.
+		if (bSelected)
+			ImGui::SetScrollHereY();
+
+		ImGui::PopID();
+	}
+
+	ImGui::End();
+}
+
 void FImguiConsoleWindow::ShowCommandLine()
 {
 	bool reclaim_focus = false;
 	ImGuiInputTextFlags input_text_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory;
-	if (ImGui::InputText("Input", InputBuf, IM_COUNTOF(InputBuf), input_text_flags, &TextEditCallbackStub, this))
+
+	// 후보를 클릭해 잃은 포커스를 되돌린다.
+	if (bFocusInputRequested)
+	{
+		ImGui::SetKeyboardFocusHere();
+		bFocusInputRequested = false;
+	}
+
+	const bool bSubmitted = ImGui::InputText("Input", InputBuf, IM_COUNTOF(InputBuf), input_text_flags, &TextEditCallbackStub, this);
+	const ImVec2 InputMin = ImGui::GetItemRectMin();
+	const bool bInputActive = ImGui::IsItemActive();
+
+	if (bSubmitted)
 	{
 		char* s = InputBuf;
 		Strtrim(s);
@@ -155,23 +255,42 @@ void FImguiConsoleWindow::ShowCommandLine()
 			ExecCommand(s);
 		strcpy_s(s, 256, "");
 		reclaim_focus = true;
+
+		Suggestions.clear();
+		SuggestionIndex = -1;
+	}
+	else if (bInputActive)
+	{
+		UpdateSuggestions();
+	}
+	else
+	{
+		Suggestions.clear();
+		SuggestionIndex = -1;
 	}
 
 	// Auto-focus on window apparition
 	ImGui::SetItemDefaultFocus();
 	if (reclaim_focus)
 		ImGui::SetKeyboardFocusHere(-1); // Auto focus previous widget
+
+	if (bInputActive && !Suggestions.empty())
+		DrawSuggestionPopup(InputMin);
 }
 
 FImguiConsoleWindow::FImguiConsoleWindow()
 {
 	FLogManager::Get().Clear();
 
-	// "CLASSIFY" is here to provide the test case where "C"+[tab] completes to "CL" and display multiple matches.
 	Commands.push_back("HELP");
 	Commands.push_back("HISTORY");
 	Commands.push_back("CLEAR");
-	Commands.push_back("CLASSIFY");
+
+	// 스탯 오버레이 토글. FEditorApplication::ExecuteCommand가 처리한다.
+	Commands.push_back("Stat UNIT");
+	Commands.push_back("Stat FPS");
+	Commands.push_back("Stat MEMORY");
+	Commands.push_back("Stat NONE");
 }
 
 int FImguiConsoleWindow::TextEditCallbackStub(ImGuiInputTextCallbackData* Data)
@@ -194,18 +313,21 @@ int FImguiConsoleWindow::TextEditCallback(ImGuiInputTextCallbackData* data)
 	{
 	case ImGuiInputTextFlags_CallbackCompletion:
 	{
+		// 팝업이 떠 있으면 선택된 항목으로 바로 채운다.
+		if (!Suggestions.empty())
+		{
+			const int Index = (SuggestionIndex >= 0 && SuggestionIndex < Suggestions.Size) ? SuggestionIndex : 0;
+			data->DeleteChars(0, data->BufTextLen);
+			data->InsertChars(0, Suggestions[Index]);
+			break;
+		}
+
 		// Example of TEXT COMPLETION
 
-		// Locate beginning of current word
+		// 줄 전체를 후보와 맞춘다. 단어 단위로 끊으면 "stat u"가 공백 뒤의
+		// "u"만 보게 되어 "stat unit" 같은 두 단어 명령을 못 찾는다.
+		const char* word_start = data->Buf;
 		const char* word_end = data->Buf + data->CursorPos;
-		const char* word_start = word_end;
-		while (word_start > data->Buf)
-		{
-			const char c = word_start[-1];
-			if (c == ' ' || c == '\t' || c == ',' || c == ';')
-				break;
-			word_start--;
-		}
 
 		// Build a list of candidates
 		ImVector<const char*> candidates;
@@ -260,6 +382,17 @@ int FImguiConsoleWindow::TextEditCallback(ImGuiInputTextCallbackData* data)
 	}
 	case ImGuiInputTextFlags_CallbackHistory:
 	{
+		// 드롭다운이 떠 있으면 위아래 키는 후보 이동으로 쓴다.
+		if (Suggestions.Size > 0)
+		{
+			if (data->EventKey == ImGuiKey_UpArrow)
+				SuggestionIndex = (SuggestionIndex <= 0) ? Suggestions.Size - 1 : SuggestionIndex - 1;
+			else if (data->EventKey == ImGuiKey_DownArrow)
+				SuggestionIndex = (SuggestionIndex + 1 >= Suggestions.Size) ? 0 : SuggestionIndex + 1;
+
+			break;
+		}
+
 		// Example of HISTORY
 		const int prev_history_pos = HistoryPos;
 		if (data->EventKey == ImGuiKey_UpArrow)

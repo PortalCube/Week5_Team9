@@ -1,6 +1,6 @@
 #pragma once
 #include "Editor/Core/FEditor.h"
-
+#include "ThirdParty/Imgui/imgui.h"
 
 
 class FImguiStatsWindow final
@@ -10,7 +10,8 @@ public:
 	enum class EStatsWindow
 	{
 		Memory,
-		FPS
+		FPS,
+		Unit
 	};
 
 	FImguiStatsWindow() = default;
@@ -21,38 +22,28 @@ public:
 
 	void Process(FEditor& Editor, float DeltaTime);
 
+	void DrawStatsMemory();
+
+	void DrawGPUStatsMemory();
+	void DrawStatsFPS();
+	void DrawUnits();
+	void DrawRow(ImDrawList* DrawList, const ImVec2& Pos, float& Y, const float& Width, const float& RowHeight, const float& ValueOffsetX, const char* Name, const char* Value, double Data, FVector4 Color, FVector4 RowColor);
 
 
-	void SetOpen(EStatsWindow Window, bool bOpen)
-	{
-		switch (Window)
-		{
-		case EStatsWindow::Memory:
-			bOpenMemory = bOpen;
-			break;
 
-		case EStatsWindow::FPS:
-			bOpenFPS = bOpen;
-			break;
-		}
-	}
-	
-	
-	
-	void SetClose() {
-		bOpenMemory = false;
-		bOpenFPS = false;
-	}
-	// bool IsOpen() const { return bOpen; }
+	// 패널을 켜고 끈다. Cycle/Counter 스탯 수집도 같이 따라간다.
+	void Toggle(EStatsWindow Window);
+	void SetClose();
 
-	// Stat Memory, FPS 구분 필요
-	void DrawMemory();
-	void DrawFPS();
+	// 패널 상태에 맞춰 스탯 수집 여부를 갱신한다.
+	void RefreshCollecting();
 
 private:
 	bool bOpenMemory = false;
 	bool bOpenFPS = false;
+	bool bOpenUnit = false;
 
-	float DeltaTime = 0.0f;
+	float CpuY = 0;
+	float GpuY = 0;
 };
 

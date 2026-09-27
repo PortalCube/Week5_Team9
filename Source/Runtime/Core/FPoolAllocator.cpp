@@ -1,4 +1,5 @@
 #include "Runtime/Core/FPoolAllocator.h"
+#include <Runtime/CoreUObject/FStatsManager.h>
 
 
 bool FPoolAllocator::Init(size_t InBlockSize, size_t InBlockCount)
@@ -50,20 +51,9 @@ bool FPoolAllocator::Init(size_t InBlockSize, size_t InBlockCount)
 
     Chunks.push_back({ Memory });
 
-    FStatsManager::Get().AddMemory(
-        EStatMemoryCategory::MemoryPool,
-        BlockSize * BlockCount
-    );
-
-    FStatsManager::Get().AddMemory(
-        EStatMemoryCategory::MemoryPoolUsed,
-        0
-    );
-
-    FStatsManager::Get().AddMemory(
-        EStatMemoryCategory::MemoryPoolFree,
-        BlockSize * BlockCount
-    );
+    INC_MEMORY_STAT_BY("MemoryPool", BlockSize * BlockCount);
+    INC_MEMORY_STAT_BY("MemoryPoolUsed", 0);
+    INC_MEMORY_STAT_BY("MemoryPoolFree", BlockSize * BlockCount);
 
     return true;
 }
@@ -86,15 +76,8 @@ void* FPoolAllocator::Allocate()
 
     --FreeBlockCount;
 
-    FStatsManager::Get().AddMemory(
-        EStatMemoryCategory::MemoryPoolUsed,
-        BlockSize
-    );
-
-    FStatsManager::Get().RemoveMemory(
-        EStatMemoryCategory::MemoryPoolFree,
-        BlockSize
-    );
+    INC_MEMORY_STAT_BY("MemoryPoolUsed", BlockSize);
+    DEC_MEMORY_STAT_BY("MemoryPoolFree", BlockSize);
 
     return Block;
 }
@@ -114,35 +97,17 @@ void FPoolAllocator::Free(void* Ptr)
 
     ++FreeBlockCount;
 
-    FStatsManager::Get().RemoveMemory(
-        EStatMemoryCategory::MemoryPoolUsed,
-        BlockSize
-    );
-
-    FStatsManager::Get().AddMemory(
-        EStatMemoryCategory::MemoryPoolFree,
-        BlockSize
-    );
+    DEC_MEMORY_STAT_BY("MemoryPoolUsed", BlockSize);
+    INC_MEMORY_STAT_BY("MemoryPoolFree", BlockSize);
 }
 
 void FPoolAllocator::Shutdown()
 {
     const size_t TotalMemory = BlockSize * BlockCountPerChunk * Chunks.size();
 
-    FStatsManager::Get().RemoveMemory(
-        EStatMemoryCategory::MemoryPool,
-        TotalMemory
-    );
-
-    FStatsManager::Get().RemoveMemory(
-        EStatMemoryCategory::MemoryPoolFree,
-        BlockSize * FreeBlockCount
-    );
-
-    FStatsManager::Get().RemoveMemory(
-        EStatMemoryCategory::MemoryPoolUsed,
-        BlockSize * GetUsedBlockCount()
-    );
+    DEC_MEMORY_STAT_BY("MemoryPool", TotalMemory);
+    DEC_MEMORY_STAT_BY("MemoryPoolFree", BlockSize * FreeBlockCount);
+    DEC_MEMORY_STAT_BY("MemoryPoolUsed", BlockSize * GetUsedBlockCount());
 
     for (const FPoolChunk& Chunk : Chunks)
     {
@@ -216,15 +181,8 @@ bool FPoolAllocator::AddChunk()
 
     Chunks.push_back({ Memory });
 
-    FStatsManager::Get().AddMemory(
-        EStatMemoryCategory::MemoryPool,
-        BlockSize * BlockCountPerChunk
-    );
-
-    FStatsManager::Get().AddMemory(
-        EStatMemoryCategory::MemoryPoolFree,
-        BlockSize * BlockCountPerChunk
-    );
+    INC_MEMORY_STAT_BY("MemoryPool", BlockSize * BlockCountPerChunk);
+    INC_MEMORY_STAT_BY("MemoryPoolFree", BlockSize * BlockCountPerChunk);
 
     return true;
 }

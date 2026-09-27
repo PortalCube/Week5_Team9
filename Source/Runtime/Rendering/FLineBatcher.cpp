@@ -142,6 +142,9 @@ void FLineBatcher::Flush(ID3D11DeviceContext& Context,
 
 	// 일괄 드로우콜 호출
 	Context.Draw(static_cast<UINT>(LineVertices.size()), 0);
+	INC_DWORD_STAT("Draws");
+	// 라인 리스트라 정점 2개가 프리미티브 1개다.
+	INC_DWORD_STAT_BY("Prims", LineVertices.size() / 2u);
 
 	// 다음 프레임을 위한 버퍼 비우기
 	LineVertices.clear();
