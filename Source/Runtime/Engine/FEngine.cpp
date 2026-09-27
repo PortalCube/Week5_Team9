@@ -1,7 +1,23 @@
 #include "FEngine.h"
 
+#include "Runtime/Core/Log.h"
+#include "Runtime/Core/Globals.h"
+#include "Runtime/Core/FMemory.h"
+#include "Runtime/Input/FInputManager.h"
+#include "Runtime/Engine/FEngineLoop.h"
+#include "Runtime/Engine/FTimeManager.h"
+#include "Runtime/Engine/USceneManager.h"
+#include "Runtime/Engine/UScene.h"
+#include "Runtime/Rendering/FRenderer.h"
+#include "Runtime/Resource/FResourceLoader.h"
+#include "Runtime/CoreUObject/UClass.h"
+#include "Runtime/CoreUObject/UObjectGlobals.h"
+#include "Runtime/Utility/EngineUtil.h"
+
 #include "Editor/Application/FEditorApplication.h"
 #include "Editor/Application/FObjViewerApplication.h"
+
+#include <Windows.h>
 
 void FEngine::Init()
 {
