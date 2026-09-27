@@ -10,8 +10,6 @@
 
 - MSVC C++ 개발 환경을 갖추고 있는 Visual Studio 2026
 
-- 새 엔진을 맞이할 맑고 경건한 마음
-
 ## 1. Git Submodule
 
 Oiiaii는 [DirectXTK](https://github.com/microsoft/directxtk)와 같은 라이브러리를 가져오기 위해 Git Submodule을 사용합니다.
@@ -36,7 +34,7 @@ Submodule에 대해 자세히 알아보고 싶으시면 [공식 문서](https://
 
 Oiiaii는 Visual Studio의 프로젝트/솔루션 파일 생성을 위해 [Premake5](https://premake.github.io/)를 사용합니다.
 
-Premake5를 사용하면, 팀원들 사이에서 빌드 세팅을 간단하게 동기화할 수도 있고, 필터 목록이 꼬여서 발생하는 git conflict를 획기적으로 줄일 수 있습니다.
+Premake5를 사용하면, 팀원들 사이에서 빌드 세팅을 보다 명확하게 동기화할 수도 있고, 필터 목록이 꼬여서 발생하는 git conflict를 줄일 수 있습니다.
 
 만약 Premake5가 아직 설치되어 있지 않으시다면, 다음 명령어로 Premake5를 간단하게 설치하실 수 있습니다.
 
