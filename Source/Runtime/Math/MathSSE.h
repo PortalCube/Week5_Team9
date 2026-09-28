@@ -84,7 +84,14 @@ struct FMathSSE
 
 	FORCEINLINE static VectorRegister4Float VectorReplicate(VectorRegister4Float Vec, uint32_t Index)
 	{
-		return _mm_shuffle_ps(Vec, Vec, _MM_SHUFFLE(Index, Index, Index, Index));
+		switch (Index)
+		{
+		case 0: return _mm_shuffle_ps(Vec, Vec, _MM_SHUFFLE(0, 0, 0, 0));
+		case 1: return _mm_shuffle_ps(Vec, Vec, _MM_SHUFFLE(1, 1, 1, 1));
+		case 2: return _mm_shuffle_ps(Vec, Vec, _MM_SHUFFLE(2, 2, 2, 2));
+		case 3:
+		default: return _mm_shuffle_ps(Vec, Vec, _MM_SHUFFLE(3, 3, 3, 3));
+		}
 	}
 
 	FORCEINLINE static VectorRegister4Float VectorZero()

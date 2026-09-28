@@ -200,8 +200,14 @@ void FEditor::SpawnActorToCurrentScene(UClass* Type, int Size) {
     const float Max = State.GetSpawnActorMaxLocation();
     if (Min > Max) { return; }
 
+	auto& Transforms = SceneManager->CurrentScene->GetSceneTransforms();
+	const int32 CurrentActorCount = static_cast<int32>(SceneManager->CurrentScene->GetActors().size());
+
+    Transforms.Reserve(CurrentActorCount + Size);
+
     for (int i = 0; i < Size; ++i)
     {
+		const int32 TargetIndex = CurrentActorCount + i;
 
         FVector Location
         {

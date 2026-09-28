@@ -4,8 +4,11 @@
 #include "Runtime/Math/MathSSE.h"
 #include "Runtime/Core/FMemory.h"
 #include "Runtime/Math/FMatrix.h"
+#include "Runtime/Math/FVector.h"
+#include "Runtime/Math/FQuaternion.h"
+#include "Runtime/Geometry/FTransform.h"
 
-class FTransformSoAManager
+class FSceneTransforms
 {
 public:
 	float* PosX = nullptr, * PosY = nullptr, * PosZ = nullptr;
@@ -17,6 +20,9 @@ public:
 	size_t AllocatedCapacity = 0;
 
 	void Initialize(size_t InCapacity);
-	void UpdateWorldMatrices(int32 Count);
 	void ShutDown();
+	void Reserve(int32 NewCapacity);
+	void SetTransform(int32 Index, const FTransform& Transform);
+	void UpdateWorldMatrices(int32 Count);
+	void ComputeBatchMVP(const FMatrix& InViewProj, FMatrix* OutMVPMatrices, int32 Count) const;
 };

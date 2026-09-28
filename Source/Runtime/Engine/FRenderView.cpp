@@ -31,11 +31,11 @@ namespace
 
         FObjectConstants Constants
         {
-            .MVP = Data.ModelMatrix * Camera.CreateViewProjectionMatrix(),
+            .MVP = FMatrix::Identity,
             .Color = Data.Materials[0].Color,
             .UVScale = Data.Materials[0].UVScale,
             .UVOffset = Data.Materials[0].UVOffset,
-            .World = Data.ModelMatrix,
+            .World = FMatrix::Identity,
             .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
         };
 
@@ -72,9 +72,32 @@ namespace
     }
 }
 
+void FRenderView::ReserveScratchMVPBuffer(size_t RequiredCount)
+{
+	if (RequiredCount <= ScratchMVPAllocated)
+	{
+		return;
+	}
+	if (ScratchMVPBuffer)
+	{
+		_aligned_free(ScratchMVPBuffer);
+	}
+	size_t NewAlloc = (RequiredCount + 3) & ~3;
+	ScratchMVPBuffer = (FMatrix*)_aligned_malloc(sizeof(FMatrix) * NewAlloc, 16);
+	ScratchMVPAllocated = NewAlloc;
+}
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
+    const auto& SceneTransforms = Scene.GetSceneTransforms();
+    const int32 TotalBatchCount = static_cast<int32>(Scene.GetActors().size());
+
+    ReserveScratchMVPBuffer(TotalBatchCount);
+    if (TotalBatchCount > 0)
+    {
+		SceneTransforms.ComputeBatchMVP(View.ViewProj, ScratchMVPBuffer, TotalBatchCount);
+    }
+
     for (auto& PrimitiveComponent : Scene.GetRenderComponents())
     {
         if (!PrimitiveComponent) continue;
@@ -97,13 +120,29 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         // 인스턴싱 및 텍스트는 인스턴스 배열을 사용하므로 바로 푸시
         if (DrawCommand.Type == ERenderType::Text || DrawCommand.Type == ERenderType::Instancing)
         {
+            DrawCommand.Constants.World = FMatrix::Identity;
+            DrawCommand.Constants.MVP = View.ViewProj;
+
             RenderQueue.Push(DrawCommand);
             continue;
         }
 
-        const FMatrix World = PrimitiveComponent->GetRenderMatrix(View.Camera);
-        DrawCommand.Constants.MVP = World * View.ViewProj;
-        DrawCommand.Constants.World = World;
+		int32 Index = PrimitiveComponent->GetBatchIndex();
+
+        //const FMatrix World = PrimitiveComponent->GetRenderMatrix(View.Camera);
+        //DrawCommand.Constants.MVP = World * View.ViewProj;
+        //DrawCommand.Constants.World = World;
+        if (Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
+        {
+            DrawCommand.Constants.World = SceneTransforms.WorldMatrices[Index];
+            DrawCommand.Constants.MVP = ScratchMVPBuffer[Index];
+        }
+        else
+        {
+            const FMatrix World = PrimitiveComponent->GetRenderMatrix(View.Camera);
+            DrawCommand.Constants.World = World;
+            DrawCommand.Constants.MVP = World * View.ViewProj;
+        }
         DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.0f };
         DrawCommand.Constants.DisableShading = View.ViewMode == EViewModeIndex::VMI_Unlit ? 1.0f : 0.0f;
 
@@ -409,3 +448,12 @@ void FRenderView::FlushQueue(const FCamera& Camera)
     RenderQueue.Clear();
 }
 
+FRenderView::~FRenderView()
+{
+	if (ScratchMVPBuffer)
+	{
+		_aligned_free(ScratchMVPBuffer);
+		ScratchMVPBuffer = nullptr;
+	}
+	ScratchMVPAllocated = 0;
+}

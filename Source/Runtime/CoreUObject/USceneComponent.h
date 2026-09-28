@@ -50,10 +50,15 @@ public:
 	FTransform GetGlobalTransform() const;
 	//void SetRelativeTransformFromGlobal(const FTransform& GlobalTransform);
 
+    void SetBatchIndex(int32 Index) { BatchIndex = Index; }
+    int32 GetBatchIndex() const { return BatchIndex; }
+
 protected:
     AActor* ActorOwner = nullptr;
     USceneComponent* SceneOwner = nullptr;
     UScene* Scene = nullptr;
     bool bHasBegunPlay = false;
     bool bInheritRotation = true;
+
+    int32 BatchIndex = -1;
 };
