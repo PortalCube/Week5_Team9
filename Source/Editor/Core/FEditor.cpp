@@ -148,7 +148,7 @@ bool FEditor::SelectActor(AActor *Actor) {
   SelectedActor = Actor;
   if (SelectedActor) {
     SelectedTransform = SelectedActor->GetTransform();
-    SelectedEulerDegDisplay = SelectedTransform.Rotation.GetEulerXYZ();
+    SelectedEulerDegDisplay = SelectedTransform.GetRotation().GetEulerXYZ();
     if (Gizmo.Mode == EGizmoMode::None) {
       Gizmo.Mode = EGizmoMode::Translate;
     }
@@ -156,7 +156,7 @@ bool FEditor::SelectActor(AActor *Actor) {
     if (SelectedActorTextComp) {
       SelectedActorTextComp->SetActorOwner(SelectedActor.Get());
       FTransform RelativeTrans;
-      RelativeTrans.Location = FVector{ 0.0f, 0.0f, 1.5f }; 
+      RelativeTrans.SetLocation(FVector{ 0.0f, 0.0f, 1.5f });
       SelectedActorTextComp->SetRelativeTransform(RelativeTrans);
       SelectedActorTextComp->SetText(L"UUID : " + std::to_wstring(SelectedActor->GetUUID()));
     }
@@ -210,15 +210,15 @@ void FEditor::SpawnActorToCurrentScene(UClass* Type, int Size) {
         };
 
         FTransform Transform;
-        Transform.Location = Location;
-        Transform.Scale3D = FVector{ 0.5f, 0.5f, 0.5f };
+        Transform.SetLocation(Location);
+        Transform.SetScale3D(FVector{ 0.5f, 0.5f, 0.5f });
 
         AActor* NewActor = SceneManager->CurrentScene->SpawnActor(Type);
         if (!NewActor) { return; }
 
 
         FTransform CurrentTransform = NewActor->GetTransform();
-        CurrentTransform.Location = Location;
+        CurrentTransform.SetLocation(Location);
         NewActor->SetTransform(CurrentTransform);
 
         // 액터 시작 및 선택

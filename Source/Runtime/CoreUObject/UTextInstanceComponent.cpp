@@ -24,14 +24,14 @@ FMatrix GetRenderMatrix(const FTransform &Transform, const FCamera &Camera) {
   FVector ViewUp =
       CameraRotation.TransformPointRow(FVector{0.0f, 0.0f, 1.0f}, 0.0f); // Z+
 
-  FVector Up = ViewUp * Transform.Scale3D.Z;
-  FVector Right = ViewRight * Transform.Scale3D.Y;
+  FVector Up = ViewUp * Transform.GetScale3D().Z;
+  FVector Right = ViewRight * Transform.GetScale3D().Y;
 
   return FMatrix{
       FVector4{ ViewForward, 0.0f },
       FVector4{ Right, 0.0f },
       FVector4{ Up, 0.0f },
-      FVector4{ Transform.Location, 1.0f },
+      FVector4{ Transform.GetLocation(), 1.0f },
   };
 }
 } // namespace

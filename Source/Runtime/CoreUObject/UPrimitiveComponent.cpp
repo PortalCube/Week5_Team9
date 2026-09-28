@@ -51,7 +51,7 @@ void UPrimitiveComponent::SetColor(const FVector4& Color, int32 Index)
 void UPrimitiveComponent::SetRelativeTransform(const FTransform& RelativeTransform)
 {
     Super::SetRelativeTransform(RelativeTransform);
-    WorldBounds = FAxisAlignedBoundingBox(GetLocalBounds(), RelativeTransform.ToMatrix());
+    WorldBounds = FAxisAlignedBoundingBox(GetLocalBounds(), RelativeTransform.GetMatrix());
 }
 
 FAxisAlignedBoundingBox UPrimitiveComponent::GetWorldBounds() const
