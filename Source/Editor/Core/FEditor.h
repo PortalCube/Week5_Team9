@@ -33,6 +33,19 @@ public:
 
   FEditorState State;
 
+  // 피킹 경로 선택 및 측정. 검증이 끝나면 제거한다.
+  bool bUseBVHPicking = true;
+  double LastPickingMs = 0.0;
+  double AccumulatedPickingMs = 0.0;
+  int32 PickingAttempts = 0;
+
+  void ResetPickingStats()
+  {
+    LastPickingMs = 0.0;
+    AccumulatedPickingMs = 0.0;
+    PickingAttempts = 0;
+  }
+
 public:
   void Initialize(USceneManager *SceneManager);
   void Shutdown();
