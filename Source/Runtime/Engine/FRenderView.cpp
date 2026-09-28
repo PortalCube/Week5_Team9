@@ -32,7 +32,15 @@ namespace
             return {};
         }
 
-        FObjectConstants Constants
+        FDrawCommand Command
+        {
+            .Mesh = Data.Mesh->Get(),
+            .Type = Data.Type,
+            .Instances = Data.Instances,
+        };
+
+
+        Command.Constants = 
         {
             .MVP = Data.ModelMatrix * Camera.GetViewProjectionMatrix(),
             .Color = Data.Materials[0].Color,
@@ -42,7 +50,6 @@ namespace
             .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
         };
 
-        TArray<FMaterial> Materials;
 
         for (const auto& Item : Data.Materials)
         {
@@ -61,17 +68,12 @@ namespace
 
             Material.SetSamplerDesc(Item.SamplerDesc);
 
-            Materials.push_back(Material);
+            Command.Materials.push_back(Material);
         }
 
         const FMaterialInstance& PrimaryMaterial = Data.Materials[0];
         
-        uint64 RenderStateKey = 0;
 
-        float Depth = 0.0f;
-        float Near = 0.0f;
-        float Far = 0.0f;
-        int32 DepthBucket = 0;
         if (Globals::bSortTest)
         {
             uint64 PipelineId = 0;
@@ -94,37 +96,27 @@ namespace
                 TextureId = static_cast<uint64>(PrimaryMaterial.Texture->GetID().GetHash());
             }
             
-            RenderStateKey = (PipelineId << 48) |
+            Command.RenderStateKey = (PipelineId << 48) |
                 (MaterialId << 32) |
                 (TextureId << 16) |
                 MeshId;
             
             // AABB의 Min X 값을 Depth로 지정
-            Depth = Component.GetViewBounds(Camera).Min.X;
-            Near = Camera.GetProjection().GetNearPlane();
-            Far = Camera.GetProjection().GetFarPlane();
+            Command.Depth = Component.GetViewBounds(Camera).Min.X;
+            float Near = Camera.GetProjection().GetNearPlane();
+            float Far = Camera.GetProjection().GetFarPlane();
             
-            DepthBucket = static_cast<int32>((Depth - Near) * 16 / (Far - Near));
+            Command.DepthBucket = static_cast<int32>((Command.Depth - Near) * 16 / (Far - Near));
         }
 
-
-        return FDrawCommand
-        {
-            .Mesh = Data.Mesh->Get(),
-            .Materials = Materials,
-            .Constants = Constants,
-            .Type = Data.Type,
-            .Instances = Data.Instances,
-            .Depth = Depth,
-            .DepthBucket = DepthBucket,
-            .RenderStateKey = RenderStateKey,
-        };
+        return Command;
     }
 }
 
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
+    SCOPE_INDEPENDENT_CYCLE_COUNTER("Test");
     for (auto& PrimitiveComponent : Scene.GetRenderComponents())
     {
         if (!PrimitiveComponent) continue;
