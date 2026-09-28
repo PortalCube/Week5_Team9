@@ -79,6 +79,9 @@ private:
 
     TArray<FStatEntry> Entries;
     TMap<FName, int32> NameToIndex;
+
+    //등록 시 활성 상태 여부
+    bool bUnitStatsEnabled = false;
 };
 
 // 매크로마다 하나씩 생기는 static. 최초 실행 때 한 번만 등록하고

@@ -14,6 +14,13 @@ class FGrid;
 class AActor;
 class UScene;
 
+// 커맨드로 제어하는 컬링 옵션
+struct FCullingSettings
+{
+	bool bEnabled = true;   // cull on/off
+	bool bFreeze = false;   // cull freeze (Frustum 고정)
+};
+
 class FRenderView final {
 	FRenderer& Renderer;
 	FRenderQueue RenderQueue;
@@ -62,4 +69,19 @@ public:
 
 	FRenderQueue& GetRenderQueue() { return RenderQueue; }
 	const FRenderQueue& GetRenderQueue() const { return RenderQueue; }
+
+	FCullingSettings& GetCullingSettings();
+	const FCullingSettings& GetCullingSettings() const;
+
+	void SetCullingEnabled(bool pCullingEnable);
+	void SetCullingFreeze(bool pCullingFreeze);
+
+	//렌더 전에 컬링 판정
+	void CullScene(const FSceneView& View, const UScene& Scene);
+
+private:
+	FCullingSettings CullingSettings;
+	//컬링 후 가시 여부 인덱스(실제 renderComponent 인덱스와 동일하게)
+	TArray<uint8> VisibleFlags;
+	bool bCullResultValid = false;
 };

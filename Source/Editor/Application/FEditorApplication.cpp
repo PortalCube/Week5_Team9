@@ -184,6 +184,34 @@ void FEditorApplication::ExecuteCommand(const char* Command) {
         EditorViewportWindow.SetClose();
     }
 
+    else if (lowerCmd.compare("cull") == 0)
+    {
+        //컬링 토글
+        RenderView->SetCullingEnabled(!RenderView->GetCullingSettings().bEnabled);
+        UE_LOG("Culling : %s", RenderView->GetCullingSettings().bEnabled ? "ON" : "OFF");
+    }
+
+    else if (lowerCmd.compare("cull on") == 0)
+    {
+        //컬링 On
+        RenderView->SetCullingEnabled(true);
+        UE_LOG("Culling : %s", RenderView->GetCullingSettings().bEnabled ? "ON" : "OFF");
+    }
+
+    else if (lowerCmd.compare("cull off") == 0)
+    {
+        //컬링 Off
+        RenderView->SetCullingEnabled(false);
+        UE_LOG("Culling : %s", RenderView->GetCullingSettings().bEnabled ? "ON" : "OFF");
+    }
+
+    else if (lowerCmd.compare("cull freeze") == 0)
+    {
+        //컬링 freeze 토글
+        RenderView->SetCullingFreeze(!RenderView->GetCullingSettings().bFreeze);
+        UE_LOG("Frustum Freeze : %s", RenderView->GetCullingSettings().bFreeze ? "ON" : "OFF");
+    }
+
     else {
         UE_LOG("Unknown command: '%s'\n", Command);
         return;

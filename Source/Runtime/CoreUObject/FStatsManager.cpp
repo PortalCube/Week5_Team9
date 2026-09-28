@@ -156,8 +156,8 @@ int32 FStatsManager::Register(const FName& Name, EStatType Type)
     FStatEntry Entry;
     Entry.Type = Type;
 
-    // 메모리는 총량이라 항상 수집한다. 나머지는 패널이 켜질 때 활성화된다.
-    Entry.bEnabled = (Type == EStatType::Memory);
+    // 메모리는 총량이라 항상 수집한다. 나머지는 패널의 상태를 따른다.
+    Entry.bEnabled = (Type == EStatType::Memory) || bUnitStatsEnabled;
 
     const int32 Index = static_cast<int32>(Entries.size());
     Entries.push_back(Entry);
@@ -168,6 +168,8 @@ int32 FStatsManager::Register(const FName& Name, EStatType Type)
 
 void FStatsManager::SetUnitStatsEnabled(bool bEnable)
 {
+    bUnitStatsEnabled = bEnable;
+
     for (FStatEntry& Entry : Entries)
     {
         // 메모리는 현재 총량이라 건드리지 않는다. 껐다 켜면 그 사이의

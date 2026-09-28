@@ -18,6 +18,8 @@
 #include "Runtime/Engine/FTimeManager.h"
 #include <fstream>
 
+#include "Runtime/CoreUObject/FStatsManager.h"
+
 FRenderView::FRenderView(FRenderer &Renderer) : Renderer(Renderer) {}
 
 namespace
@@ -75,15 +77,16 @@ namespace
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
-    for (auto& PrimitiveComponent : Scene.GetRenderComponents())
+    //컬링 결과 인덱스를 맞추기 위해 인덱스 for문으로 변경
+    const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
+
+    for (size_t i = 0; i < Primitives.size(); i++)
     {
+        UPrimitiveComponent* PrimitiveComponent = Primitives[i];
         if (!PrimitiveComponent) continue;
 
-        // 쇼 플래그 확인
-        if ((static_cast<uint64>(View.ShowFlags) & static_cast<uint64>(PrimitiveComponent->GetShowFlag())) == 0)
-        {
-            continue;
-        }
+        //컬링 사용 여부와 컬링 결과 통과시에만 수집
+        if (bCullResultValid && !VisibleFlags[i]) continue;
 
         bool bSelected = false;
         if (PrimitiveComponent->GetActorOwner() && PrimitiveComponent->GetActorOwner() == SelectedActor)
@@ -117,6 +120,49 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         }
         RenderQueue.Push(DrawCommand);
     }
+
+    //for (auto& PrimitiveComponent : Scene.GetRenderComponents())
+    //{
+    //    if (!PrimitiveComponent) continue;
+
+    //    // 쇼 플래그 확인
+    //    if ((static_cast<uint64>(View.ShowFlags) & static_cast<uint64>(PrimitiveComponent->GetShowFlag())) == 0)
+    //    {
+    //        continue;
+    //    }
+
+    //    bool bSelected = false;
+    //    if (PrimitiveComponent->GetActorOwner() && PrimitiveComponent->GetActorOwner() == SelectedActor)
+    //    {
+    //        bSelected = true;
+    //    }
+
+    //    const FRenderData& Data = PrimitiveComponent->GetRenderData(View.Camera);
+    //    FDrawCommand DrawCommand = GetDrawCommand(View.Camera, Data);
+
+    //    // 인스턴싱 및 텍스트는 인스턴스 배열을 사용하므로 바로 푸시
+    //    if (DrawCommand.Type == ERenderType::Text || DrawCommand.Type == ERenderType::Instancing)
+    //    {
+    //        RenderQueue.Push(DrawCommand);
+    //        continue;
+    //    }
+
+    //    const FMatrix World = PrimitiveComponent->GetRenderMatrix(View.Camera);
+    //    DrawCommand.Constants.MVP = World * View.ViewProj;
+    //    DrawCommand.Constants.World = World;
+    //    DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.0f };
+    //    DrawCommand.Constants.DisableShading = View.ViewMode == EViewModeIndex::VMI_Unlit ? 1.0f : 0.0f;
+
+    //    if (bSelected && DrawCommand.Constants.Color.W > 0.0f)
+    //    {
+    //        DrawCommand.Constants.Color = DrawCommand.Constants.Color * 0.7f + FVector4{ 0.3f, 0.3f, 0.3f, 0.0f };
+    //    }
+    //    else if (bSelected)
+    //    {
+    //        DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.5f };
+    //    }
+    //    RenderQueue.Push(DrawCommand);
+    //}
 }
 
 void FRenderView::PrepareRender()
@@ -134,6 +180,12 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
 {
     // 뷰포트 시작
     BeginView(View);
+
+    //컬링 측정
+    {
+        SCOPE_CYCLE_COUNTER("Cull");
+        CullScene(View, Scene);
+    }
 
     // 씬 컴포넌트 수집
     CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
@@ -407,5 +459,46 @@ void FRenderView::FlushQueue(const FCamera& Camera)
     }
 
     RenderQueue.Clear();
+}
+
+FCullingSettings& FRenderView::GetCullingSettings()
+{
+    return CullingSettings;
+}
+
+const FCullingSettings& FRenderView::GetCullingSettings() const
+{
+    return CullingSettings;
+}
+
+void FRenderView::SetCullingEnabled(bool pCullingEnable)
+{
+    CullingSettings.bEnabled = pCullingEnable;
+}
+
+void FRenderView::SetCullingFreeze(bool pCullingFreeze)
+{
+    CullingSettings.bFreeze = pCullingFreeze;
+}
+
+void FRenderView::CullScene(const FSceneView& View, const UScene& Scene)
+{
+    const uint32 Count = static_cast<uint32>(Scene.GetRenderComponents().size());
+
+    bCullResultValid = CullingSettings.bEnabled;
+    if (!bCullResultValid)
+    {
+        //TODO 컬링 OFF: 전부 가시로 집계
+        return;
+    }
+
+    // TODO(다음 단계): Frustum 추출(bFreeze면 고정 Frustum 사용) 후
+    //   VisibleCount = Culler.Cull(Frustum, Scene.GetCullDataList(), VisibleFlags);
+    // 지금은 인터페이스만 연결하는 임시 구현: 전부 가시
+    VisibleFlags.assign(Count, 1);
+    const uint32 VisibleCount = Count;
+
+    //Culling 결과를 카운트
+    //...
 }
 

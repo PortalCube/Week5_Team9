@@ -91,11 +91,14 @@ void USceneComponent::Deserialize(const FArchive& Archive)
 
     // Scale
     RelativeTransform.Scale3D = Archive.GetVector("Scale");
+
+    MarkActorTransformDirty();
 }
 
 void USceneComponent::SetRelativeTransform(const FTransform& RelativeTransform)
 {
     this->RelativeTransform = RelativeTransform;
+    MarkActorTransformDirty();
 }
 
 FTransform USceneComponent::GetGlobalTransform() const //나중에 부모 rootcomponent world좌표 써야됨
@@ -122,4 +125,14 @@ FTransform USceneComponent::GetGlobalTransform() const //나중에 부모 rootco
         return Result;
     }
     return ParentWorld * RelativeTransform;
+}
+
+void USceneComponent::MarkActorTransformDirty()
+{    
+    OnTransformChanged();
+
+    if (ActorOwner)
+    {
+        ActorOwner->MarkComponentsTransformDirty();
+    }
 }
