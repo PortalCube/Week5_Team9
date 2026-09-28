@@ -20,6 +20,7 @@ ACatActor::ACatActor()
 
 void ACatActor::Update(float DeltaTime)
 {
+	Super::Update(DeltaTime);
 	ElapsedTime += DeltaTime;
 
 	if (ElapsedTime >= SpinRate)

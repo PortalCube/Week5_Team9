@@ -3,6 +3,8 @@
 #include "Runtime/CoreUObject/UClass.h"
 
 #include "Runtime/Actors/AActor.h"
+#include "Runtime/Actors/AAppleNormalActor.h"
+#include "Runtime/Actors/AAppleBittenActor.h"
 #include "Runtime/Actors/ACubeActor.h"
 #include "Runtime/Actors/ASphereActor.h"
 #include "Runtime/Actors/ACylinderActor.h"
@@ -20,6 +22,8 @@ namespace EditorConstant
 	/// </summary>
 	inline UClass* const SpawnableActors[]
 	{
+	   AAppleNormalActor::StaticClass(),
+	   AAppleBittenActor::StaticClass(),
 	   ACubeActor::StaticClass(),
 	   ASphereActor::StaticClass(),
 	   ACylinderActor::StaticClass(),
@@ -27,7 +31,6 @@ namespace EditorConstant
 	   AAnimatedBillboardActor::StaticClass(),
 	   ASpotlightActor::StaticClass(),
 	   ATextRenderActor::StaticClass(),
-	   ACatActor::StaticClass(),
 	};
 
 }
