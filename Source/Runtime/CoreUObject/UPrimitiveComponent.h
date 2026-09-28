@@ -26,6 +26,7 @@ public:
     virtual FMatrix GetRenderMatrix(const FCamera& Camera) const { return GetGlobalTransform().ToMatrix(); }
 
     virtual FAxisAlignedBoundingBox GetLocalBounds() const { return {}; }
+    const UStaticMesh* GetMeshAsset() const { return RenderData.Mesh; }
 
     virtual EEngineShowFlags GetShowFlag() const { return EEngineShowFlags::SF_Primitives; }
     int32 GetBVHIndex() const { return BVHIndex; }

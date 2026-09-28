@@ -98,6 +98,25 @@ void FImguiControlPanelWindow::BVHDebugSetting(FEditor& Editor)
 
     ImGui::SetNextItemWidth(120.0f);
     ImGui::DragInt("Iterations", &Iterations, 10.0f, 1, 100000);
+
+    ImGui::Separator();
+    ImGui::Text("Picking path");
+
+    if (ImGui::Checkbox("Use BVH (QueryRay)", &Editor.bUseBVHPicking))
+    {
+        // 경로를 바꾸면 누적치를 섞지 않는다
+        Editor.ResetPickingStats();
+    }
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("체크 해제 시 기존 선형 RayIntersectsMeshes 사용");
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Reset Stats"))
+    {
+        Editor.ResetPickingStats();
+    }
 }
 
 void FImguiControlPanelWindow::ActorSpawnSetting(FEditor& Editor)
