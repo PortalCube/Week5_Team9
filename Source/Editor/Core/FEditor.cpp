@@ -12,6 +12,7 @@
 #include "Runtime/Math/Random.h"
 #include "Runtime/Asset/FAssetRegistry.h"
 #include <numbers>
+#include <Runtime/Engine/FSceneBVH.h>
 
 void FEditor::Initialize(USceneManager *SceneManager) {
   State.ReadFromFile();
@@ -53,7 +54,15 @@ void FEditor::Process() {
   }
 
   if (SelectedActor) {
+    USceneComponent* Root = SelectedActor->GetRootComponent();
+    const bool bChanged = Root && !(Root->GetRelativeTransform() == SelectedTransform);
+    
     SelectedActor->SetTransform(SelectedTransform);
+
+    // Transform이 변경되었을 때만 Refit
+    if (bChanged && SceneManager && SceneManager->CurrentScene) {
+        RefitActorInBVH(SceneManager->CurrentScene->GetSceneBVH(), SelectedActor);
+    }
   }
 
   SaveState();
@@ -232,11 +241,17 @@ void FEditor::SpawnActorToCurrentScene(UClass* Type, int Size) {
         NewActor->BeginPlay();
         SelectActor(NewActor);
     }
+
+    FSceneBVH& BVH = SceneManager->CurrentScene->GetSceneBVH();
+    if (BVH.ShouldRebuild())
+    {
+        BVH.Build(SceneManager->CurrentScene->GetRenderComponents());
+    }
 }
 
 void FEditor::ResizeView(FEditorState::SplitViewMode mode)
 {
-//viewport를 가지고있는 splitter,window를 업데이트
+    //viewport를 가지고있는 splitter,window를 업데이트
     ActiveViewportIndex = 0;
     //=== 초기화 ===//
     for (int32 i = 0; i < 4; ++i)

@@ -7,6 +7,7 @@
 #include "Runtime/CoreUObject/UPrimitiveComponent.h"
 #include "Runtime/CoreUObject/USceneComponent.h"
 #include "Runtime/Rendering/FRenderResourceLibrary.h"
+#include "Runtime/Engine/FSceneBVH.h"
 #include "Runtime/Engine/FSceneTransforms.h"
 #include <concepts>
 #include <type_traits>
@@ -96,6 +97,9 @@ public:
 
     AActor* SpawnActor(UClass* ClassType);
 
+    FSceneBVH& GetSceneBVH() { return SceneBVH; }
+    const FSceneBVH& GetSceneBVH() const { return SceneBVH; }
+
     FSceneTransforms& GetSceneTransforms() { return SceneTransforms; }
     const FSceneTransforms& GetSceneTransforms() const { return SceneTransforms; }
 
@@ -108,6 +112,8 @@ private:
   bool bInitialized = false;
   bool bActive = false;
   bool bHasBegunPlay = false;
+
+  FSceneBVH SceneBVH;
 
   FSceneTransforms SceneTransforms;
 };

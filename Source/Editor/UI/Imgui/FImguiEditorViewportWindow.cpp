@@ -2,6 +2,9 @@
 
 #include "Runtime/CoreUObject/UPrimitiveComponent.h"
 #include "Runtime/Engine/FRayCastingManager.h"
+#include "Runtime/Engine/FSceneBVH.h"
+#include "Runtime/Engine/UScene.h"
+#include <chrono>
 #include "Runtime/Input/FInputManager.h"
 #include "Runtime/Math/FVector.h"
 #include "Runtime/Core/Log.h"
@@ -10,8 +13,36 @@
 #include "ThirdParty/Imgui/imgui.h"
 #include "ThirdParty/Imgui/imgui_internal.h"
 
+namespace
+{
+    // 피킹 성능을 화면 좌측 상단에 항상 표시한다.
+    void DrawPickingStatsOverlay(const FEditor& Editor)
+    {
+        if (Editor.PickingAttempts <= 0) { return; }
+
+        char Buffer[256];
+        snprintf(Buffer, sizeof(Buffer),
+                 "Picking Time %.2f ms : Num Attempts %d : Accumulated Time %.2f ms",
+                 Editor.LastPickingMs, Editor.PickingAttempts, Editor.AccumulatedPickingMs);
+
+        const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
+        const ImVec2 Pos(MainViewport->Pos.x + 12.0f, MainViewport->Pos.y + 6.0f);
+        constexpr float FontSize = 26.0f;
+
+        ImDrawList* DrawList = ImGui::GetForegroundDrawList();
+
+        // 배경이 밝아도 읽히도록 그림자를 먼저 깐다
+        DrawList->AddText(ImGui::GetFont(), FontSize, ImVec2(Pos.x + 2.0f, Pos.y + 2.0f),
+                          IM_COL32(0, 0, 0, 220), Buffer);
+        DrawList->AddText(ImGui::GetFont(), FontSize, Pos,
+                          IM_COL32(0, 255, 0, 255), Buffer);
+    }
+}
+
 void FImguiEditorViewportWindow::Process(FEditor& Editor, float DeltaTime)
 {
+    DrawPickingStatsOverlay(Editor);
+
     //화면이 버튼을 눌러 최대일때 처리
     ApplyPendingViewportMaximize(Editor);
 
@@ -366,16 +397,34 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
             return;
         }
     }
-    TArray<UPrimitiveComponent *> Components = Editor.GetPrimitiveComponents();
+    const FRay PickRay = FRayCastingManager::CreateRayFromScreenPosition(
+        Viewport.ViewportCamera, LocalMousePixels, ViewportSizePixels);
 
     UPrimitiveComponent *HitComponent = nullptr;
     FVector ImpactPoint;
+    bool bHit = false;
 
-    const bool bHit = FRayCastingManager::RayIntersectsMeshes(
-        FRayCastingManager::CreateRayFromScreenPosition(
-            Viewport.ViewportCamera, LocalMousePixels, ViewportSizePixels),
-            Viewport.ViewportCamera,
-        Components, HitComponent, ImpactPoint);
+    UScene *PickScene = Editor.GetCurrentScene();
+
+    // 선택된 경로만 실행하고 소요 시간을 잰다.
+    const auto PickBegin = std::chrono::high_resolution_clock::now();
+
+    if (Editor.bUseBVHPicking && PickScene)
+    {
+        bHit = PickScene->GetSceneBVH().QueryRay(PickRay, HitComponent, ImpactPoint);
+    }
+    else
+    {
+        TArray<UPrimitiveComponent *> Components = Editor.GetPrimitiveComponents();
+        bHit = FRayCastingManager::RayIntersectsMeshes(
+            PickRay, Viewport.ViewportCamera, Components, HitComponent, ImpactPoint);
+    }
+
+    const auto PickEnd = std::chrono::high_resolution_clock::now();
+
+    Editor.LastPickingMs = std::chrono::duration<double, std::milli>(PickEnd - PickBegin).count();
+    Editor.AccumulatedPickingMs += Editor.LastPickingMs;
+    ++Editor.PickingAttempts;
 
     // 피킹은 액터 단위로 선택한다. 소유 액터가 없으면 선택할 수 없다.
     if (!bHit || !HitComponent || !HitComponent->GetActorOwner())

@@ -215,10 +215,10 @@ void FSceneTransforms::ComputeBatchMVP(const FMatrix& InViewProj, FMatrix* OutMV
 		{
 			auto WorldRow = FMathSSE::VectorLoadAligned(SrcWorld + Row * 4);
 
-			auto X = FMathSSE::VectorReplicate(WorldRow, 0);
-			auto Y = FMathSSE::VectorReplicate(WorldRow, 1);
-			auto Z = FMathSSE::VectorReplicate(WorldRow, 2);
-			auto W = FMathSSE::VectorReplicate(WorldRow, 3);
+			auto X = FMathSSE::VectorReplicate<0>(WorldRow);
+			auto Y = FMathSSE::VectorReplicate<1>(WorldRow);
+			auto Z = FMathSSE::VectorReplicate<2>(WorldRow);
+			auto W = FMathSSE::VectorReplicate<3>(WorldRow);
 
 			auto Res = FMathSSE::VectorMul(X, VPRow0);
 			Res = FMathSSE::VectorAdd(Res, FMathSSE::VectorMul(Y, VPRow1));

@@ -11,6 +11,12 @@ const FRenderData& UStaticMeshComponent::GetRenderData(const FCamera& Camera) co
 	return RenderData;
 }
 
+FAxisAlignedBoundingBox UStaticMeshComponent::GetLocalBounds() const
+{
+	const FMesh* Mesh = RenderData.Mesh ? RenderData.Mesh->Get() : nullptr;
+	return Mesh ? Mesh->GetLocalBounds() : FAxisAlignedBoundingBox{};
+}
+
 void UStaticMeshComponent::SetMesh(UStaticMesh* Mesh)
 {
 	UPrimitiveComponent::SetMesh(Mesh);

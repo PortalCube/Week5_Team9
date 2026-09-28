@@ -93,7 +93,7 @@ void UScene::BeginPlay() {
 }
 
 void UScene::Update(float DeltaTime) {
-  if (!bHasBegunPlay) {
+  if (bHasBegunPlay) {
       for (AActor* Actor : Actors) {
           if (Actor) {
               Actor->Update(DeltaTime);
@@ -203,11 +203,13 @@ void UScene::AddRenderComponent(UPrimitiveComponent *prim) {
   if (std::find(RenderComponents.begin(), RenderComponents.end(), prim) ==
       RenderComponents.end()) {
     RenderComponents.push_back(prim);
+    SceneBVH.AddObject(prim);
   }
 }
 
 void UScene::RemoveRenderComponent(UPrimitiveComponent *prim) {
   std::erase(RenderComponents, prim);
+  SceneBVH.RemoveObject(prim);
 }
 
 void UScene::RemoveActor(AActor *Actor) { std::erase(Actors, Actor); }
