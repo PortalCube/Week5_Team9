@@ -31,9 +31,6 @@ public:
         case ERenderType::Primitive:
             primRenderQ.push_back(Data);
             break;
-        case ERenderType::Texture:
-            primRenderQ.push_back(Data);
-            break;
         case ERenderType::Text:
             TextRenderQ.push_back(Data);
             break;
@@ -50,7 +47,6 @@ public:
 
     // 수집된 아이템 조회
     const TArray<FDrawCommand>& GetPrimRenderQ() const { return primRenderQ; }
-    const TArray<FDrawCommand>& GetTextureRenderQ() const { return primRenderQ; }
     const TArray<FDrawCommand>& GetTextRenderQ() const { return TextRenderQ; }
     const TArray<FDrawCommand>& GetInstancingRenderQ() const { return InstancingRenderQ; }
     const TArray<FDrawCommand>& GetSpotlightRenderQ() const { return SpotlightRenderQ; }
@@ -58,7 +54,6 @@ public:
     // 프레임 끝에 호출
     void Clear() { 
         primRenderQ.clear();
-        TextureRenderQ.clear();
         TextRenderQ.clear();
         InstancingRenderQ.clear();
         SpotlightRenderQ.clear();
@@ -67,14 +62,12 @@ public:
     void Sort();
 
     bool IsPrimRQEmpty() const { return primRenderQ.empty(); }
-    bool IsTextureRQEmpty() const { return TextureRenderQ.empty(); }
     bool IsTextRQEmpty() const { return TextRenderQ.empty(); }
     bool IsInstancingRQEmpty() const { return InstancingRenderQ.empty(); }
     bool IsSpotlightRQEmpty() const { return SpotlightRenderQ.empty(); }
 
 private:
     TArray<FDrawCommand> primRenderQ;
-    TArray<FDrawCommand> TextureRenderQ;
     TArray<FDrawCommand> TextRenderQ;
     TArray<FDrawCommand> InstancingRenderQ;
     TArray<FDrawCommand> SpotlightRenderQ;

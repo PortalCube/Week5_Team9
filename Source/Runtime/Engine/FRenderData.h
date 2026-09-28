@@ -9,7 +9,6 @@
 enum class ERenderType
 {
     Primitive,
-    Texture,
     Text,
     Instancing,
     Spotlight,

@@ -23,7 +23,7 @@ void UBillBoardComp::Initialize() {
   SetMesh(Registry.Get<UStaticMesh>("#Rect"));
   SetMaterial(Registry.Get<UMaterial>("Material/Billboard.json"));
 
-  RenderData.Type = ERenderType::Texture;
+  RenderData.Type = ERenderType::Primitive;
 }
 
 void UBillBoardComp::Serialize(FArchive& Archive) const

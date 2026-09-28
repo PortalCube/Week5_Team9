@@ -68,9 +68,7 @@ void UPrimitiveComponent::Register(UScene& InScene)
 {
     if (RenderData.Type == ERenderType::None)
     {
-        RenderData.Type = (RenderData.Materials.size() > 0 && RenderData.Materials[0].Texture)
-            ? ERenderType::Texture
-            : ERenderType::Primitive;
+        RenderData.Type = ERenderType::Primitive;
     }
 
     Super::Register(InScene);
