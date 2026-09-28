@@ -31,6 +31,7 @@ class FSceneBVH
         uint32 Parent = UINT32_MAX;
         uint32 ObjStart = 0;
         uint32 ObjCount = 0;
+        bool bLeafNode = false;
     };
     struct FPrimRef
     {
