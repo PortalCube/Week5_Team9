@@ -82,23 +82,6 @@ LRESULT FWindow::GlobalMessageCallback(HWND Window, UINT Message, WPARAM WParam,
 		SetWindowLongPtr(Window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(Create->lpCreateParams));
 	}
 
-	switch (Message)
-	{
-	case WM_KEYDOWN:   case WM_KEYUP:
-	case WM_SYSKEYDOWN: case WM_SYSKEYUP:
-	case WM_CHAR:
-	case WM_LBUTTONDOWN: case WM_LBUTTONUP:
-	case WM_RBUTTONDOWN: case WM_RBUTTONUP:
-	case WM_MBUTTONDOWN: case WM_MBUTTONUP:
-	case WM_MOUSEMOVE:
-	case WM_MOUSEWHEEL:
-		//입력 지연 측정 시작 시간 기록
-		FInputLatencyTimer::Get().Trigger();
-		break;
-	default:
-		break;
-	}
-
 	// ImGui에서 처리해야 하는 이벤트 체크
 	if (ImGui_ImplWin32_WndProcHandler(Window, Message, WParam, LParam))
 	{
@@ -144,6 +127,20 @@ LRESULT FWindow::MessageCallback(HWND Window, UINT Message, WPARAM WParam, LPARA
 
 	switch (Message)
 	{
+	case WM_KEYDOWN:   case WM_KEYUP:
+	case WM_SYSKEYDOWN: case WM_SYSKEYUP:
+	case WM_CHAR:
+	case WM_LBUTTONDOWN: case WM_LBUTTONUP:
+	case WM_RBUTTONDOWN: case WM_RBUTTONUP:
+	case WM_MBUTTONDOWN: case WM_MBUTTONUP:
+	case WM_MOUSEMOVE:
+	case WM_MOUSEWHEEL:
+		//입력 지연 측정 시작 시간 기록
+		FInputLatencyTimer::Get().Trigger();
+	}
+
+	switch (Message)
+	{
 
 	case WM_DESTROY:
 	{
@@ -174,49 +171,61 @@ LRESULT FWindow::MessageCallback(HWND Window, UINT Message, WPARAM WParam, LPARA
 
 	case WM_LBUTTONDOWN:
 	{
-		FInputManager::Get().OnMouseButtonDown(EMouseButton::Left, MousePos);
+		FInputManager::Get().SetMouseButton(EMouseButton::Left, true);
 		SetCapture(Window);
 		break;
 	}
 
 	case WM_RBUTTONDOWN:
 	{
-		FInputManager::Get().OnMouseButtonDown(EMouseButton::Right, MousePos);
+		FInputManager::Get().SetMouseButton(EMouseButton::Right, true);
 		SetCapture(Window);
 		break;
 	}
 
 	case WM_MBUTTONDOWN:
 	{
-		FInputManager::Get().OnMouseButtonDown(EMouseButton::Middle, MousePos);
+		FInputManager::Get().SetMouseButton(EMouseButton::Middle, true);
 		SetCapture(Window);
 		break;
 	}
 
 	case WM_LBUTTONUP:
 	{
-		FInputManager::Get().OnMouseButtonUp(EMouseButton::Left, MousePos);
+		FInputManager::Get().SetMouseButton(EMouseButton::Left, false);
 		ReleaseCapture();
 		break;
 	}
 
 	case WM_RBUTTONUP:
 	{
-		FInputManager::Get().OnMouseButtonUp(EMouseButton::Right, MousePos);
+		FInputManager::Get().SetMouseButton(EMouseButton::Right, false);
 		ReleaseCapture();
 		break;
 	}
 
 	case WM_MBUTTONUP:
 	{
-		FInputManager::Get().OnMouseButtonUp(EMouseButton::Middle, MousePos);
+		FInputManager::Get().SetMouseButton(EMouseButton::Middle, false);
 		ReleaseCapture();
 		break;
 	}
 
 	case WM_MOUSEMOVE:
 	{
-		FInputManager::Get().OnMouseMove(MousePos);
+		FInputManager::Get().SetMousePosition(MousePos);
+		break;
+	}
+
+	case WM_KEYDOWN:
+	{
+		FInputManager::Get().SetKey(WParam, true);
+		break;
+	}
+
+	case WM_KEYUP:
+	{
+		FInputManager::Get().SetKey(WParam, false);
 		break;
 	}
 
@@ -225,9 +234,9 @@ LRESULT FWindow::MessageCallback(HWND Window, UINT Message, WPARAM WParam, LPARA
 	case WM_KILLFOCUS:
 	{
 		const FVector2 Last = FInputManager::Get().GetMousePosition();
-		FInputManager::Get().OnMouseButtonUp(EMouseButton::Left, Last);
-		FInputManager::Get().OnMouseButtonUp(EMouseButton::Right, Last);
-		FInputManager::Get().OnMouseButtonUp(EMouseButton::Middle, Last);
+		FInputManager::Get().SetMouseButton(EMouseButton::Left, false);
+		FInputManager::Get().SetMouseButton(EMouseButton::Right, false);
+		FInputManager::Get().SetMouseButton(EMouseButton::Middle, false);
 		break;
 	}
 
@@ -235,7 +244,7 @@ LRESULT FWindow::MessageCallback(HWND Window, UINT Message, WPARAM WParam, LPARA
 	case WM_MOUSEWHEEL:
 	{
 		const float WheelDelta = static_cast<float>(GET_WHEEL_DELTA_WPARAM(WParam)) / static_cast<float>(WHEEL_DELTA);
-		FInputManager::Get().OnMouseWheel(WheelDelta);
+		FInputManager::Get().SetMouseWheel(WheelDelta);
 		break;
 	}
 

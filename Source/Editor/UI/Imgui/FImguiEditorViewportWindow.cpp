@@ -290,7 +290,7 @@ void FImguiEditorViewportWindow::UpdateCamera(FEditor &Editor, FEditorViewportCl
 
     
     // 우클릭 중에는 WASD 가 카메라 비행에 쓰이므로 단축키와 겹치지 않게 나눈다.
-    if (FInputManager::Get().IsMouseDown(EMouseButton::Right))
+    if (FInputManager::Get().IsMousePressed(EMouseButton::Right))
     {
         CameraController.UpdateKeyInput(Camera, DeltaTime);
         return;
@@ -311,7 +311,7 @@ void FImguiEditorViewportWindow::UpdateShortcuts(FEditor &Editor) const
 
     // 백틱(`) : 월드/로컬 공간 전환.
     // Translate/Rotate 에서만 의미가 있어 None/Scale 은 제외한다.
-    if (Input.IsKeyJustPressed(VK_OEM_3))
+    if (Input.IsKeyDown(VK_OEM_3))
     {
         if (Gizmo.Mode != EGizmoMode::None && Gizmo.Mode != EGizmoMode::Scale)
         {
@@ -320,23 +320,23 @@ void FImguiEditorViewportWindow::UpdateShortcuts(FEditor &Editor) const
         }
     }
 
-    if (Input.IsKeyJustPressed('Q'))
+    if (Input.IsKeyDown('Q'))
     {
         Gizmo.Mode = EGizmoMode::None;
     }
-    else if (Input.IsKeyJustPressed('W'))
+    else if (Input.IsKeyDown('W'))
     {
         Gizmo.Mode = EGizmoMode::Translate;
     }
-    else if (Input.IsKeyJustPressed('E'))
+    else if (Input.IsKeyDown('E'))
     {
         Gizmo.Mode = EGizmoMode::Rotate;
     }
-    else if (Input.IsKeyJustPressed('R'))
+    else if (Input.IsKeyDown('R'))
     {
         Gizmo.Mode = EGizmoMode::Scale;
     }
-    else if (Input.IsKeyJustPressed(VK_SPACE))
+    else if (Input.IsKeyDown(VK_SPACE))
     {
         Gizmo.Mode = static_cast<EGizmoMode>((static_cast<uint8>(Gizmo.Mode) + 1) % 4);
     }

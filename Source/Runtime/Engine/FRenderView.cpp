@@ -132,6 +132,8 @@ void FRenderView::PrepareRender()
 
 void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const FEditorRenderContext& EditorCtx)
 {
+
+
     // 뷰포트 시작
     BeginView(View);
 

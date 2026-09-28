@@ -41,7 +41,7 @@ FRenderResourceLibrary *FEditor::GetRendererLibrary() {
 void FEditor::Process() {
   // 씬의 액터 업데이트
   
-    if (FInputManager::Get().IsKeyDown(VK_DELETE) && SelectedActor)
+    if (FInputManager::Get().IsKeyPressed(VK_DELETE) && SelectedActor)
     {
         AActor* Target = SelectedActor;
         UnSelectActor();

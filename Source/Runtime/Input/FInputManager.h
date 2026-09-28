@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Runtime/Core/IntTypes.h"
 #include "Runtime/Math/FVector2.h"
@@ -9,6 +9,7 @@ class FInputManager final
 {
 public:
 	static constexpr int32 MAX_KEYS = 256;
+	static constexpr int32 MAX_MOUSE_BUTTONS = 5;
 
 	static FInputManager& Get()
 	{
@@ -17,20 +18,24 @@ public:
 	}
 	
 	void BeginFrame();
+	void EndFrame();
 
-	[[nodiscard]] bool IsKeyDown(uint32 Key) const;
-	[[nodiscard]] bool IsKeyJustPressed(uint32 Key) const;
-	[[nodiscard]] bool IsKeyJustReleased(uint32 Key) const;
+	bool IsKeyDown(uint32 Key) const;
+	bool IsKeyPressed(uint32 Key) const;
+	bool IsKeyUp(uint32 Key) const;
 
-	[[nodiscard]] bool IsMouseDown(EMouseButton Button) const;
-	[[nodiscard]] FVector2 GetMousePosition() const;
-	[[nodiscard]] FVector2 GetMouseDelta() const;
+	bool IsMouseDown(EMouseButton Button) const;
+	bool IsMousePressed(EMouseButton Button) const;
+	bool IsMouseUp(EMouseButton Button) const;
+
+	FVector2 GetMousePosition() const;
+	FVector2 GetMouseDelta() const;
 	float GetMouseWheelDelta() const;
 
-	void OnMouseMove(FVector2 Position);
-	void OnMouseButtonDown(EMouseButton Button, FVector2 Position);
-	void OnMouseButtonUp(EMouseButton Button, FVector2 Position);
-	void OnMouseWheel(float Delta);
+	void SetKey(uint32 Key, bool Value);
+	void SetMousePosition(FVector2 Position);
+	void SetMouseButton(EMouseButton Button, bool Value);
+	void SetMouseWheel(float Delta);
 
 	FInputManager(const FInputManager&) = delete;
 	FInputManager& operator=(const FInputManager&) = delete;
@@ -42,17 +47,16 @@ private:
 	FInputManager() = default;
 	~FInputManager() = default;
 
-	[[nodiscard]] bool IsPrevKeyDown(uint32 Key) const;
+	bool IsPrevKeyDown(uint32 Key) const;
 	
-	bool bIsRightButtonDown = false;
 	bool CurrentKeyStates[MAX_KEYS] = {};
 	bool PreviousKeyStates[MAX_KEYS] = {};
 
+	bool bCurrentMouseState[MAX_MOUSE_BUTTONS] = {};
+	bool bPreviousMouseState[MAX_MOUSE_BUTTONS] = {};
+
 	FVector2 CurrentMousePosition{};
 	FVector2 PreviousMousePosition{};
-	bool bMouseLeftPressed = false;
-	bool bMouseRightPressed = false;
-	bool bMouseMiddlePressed = false;
 	FVector2 MouseDelta{ 0.0f, 0.0f };
 
 	float MouseWheelDelta = 0.0f;
@@ -64,4 +68,6 @@ enum class EMouseButton : uint8
 	Left,
 	Right,
 	Middle,
+	Back,
+	Forward,
 };
