@@ -2,76 +2,92 @@
 
 FCamera::FCamera()
 {
-	UpdateRotationMatrix();
-	UpdateViewMatrix();
-	UpdateProjectionMatrix();
 }
 
 void FCamera::SetPosition(const FVector& Value)
 {
 	Position = Value;
-	UpdateViewMatrix();
+	bViewMatrixDirty = true;
+	bViewProjectionMatrixDirty = true;
 }
 
 void FCamera::SetYaw(float Value)
 {
 	Yaw = Value;
-	UpdateRotationMatrix();
+	bRotationMatrixDirty = true;
+	bViewMatrixDirty = true;
+	bViewProjectionMatrixDirty = true;
 }
 
 void FCamera::SetPitch(float Value)
 {
 	Pitch = Value;
-	UpdateRotationMatrix();
+	bRotationMatrixDirty = true;
+	bViewMatrixDirty = true;
+	bViewProjectionMatrixDirty = true;
 }
 
 void FCamera::SetRotation(float NewPitch, float NewYaw)
 {
 	Pitch = NewPitch;
 	Yaw = NewYaw;
-	UpdateRotationMatrix();
+	bRotationMatrixDirty = true;
+	bViewMatrixDirty = true;
+	bViewProjectionMatrixDirty = true;
 }
 
 void FCamera::SetProjection(const FCameraProjection& Value)
 {
 	Projection = Value;
-	UpdateProjectionMatrix();
+	bProjectionMatrixDirty = true;
+	bViewProjectionMatrixDirty = true;
 }
 
 void FCamera::SetProjectionType(EProjectionType Value)
 {
 	Projection.SetProjectionType(Value);
-	UpdateProjectionMatrix();
+	bProjectionMatrixDirty = true;
+	bViewProjectionMatrixDirty = true;
 }
 
 void FCamera::SetFOV(float Value)
 {
 	Projection.SetFOV(Value);
-	UpdateProjectionMatrix();
+	bProjectionMatrixDirty = true;
+	bViewProjectionMatrixDirty = true;
 }
 
 void FCamera::SetAspectRatio(float Value)
 {
+	if (Projection.GetAspectRatio() == Value)
+	{
+		return;
+	}
+
 	Projection.SetAspectRatio(Value);
-	UpdateProjectionMatrix();
+	bProjectionMatrixDirty = true;
+	bViewProjectionMatrixDirty = true;
 }
 
 void FCamera::SetOrthographicHeight(float Value)
 {
 	Projection.SetOrthographicHeight(Value);
-	UpdateProjectionMatrix();
+	bProjectionMatrixDirty = true;
+	bViewProjectionMatrixDirty = true;
 }
 
 void FCamera::SetNearPlane(float Value)
 {
 	Projection.SetNearPlane(Value);
-	UpdateProjectionMatrix();
+	bProjectionMatrixDirty = true;
+	bViewProjectionMatrixDirty = true;
 }
 
 void FCamera::SetFarPlane(float Value)
 {
 	Projection.SetFarPlane(Value);
-	UpdateProjectionMatrix();
+	bProjectionMatrixDirty = true;
+	bViewProjectionMatrixDirty = true;
 }
 
 void FCamera::SetUpVector(const FVector& Value)
@@ -79,25 +95,73 @@ void FCamera::SetUpVector(const FVector& Value)
 	UpVector = Value;
 }
 
-void FCamera::UpdateRotationMatrix()
+const FMatrix& FCamera::GetRotationMatrix() const
 {
+	UpdateRotationMatrixIfDirty();
+	return RotationMatrix;
+}
+
+const FMatrix& FCamera::GetViewMatrix() const
+{
+	UpdateViewMatrixIfDirty();
+	return ViewMatrix;
+}
+
+const FMatrix& FCamera::GetProjectionMatrix() const
+{
+	UpdateProjectionMatrixIfDirty();
+	return ProjectionMatrix;
+}
+
+const FMatrix& FCamera::GetViewProjectionMatrix() const
+{
+	UpdateViewProjectionMatrixIfDirty();
+	return ViewProjectionMatrix;
+}
+
+void FCamera::UpdateRotationMatrixIfDirty() const
+{
+	if (!bRotationMatrixDirty)
+	{
+		return;
+	}
+
 	RotationMatrix = FMatrix::MakeRotation(FVector(0.0f, Pitch, Yaw));
-	UpdateViewMatrix();
+	bRotationMatrixDirty = false;
 }
 
-void FCamera::UpdateViewMatrix()
+void FCamera::UpdateViewMatrixIfDirty() const
 {
+	if (!bViewMatrixDirty)
+	{
+		return;
+	}
+
+	UpdateRotationMatrixIfDirty();
 	ViewMatrix = FMatrix::MakeTranslation(-Position) * RotationMatrix.Transpose();
-	UpdateViewProjectionMatrix();
+	bViewMatrixDirty = false;
 }
 
-void FCamera::UpdateProjectionMatrix()
+void FCamera::UpdateProjectionMatrixIfDirty() const
 {
+	if (!bProjectionMatrixDirty)
+	{
+		return;
+	}
+
 	ProjectionMatrix = Projection.GetProjectionMatrix();
-	UpdateViewProjectionMatrix();
+	bProjectionMatrixDirty = false;
 }
 
-void FCamera::UpdateViewProjectionMatrix()
+void FCamera::UpdateViewProjectionMatrixIfDirty() const
 {
+	if (!bViewProjectionMatrixDirty)
+	{
+		return;
+	}
+
+	UpdateViewMatrixIfDirty();
+	UpdateProjectionMatrixIfDirty();
 	ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
+	bViewProjectionMatrixDirty = false;
 }

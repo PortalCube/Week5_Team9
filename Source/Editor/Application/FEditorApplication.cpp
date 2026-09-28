@@ -82,7 +82,7 @@ void FEditorApplication::Render() {
           // 뷰포트 렌더링 명세 구성
           FSceneView sceneview{
               .Camera = EditorViewport.ViewportCamera,
-              .ViewProj = EditorViewport.ViewportCamera.CreateViewProjectionMatrix(),
+              .ViewProj = EditorViewport.ViewportCamera.GetViewProjectionMatrix(),
               .TopLeftUV = EditorViewport.TopLeftUV,
               .LengthUV = EditorViewport.LengthUV,
               .ViewMode = EditorViewport.ViewMode,
@@ -122,7 +122,7 @@ void FEditorApplication::Render() {
 
           FSceneView SceneView{
     .Camera = Viewport.ViewportCamera,
-    .ViewProj = Viewport.ViewportCamera.CreateViewProjectionMatrix(),
+    .ViewProj = Viewport.ViewportCamera.GetViewProjectionMatrix(),
     .TopLeftUV = Viewport.TopLeftUV,
     .LengthUV = Viewport.LengthUV,
     .ViewMode = Viewport.ViewMode,

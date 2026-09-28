@@ -67,7 +67,7 @@ void FObjViewerApplication::Render()
 
 	if (CurrentMesh)
 	{
-		FMatrix ViewProj = Camera.CreateViewProjectionMatrix();
+		FMatrix ViewProj = Camera.GetViewProjectionMatrix();
 		FMatrix World = FMatrix::GetIdentity();
 
 		Renderer->UpdateLightConstants(Light, EViewModeIndex::VMI_Lit);

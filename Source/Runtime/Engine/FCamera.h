@@ -12,15 +12,20 @@ class FCamera
 	FCameraProjection Projection;
 	FVector UpVector{ 0.0f, 0.0f, 1.0f };
 
-	FMatrix RotationMatrix;
-	FMatrix ViewMatrix;
-	FMatrix ProjectionMatrix;
-	FMatrix ViewProjectionMatrix;
+	mutable bool bRotationMatrixDirty = true;
+	mutable bool bViewMatrixDirty = true;
+	mutable bool bProjectionMatrixDirty = true;
+	mutable bool bViewProjectionMatrixDirty = true;
 
-	void UpdateRotationMatrix();
-	void UpdateViewMatrix();
-	void UpdateProjectionMatrix();
-	void UpdateViewProjectionMatrix();
+	mutable FMatrix RotationMatrix;
+	mutable FMatrix ViewMatrix;
+	mutable FMatrix ProjectionMatrix;
+	mutable FMatrix ViewProjectionMatrix;
+
+	void UpdateRotationMatrixIfDirty() const;
+	void UpdateViewMatrixIfDirty() const;
+	void UpdateProjectionMatrixIfDirty() const;
+	void UpdateViewProjectionMatrixIfDirty() const;
 
 public:
 	FCamera();
@@ -44,9 +49,8 @@ public:
 	void SetFarPlane(float Value);
 	void SetUpVector(const FVector& Value);
 
-	const FMatrix& GetRotationMatrix() const { return RotationMatrix; }
-	const FMatrix& GetViewMatrix() const { return ViewMatrix; }
-	const FMatrix& GetProjectionMatrix() const { return ProjectionMatrix; }
-	const FMatrix& GetViewProjectionMatrix() const { return ViewProjectionMatrix; }
-	const FMatrix& CreateViewProjectionMatrix() const { return ViewProjectionMatrix; }
+	const FMatrix& GetRotationMatrix() const;
+	const FMatrix& GetViewMatrix() const;
+	const FMatrix& GetProjectionMatrix() const;
+	const FMatrix& GetViewProjectionMatrix() const;
 };

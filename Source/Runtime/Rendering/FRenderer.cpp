@@ -939,7 +939,7 @@ void FRenderer::DrawInstances(const FCamera &Camera) {
   auto &ResLib = FRenderResourceLibrary::Get();
 
   FObjectConstants SC{};
-  SC.MVP = Camera.CreateViewProjectionMatrix();
+  SC.MVP = Camera.GetViewProjectionMatrix();
 
   // 배치 키(MaterialID, MeshID) 순회
   for (const auto &[BatchKey, InstanceData] : ResLib.AllInstancingArrayMap) {

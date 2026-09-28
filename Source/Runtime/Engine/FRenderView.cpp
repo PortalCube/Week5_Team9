@@ -31,7 +31,7 @@ namespace
 
         FObjectConstants Constants
         {
-            .MVP = Data.ModelMatrix * Camera.CreateViewProjectionMatrix(),
+            .MVP = Data.ModelMatrix * Camera.GetViewProjectionMatrix(),
             .Color = Data.Materials[0].Color,
             .UVScale = Data.Materials[0].UVScale,
             .UVOffset = Data.Materials[0].UVOffset,
@@ -203,8 +203,8 @@ void FRenderView::DrawGrid(const FCamera& Camera, FGrid& Grid)
     Grid.DrawLine(Renderer, Camera);
 
     FGridLineConstants Constants{};
-    Constants.MVP = Camera.CreateViewProjectionMatrix();
-    Constants.CameraPosition = Camera.Position;
+    Constants.MVP = Camera.GetViewProjectionMatrix();
+    Constants.CameraPosition = Camera.GetPosition();
     Constants.FadeStartDistance = 3.0f;
     Constants.FadeEndDistance = 75.0f;
     Renderer.FlushLineBatch(Constants, FName("Grid"));
@@ -217,7 +217,7 @@ void FRenderView::FlushBasePass(const FCamera& Camera)
 
 void FRenderView::FlushLinePass(const FCamera& Camera)
 {
-    FlushLineBatch(Camera.CreateViewProjectionMatrix());
+    FlushLineBatch(Camera.GetViewProjectionMatrix());
 }
 
 void FRenderView::RenderPostProcessPass(const FCamera& Camera, const AActor* SelectedActor)

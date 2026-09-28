@@ -31,7 +31,7 @@ void FGizmo::Draw(FRenderer& Renderer, const FTransform& Transform, const FCamer
 	FMatrix Scale = FMatrix::MakeScale(FVector{ GizmoScale, GizmoScale, GizmoScale });
 	FMatrix ObjectRotation = GetSpace() == EGizmoSpace::World ? FMatrix::GetIdentity() : Transform.Rotation.ToMatrixRow();
 	FMatrix Translation = FMatrix::MakeTranslation(Transform.Location);
-	FMatrix VP = Camera.CreateViewProjectionMatrix();
+	FMatrix VP = Camera.GetViewProjectionMatrix();
 	 
 	DrawAxis(Renderer, EGizmoHandle::XAxis, Scale * ObjectRotation * Translation * VP);
 	DrawAxis(Renderer, EGizmoHandle::YAxis, Scale * YAxisRotation * ObjectRotation * Translation * VP);
@@ -273,7 +273,7 @@ float FGizmo::CalculateGizmoScale(const FVector& GizmoLocation, const FCamera& C
 FVector2 FGizmo::WorldToViewport(const FVector& WorldPosition, const FCamera& Camera,
 	const FVector2& ViewportSize) const
 {
-	FMatrix VP = Camera.CreateViewProjectionMatrix();
+	FMatrix VP = Camera.GetViewProjectionMatrix();
 
 	FVector Projected = VP.TransformPointRow(WorldPosition);
 
