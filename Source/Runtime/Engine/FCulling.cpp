@@ -1,7 +1,7 @@
 #include "FCulling.h"
 #include "Runtime/Geometry/FFrustum.h"
 
-uint32 FFlatFrustumCuller::Cull(const FFrustum& Frustum, const TArray<FCullData>& CullDataList, TArray<uint8> OutVisibleFlags)
+uint32 FFlatFrustumCuller::Cull(const FFrustum& Frustum, const TArray<FCullData>& CullDataList, TArray<uint8>& OutVisibleFlags)
 {
 	const size_t Count = CullDataList.size();
 	OutVisibleFlags.resize(Count);
@@ -41,7 +41,7 @@ uint32 FFlatFrustumCuller::Cull(const FFrustum& Frustum, const TArray<FCullData>
 
 		uint8 bVisible = 1;
 		for (int32 p = 0; p < PlaneCount; p++){
-			const float Dist = Nx[p] * C.X + Ny[p] + C.Z * Nd[p];
+			const float Dist = Nx[p] * C.X + Ny[p] * C.Y + C.Z * Nz[p] + Nd[p];
 			const float Radius = Ax[p] * E.X + Ay[p] * E.Y + Az[p] * E.Z;
 
 			if (Dist < -Radius)
@@ -52,7 +52,7 @@ uint32 FFlatFrustumCuller::Cull(const FFrustum& Frustum, const TArray<FCullData>
 		}
 
 		Out[i] = bVisible;
-		VisibleCount = bVisible;
+		VisibleCount += bVisible;
 	}
 
 	return VisibleCount;

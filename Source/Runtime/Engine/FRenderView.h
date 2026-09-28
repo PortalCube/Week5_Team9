@@ -7,6 +7,8 @@
 #include "Runtime/Rendering/FRenderer.h"
 #include "Runtime/Rendering/FRenderQueue.h"
 #include "Runtime/Engine/FSceneView.h"
+#include "Runtime/Geometry/FFrustum.h"
+#include "Runtime/Engine/FCulling.h"
 
 struct FCamera;
 class FGizmo;
@@ -79,9 +81,31 @@ public:
 	//렌더 전에 컬링 판정
 	void CullScene(const FSceneView& View, const UScene& Scene);
 
+	//Cull Freeze 토글 시 호출. 다음 프레임에 현재 카메라로 다시 캡쳐
+	void InvalidateFrozenFrustums();
+
 private:
 	FCullingSettings CullingSettings;
 	//컬링 후 가시 여부 인덱스(실제 renderComponent 인덱스와 동일하게)
 	TArray<uint8> VisibleFlags;
 	bool bCullResultValid = false;
+
+	static constexpr uint32 MaxViewCount = 4;   // FEditor::Leaf 개수
+
+	struct FFrozenView
+	{
+		FFrustum Frustum;
+		FMatrix ViewProj;
+		FVector Corners[8];         // 와이어프레임용 (월드 좌표)
+		bool bValid = false;
+		bool bHasCorners = false;
+	};
+
+	FFrustum SelectCullFrustum(const FSceneView& View);
+	static void CaptureFrozenCorners(FFrozenView& Frozen);
+	void DrawFrozenFrustum(const FSceneView& View);
+
+	FFlatFrustumCuller FlatCuller;
+	IPrimitiveCuller* Culler = &FlatCuller;     // 추후 BVH/SIMD 컬러로 교체하는 지점
+	FFrozenView FrozenViews[MaxViewCount];
 };

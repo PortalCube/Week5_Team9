@@ -22,12 +22,13 @@ class IPrimitiveCuller
 public:
 	virtual ~IPrimitiveCuller() = default;
 
-	virtual uint32 Cull(const FFrustum& Frustum, const TArray<FCullData>& CullDataList, TArray<uint8> OutVisibleFlags) = 0;
+	virtual uint32 Cull(const FFrustum& Frustum, const TArray<FCullData>& CullDataList, TArray<uint8>& OutVisibleFlags) = 0;
 };
 
 //공간 분할 없는, SIMD 안쓰는 기본 Frustum Culling.
 //추후 공간 분할, SIMD가 추가된다면 늘려나갈것
 class FFlatFrustumCuller final : public IPrimitiveCuller
 {
-	uint32 Cull(const FFrustum& Frustum, const TArray<FCullData>& CullDataList, TArray<uint8> OutVisibleFlags) override;
+public:
+	uint32 Cull(const FFrustum& Frustum, const TArray<FCullData>& CullDataList, TArray<uint8>& OutVisibleFlags) override;
 };

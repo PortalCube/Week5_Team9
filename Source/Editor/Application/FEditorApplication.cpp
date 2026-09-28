@@ -73,6 +73,13 @@ void FEditorApplication::Render() {
   // 렌더 준비
   RenderView->PrepareRender();
 
+  {
+      //컬링 준비 시간 기록?
+      // 
+      //이동한 오브젝트는 월드 AABB 재계산
+      SceneManager->CurrentScene->UpdateDirtyBounds();
+  }
+
   //Active인 ViewportClient만 렌더링
   for (SWindow& Leaf : Editor.Leaf)
   {
@@ -88,6 +95,7 @@ void FEditorApplication::Render() {
               .ViewMode = EditorViewport.ViewMode,
               .ShowFlags = EditorViewport.ShowFlags,
               .LightConstants = Editor.GlobalLight
+              //나중에 ViewIndex를 추가할 날이?
           };
 
           // 에디터 렌더링 컨텍스트 구성
@@ -184,6 +192,12 @@ void FEditorApplication::ExecuteCommand(const char* Command) {
         EditorViewportWindow.SetClose();
     }
 
+    else if (lowerCmd.compare("stat cull") == 0)
+    {
+        UE_LOG("Stat Cull Command is executed!");
+        //EditorViewportWindow.Toggle(FImguiStatsWindow::EStatsWindow::Cull);
+    }
+
     else if (lowerCmd.compare("cull") == 0)
     {
         //컬링 토글
@@ -209,6 +223,7 @@ void FEditorApplication::ExecuteCommand(const char* Command) {
     {
         //컬링 freeze 토글
         RenderView->SetCullingFreeze(!RenderView->GetCullingSettings().bFreeze);
+        RenderView->InvalidateFrozenFrustums();
         UE_LOG("Frustum Freeze : %s", RenderView->GetCullingSettings().bFreeze ? "ON" : "OFF");
     }
 

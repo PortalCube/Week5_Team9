@@ -24,6 +24,10 @@ public:
     void ClearInstances();
     int32 GetInstanceCount() const { return static_cast<int32>(InstanceTransforms.size()); }
 
+    // 인스턴스마다 월드 위치가 따로 있고 AddInstance는 Transform 변경을 알리지 않는다 : 항상 가시
+    //하지만 InstancePrimitiveComponent는 컬링해야 할 거 같다. 방법을 찾아보자.
+    virtual bool HasCameraDependentTransform() const override { return true; }
+
 private:
     struct FInstanceEntry { FVector Position; FVector4 Color; };
     TArray<FInstanceEntry> InstanceTransforms;

@@ -41,6 +41,8 @@ void UScene::Release() {
   }
 
   RenderComponents.clear();
+  CullDataList.clear();
+  DirtyBoundsList.clear();
   RenderResourceLibrary = nullptr;
   bInitialized = false;
 
@@ -174,14 +176,42 @@ void UScene::AddRenderComponent(UPrimitiveComponent *prim) {
 
   if (std::find(RenderComponents.begin(), RenderComponents.end(), prim) ==
       RenderComponents.end()) {
+      //RenderComponents에 넣기 전에 인덱스 설정
+    prim->SetSceneIndex(static_cast<int32>(RenderComponents.size()));
+
     RenderComponents.push_back(prim);
     SceneBVH.AddObject(prim);
+
+    //처음엔 일단 그리자
+    CullDataList.push_back(MakeAlwaysVisibleCullData());
+    MarkBoundsDirty(prim);
   }
 }
 
 void UScene::RemoveRenderComponent(UPrimitiveComponent *prim) {
+    if (prim == nullptr || prim->GetSceneIndex() < 0)
+        return;
+
   std::erase(RenderComponents, prim);
   SceneBVH.RemoveObject(prim);
+
+  const size_t Index = static_cast<size_t>(prim->GetSceneIndex());
+  CullDataList.erase(CullDataList.begin() + Index);
+
+  // 당겨진 원소들의 인덱스 멤버 갱신
+  for (size_t i = Index; i < RenderComponents.size(); ++i)
+  {
+      RenderComponents[i]->SetSceneIndex(static_cast<int32>(i));
+  }
+
+  // 파괴될 포인터가 dirty 목록에 남지 않게
+  if (prim->GetBoundDirtyQueued())
+  {
+      std::erase(DirtyBoundsList, prim);
+      prim->SetBoundDirtyQueued(false);
+  }
+
+  prim->SetSceneIndex(-1);
 }
 
 void UScene::RemoveActor(AActor *Actor) { std::erase(Actors, Actor); }
@@ -222,4 +252,25 @@ AActor *UScene::SpawnActor(UClass *ClassType) {
 
 
   return Actor;
+}
+
+void UScene::MarkBoundsDirty(UPrimitiveComponent* Prim)
+{
+    // 씬에 아직 추가 전이거나 이미 대기 중이면 무시
+    if (Prim == nullptr || Prim->GetSceneIndex() < 0 || Prim->GetBoundDirtyQueued())
+        return;
+
+    Prim->SetBoundDirtyQueued(true);
+    DirtyBoundsList.push_back(Prim);
+}
+
+void UScene::UpdateDirtyBounds()
+{
+    // 입력(Transform, Mesh)이 같으면 결과가 같은 순수 계산의 재사용. 가시성은 매 프레임 새로 판정
+    for (UPrimitiveComponent* Prim : DirtyBoundsList)
+    {
+        Prim->SetBoundDirtyQueued(false);
+        CullDataList[static_cast<size_t>(Prim->GetSceneIndex())] = Prim->CalcWorldCullData();
+    }
+    DirtyBoundsList.clear();
 }
