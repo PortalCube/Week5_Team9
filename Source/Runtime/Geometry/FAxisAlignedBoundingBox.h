@@ -10,6 +10,9 @@ struct FMatrix;
 
 struct FAxisAlignedBoundingBox
 {
+	FVector Center{};
+	FVector Extent{};
+
 	FVector Min
 	{
 		std::numeric_limits<float>::max(),
@@ -28,6 +31,4 @@ struct FAxisAlignedBoundingBox
 	FAxisAlignedBoundingBox(const FAxisAlignedBoundingBox& InBounds, const FMatrix& ModelMatrix);
 	FAxisAlignedBoundingBox(const FMesh& Mesh);
 	FAxisAlignedBoundingBox(const FMesh& Mesh, const FMatrix& ModelMatrix);
-
-	void GetCorner(FVector OutCorner[8]) const;
 };
