@@ -192,7 +192,7 @@ void FImguiControlPanelWindow::CameraSetting(FEditor& Editor)
         FCamera& Camera = Viewport->ViewportCamera;
 
         bool bOrthographic =
-            (Camera.Projection.ProjectionType == EProjectionType::Orthographic);
+            (Camera.GetProjection().GetProjectionType() == EProjectionType::Orthographic);
         //if (ImGui::Checkbox("Orthogonal", &bOrthographic))
         //{
         //    Camera.Projection.ProjectionType =
@@ -213,13 +213,21 @@ void FImguiControlPanelWindow::CameraSetting(FEditor& Editor)
         ImGui::Text("Speed");
         Editor.State.SetCameraSpeed(CameraSpeed);
 
+        float FOV = Camera.GetProjection().GetFOV();
         ImGui::SetNextItemWidth(180.0f);
-        ImGui::DragFloat("##FOV", &Camera.Projection.FOV, 0.1f, 1.0f, 179.0f, "%.1f");
+        if (ImGui::DragFloat("##FOV", &FOV, 0.1f, 1.0f, 179.0f, "%.1f"))
+        {
+            Camera.SetFOV(FOV);
+        }
         ImGui::SameLine();
         ImGui::Text("FOV");
 
+        FVector CameraPosition = Camera.GetPosition();
         ImGui::SetNextItemWidth(180.0f);
-        ImGui::DragFloat3("##CameraLocation", &Camera.Position.X, 0.05f, 0.0f, 0.0f, "%.3f");
+        if (ImGui::DragFloat3("##CameraLocation", &CameraPosition.X, 0.05f, 0.0f, 0.0f, "%.3f"))
+        {
+            Camera.SetPosition(CameraPosition);
+        }
         ImGui::SameLine();
         ImGui::Text("Camera Location");
 
@@ -227,42 +235,49 @@ void FImguiControlPanelWindow::CameraSetting(FEditor& Editor)
         ImGui::Text("Pitch");
         ImGui::SameLine();
 
+        float Pitch = Camera.GetPitch();
         ImGui::SetNextItemWidth(50.0f);
-        ImGui::DragFloat(
+        if (ImGui::DragFloat(
             "##CameraPitch",
-            &Camera.Pitch,
+            &Pitch,
             0.5f,
             0.0f,
             0.0f,
             "%.2f"
-        );
+        ))
+        {
+            Camera.SetPitch(Pitch);
+        }
         ImGui::SameLine();
 
         ImGui::SetNextItemWidth(40.0f);
         ImGui::Text("Yaw");
         ImGui::SameLine();
 
+        float Yaw = Camera.GetYaw();
         ImGui::SetNextItemWidth(50.0f);
-        ImGui::DragFloat(
+        if (ImGui::DragFloat(
             "##CameraYaw",
-            &Camera.Yaw,
+            &Yaw,
             0.5f,
             0.0f,
             0.0f,
             "%.2f"
-        );
+        ))
+        {
+            Camera.SetYaw(Yaw);
+        }
 
         ImGui::SameLine();
         ImGui::Text("Camera Rotation");
 
         if (ImGui::Button("Reset Camera"))
         {
-            Camera.Position = FVector{ -8.0f, 0.0f, 4.0f };
-            Camera.Pitch = -20.0f;
-            Camera.Yaw = 0.0f;
-            Editor.State.SetCameraLocation(Camera.Position);
-            Editor.State.SetCameraPitch(Camera.Pitch);
-            Editor.State.SetCameraYaw(Camera.Yaw);
+            Camera.SetPosition(FVector{ -8.0f, 0.0f, 4.0f });
+            Camera.SetRotation(-20.0f, 0.0f);
+            Editor.State.SetCameraLocation(Camera.GetPosition());
+            Editor.State.SetCameraPitch(Camera.GetPitch());
+            Editor.State.SetCameraYaw(Camera.GetYaw());
         }
     }
 }

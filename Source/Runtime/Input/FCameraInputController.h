@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 #include "Runtime/Math/FVector.h"
 
-struct FCamera;
+class FCamera;
 
 class FCameraInputController
 {

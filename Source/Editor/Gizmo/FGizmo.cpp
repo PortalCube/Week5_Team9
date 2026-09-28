@@ -144,7 +144,7 @@ void FGizmo::BeginInteraction(const FTransform& Transform, EGizmoHandle Handle, 
 
 	InteractionOriginViewport = OriginViewport;
 
-	FVector CenterToCamera = Camera.Position - OriginWorld;
+	FVector CenterToCamera = Camera.GetPosition() - OriginWorld;
 	InteractionRotationSign = (CenterToCamera.Dot(InteractionAxisWorld) <= 0.0f) ? 1.0f : -1.0f;
 
 	if (AxisViewportLength > 1e-5f)
@@ -259,14 +259,14 @@ float FGizmo::CalculateGizmoScale(const FVector& GizmoLocation, const FCamera& C
 
 	// 직교투영은 거리가 화면상 크기에 영향을 주지 않는다.
 	// 거리를 곱하면 멀어질수록 기즈모가 커지므로, 뷰 높이를 기준으로 삼는다.
-	if (Camera.Projection.ProjectionType == EProjectionType::Orthographic)
+	if (Camera.GetProjection().GetProjectionType() == EProjectionType::Orthographic)
 	{
 
 		constexpr float ScalePerViewHeight = 0.15f;
-		return Camera.Projection.Height * ScalePerViewHeight;
+		return Camera.GetProjection().GetOrthographicHeight() * ScalePerViewHeight;
 	}
 
-	FVector ToTarget = GizmoLocation - Camera.Position;
+	FVector ToTarget = GizmoLocation - Camera.GetPosition();
 	return ToTarget.Size() * ScalePerDistance;
 }
 

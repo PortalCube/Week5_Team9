@@ -154,7 +154,7 @@ void FEditorApplication::OnWindowSize(UINT Width, UINT Height) {
         FVector2{static_cast<float>(Width), static_cast<float>(Height)};
 
     auto &Camera = Viewport.ViewportCamera;
-    Camera.Projection.Aspect = SizePixels.X / SizePixels.Y;
+    Camera.SetAspectRatio(SizePixels.X / SizePixels.Y);
   }
 }
 

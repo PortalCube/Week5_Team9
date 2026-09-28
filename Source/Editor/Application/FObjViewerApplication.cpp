@@ -16,7 +16,7 @@ FObjViewerApplication::FObjViewerApplication(FRenderer& InRenderer)
 void FObjViewerApplication::Initialize(HWND hWnd, ID3D11Device* Device, ID3D11DeviceContext* Context)
 {
 	// Default Value
-	Camera.Position = FVector{ -5.0f, 0.0f, 0.0f };
+	Camera.SetPosition(FVector{ -5.0f, 0.0f, 0.0f });
 
 	// ImGui Initailize
 	IMGUI_CHECKVERSION();
@@ -261,7 +261,7 @@ void FObjViewerApplication::OpenMtl(const char* InFilePath)
 
 void FObjViewerApplication::OnWindowSize(UINT Width, UINT Height)
 {
-	Camera.Projection.Aspect = static_cast<float>(Width) / static_cast<float>(Height);
+	Camera.SetAspectRatio(static_cast<float>(Width) / static_cast<float>(Height));
 }
 
 void FObjViewerApplication::RenderSideBar()

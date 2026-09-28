@@ -65,10 +65,10 @@ void FEditor::SaveState() {
   if (!Viewport) { return; }
 
   const FCamera& Camera = Viewport->ViewportCamera;
-  State.SetCameraLocation(Camera.Position);
-  State.SetCameraPitch(Camera.Pitch);
-  State.SetCameraYaw(Camera.Yaw);
-  State.SetCameraFOV(Camera.Projection.FOV);
+  State.SetCameraLocation(Camera.GetPosition());
+  State.SetCameraPitch(Camera.GetPitch());
+  State.SetCameraYaw(Camera.GetYaw());
+  State.SetCameraFOV(Camera.GetProjection().GetFOV());
   State.SetGridCellSize(Viewport->GetGrid().GetCellSize());
   State.SetGizmoMode(static_cast<uint8>(Gizmo.Mode));
   State.SetGizmoSpace(static_cast<uint8>(Gizmo.GetSpace()));
@@ -82,10 +82,9 @@ void FEditor::LoadState()
 
     FCamera& Camera = Viewport->ViewportCamera;
 
-    Camera.Position = State.GetCameraLocation();
-    Camera.Pitch = State.GetCameraPitch();
-    Camera.Yaw = State.GetCameraYaw();
-    Camera.Projection.FOV = State.GetCameraFOV();
+    Camera.SetPosition(State.GetCameraLocation());
+    Camera.SetRotation(State.GetCameraPitch(), State.GetCameraYaw());
+    Camera.SetFOV(State.GetCameraFOV());
     Viewport->GetGrid().SetCellSize(State.GetGridCellSize());
     Gizmo.Mode = static_cast<EGizmoMode>(State.GetGizmoMode());
     Gizmo.SetGizmoSpace(static_cast<EGizmoSpace>(State.GetGizmoSpace()));
@@ -295,7 +294,7 @@ void FEditor::SetViewLayout(FEditorState::SplitViewMode mode) {
     {
         FEditorViewportClient& Viewport = EditorViewports[ViewportIndex];
         Viewport.eOrthogonalType = FEditorViewportClient::EOrthogonalType::PERSPECTIVE;
-        Viewport.ViewportCamera.Projection.ProjectionType = EProjectionType::Perspective;
+        Viewport.ViewportCamera.SetProjectionType(EProjectionType::Perspective);
     };
 
     auto SetOrthographicView = [this](int32 ViewportIndex, FEditorViewportClient::EOrthogonalType Type)

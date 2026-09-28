@@ -1,27 +1,103 @@
 #include "FCamera.h"
 
-FMatrix FCamera::GetRotationMatrix() const
+FCamera::FCamera()
 {
-	// 카메라 회전 행렬 반환
-	return FMatrix::MakeRotation(FVector(0.0f, Pitch, Yaw));
+	UpdateRotationMatrix();
+	UpdateViewMatrix();
+	UpdateProjectionMatrix();
 }
 
-FMatrix FCamera::GetViewMatrix() const
+void FCamera::SetPosition(const FVector& Value)
 {
-	return FMatrix::MakeTranslation(-Position) * GetRotationMatrix().Transpose();
+	Position = Value;
+	UpdateViewMatrix();
 }
 
-FMatrix FCamera::GetProjectionMatrix() const
+void FCamera::SetYaw(float Value)
 {
-	// 카메라 투영 행렬 반환
-	return Projection.CreateProjectionMatrix();
+	Yaw = Value;
+	UpdateRotationMatrix();
 }
 
-FMatrix FCamera::CreateViewProjectionMatrix() const
+void FCamera::SetPitch(float Value)
 {
-	// 뷰 행렬 계산
-	const FMatrix ViewMatrix = GetViewMatrix();
-	const FMatrix ProjectionMatrix = GetProjectionMatrix();
+	Pitch = Value;
+	UpdateRotationMatrix();
+}
 
-	return ViewMatrix * ProjectionMatrix;
+void FCamera::SetRotation(float NewPitch, float NewYaw)
+{
+	Pitch = NewPitch;
+	Yaw = NewYaw;
+	UpdateRotationMatrix();
+}
+
+void FCamera::SetProjection(const FCameraProjection& Value)
+{
+	Projection = Value;
+	UpdateProjectionMatrix();
+}
+
+void FCamera::SetProjectionType(EProjectionType Value)
+{
+	Projection.SetProjectionType(Value);
+	UpdateProjectionMatrix();
+}
+
+void FCamera::SetFOV(float Value)
+{
+	Projection.SetFOV(Value);
+	UpdateProjectionMatrix();
+}
+
+void FCamera::SetAspectRatio(float Value)
+{
+	Projection.SetAspectRatio(Value);
+	UpdateProjectionMatrix();
+}
+
+void FCamera::SetOrthographicHeight(float Value)
+{
+	Projection.SetOrthographicHeight(Value);
+	UpdateProjectionMatrix();
+}
+
+void FCamera::SetNearPlane(float Value)
+{
+	Projection.SetNearPlane(Value);
+	UpdateProjectionMatrix();
+}
+
+void FCamera::SetFarPlane(float Value)
+{
+	Projection.SetFarPlane(Value);
+	UpdateProjectionMatrix();
+}
+
+void FCamera::SetUpVector(const FVector& Value)
+{
+	UpVector = Value;
+}
+
+void FCamera::UpdateRotationMatrix()
+{
+	RotationMatrix = FMatrix::MakeRotation(FVector(0.0f, Pitch, Yaw));
+	UpdateViewMatrix();
+}
+
+void FCamera::UpdateViewMatrix()
+{
+	ViewMatrix = FMatrix::MakeTranslation(-Position) * RotationMatrix.Transpose();
+	UpdateViewProjectionMatrix();
+}
+
+void FCamera::UpdateProjectionMatrix()
+{
+	ProjectionMatrix = Projection.GetProjectionMatrix();
+	UpdateViewProjectionMatrix();
+}
+
+void FCamera::UpdateViewProjectionMatrix()
+{
+	ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
 }

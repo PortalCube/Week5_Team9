@@ -20,7 +20,7 @@
 
 class FTexture;
 struct FTextureDesc;
-struct FCamera;
+class FCamera;
 class UTextInstanceComponent;
 struct FDrawCommand;
 
