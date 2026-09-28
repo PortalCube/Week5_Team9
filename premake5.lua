@@ -99,9 +99,9 @@ project "OiiaiiEngine"
 
     filter "configurations:Release"
         defines { "NDEBUG" }
-        optimize "Full"
+        --optimize "Full"
         --symbols "Off"
-        linktimeoptimization "On"
+        --linktimeoptimization "On"
 		
 		-- Release 빌드에서도 컴파일러/링커 최적화를 사용하지 않음
 		-- 최적화된 바이너리가 일부 안티바이러스에서 오진되는 문제를 피하기 위함
