@@ -123,3 +123,46 @@ FTransform USceneComponent::GetGlobalTransform() const //나중에 부모 rootco
     }
     return ParentWorld * RelativeTransform;
 }
+
+void USceneComponent::SetRelativeLocation(const FVector& RelativeLocation)
+{
+    FTransform NewTransform = GetRelativeTransform();
+    NewTransform.Location = RelativeLocation;
+    SetRelativeTransform(NewTransform);
+}
+
+void USceneComponent::SetRelativeRotation(const FVector& RelativeRotationEulerAngle)
+{
+    FTransform NewTransform = GetRelativeTransform();
+    NewTransform.Rotation = FQuaternion::FromEulerXYZDeg(RelativeRotationEulerAngle);
+    SetRelativeTransform(NewTransform);
+}
+
+void USceneComponent::SetRelativeRotation(const FQuaternion& RelativeRotation)
+{
+    FTransform NewTransform = GetRelativeTransform();
+    NewTransform.Rotation = RelativeRotation;
+    SetRelativeTransform(NewTransform);
+}
+
+void USceneComponent::SetRelativeScale(const FVector& RelativeScale)
+{
+    FTransform NewTransform = GetRelativeTransform();
+    NewTransform.Scale3D = RelativeScale;
+    SetRelativeTransform(NewTransform);
+}
+
+const FVector& USceneComponent::GetRelativeLocation() const
+{
+    return GetRelativeTransform().Location;
+}
+
+const FQuaternion& USceneComponent::GetRelativeRotation() const
+{
+    return GetRelativeTransform().Rotation;
+}
+
+const FVector& USceneComponent::GetRelativeScale() const
+{
+    return GetRelativeTransform().Scale3D;
+}

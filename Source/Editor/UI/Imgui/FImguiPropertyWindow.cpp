@@ -170,7 +170,7 @@ void FImguiPropertyWindow::ShowTransform(FEditor& Editor, USceneComponent& Comp,
 	}
 
 	// 서브 컴포넌트 상대 트랜스폼 편집
-	FTransform& RelTransform = Comp.GetRelativeTransform();
+	FTransform RelTransform = Comp.GetRelativeTransform();
 	ImGui::DragFloat3("Rel Location", &RelTransform.Location.X, 0.01f);
 
 	FVector RelEuler = RelTransform.Rotation.ToEulerXYZDeg();
@@ -179,6 +179,8 @@ void FImguiPropertyWindow::ShowTransform(FEditor& Editor, USceneComponent& Comp,
 		RelTransform.Rotation = FQuaternion::FromEulerXYZDeg(RelEuler);
 	}
 	ImGui::DragFloat3("Rel Scale", &RelTransform.Scale3D.X, 0.01f);
+
+	Comp.SetRelativeTransform(RelTransform);
 }
 
 void FImguiPropertyWindow::ShowTextSettings(UTextInstanceComponent& TextComp) const
