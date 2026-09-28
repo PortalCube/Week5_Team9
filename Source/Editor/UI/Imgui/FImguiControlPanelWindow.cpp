@@ -4,8 +4,10 @@
 #include "ThirdParty/Imgui/imgui_impl_dx11.h"
 #include "ThirdParty/Imgui/imgui_impl_win32.h"
 #include "Runtime/CoreUObject/UObject.h"
+#include "Runtime/Core/Globals.h"
 #include "Runtime/Core/FString.h"
 #include "Runtime/Engine/ShowFlags.h"
+#include "Runtime/Math/Random.h"
 #include "Editor/Core/EditorConstant.h"
 #include <Windows.h>
 #include <ShlObj.h>
@@ -44,6 +46,17 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     //메모리 사용 표시
     ImGui::Text("Live UObjects : %llu, UObject Memory: %llu bytes (%.2f KiB)", static_cast<unsigned long long>(Count), static_cast<unsigned long long>(Bytes), static_cast<double>(Bytes) / 1024.0);
     ImGui::Separator();
+
+    ImGui::Checkbox("정렬 활성화", &Globals::bSortTest);
+
+    if (ImGui::Button("1000 random spawn"))
+    {
+        for (int i = 0; i < 1000; ++i)
+        {
+            uint32 Index = Random::Get<uint32>(0, 4);
+            Editor.SpawnActorToCurrentScene(EditorConstant::SpawnableActors[Index]);
+        }
+    }
 
     //액터 스폰
     ActorSpawnSetting(Editor);

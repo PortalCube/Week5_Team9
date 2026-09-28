@@ -250,7 +250,7 @@ void FGizmo::DrawAxis(FRenderer& Renderer, EGizmoHandle Handle, const FMatrix& M
 	Constants.MVP = MVP;
 	Constants.Color = DrawColor;
 	Constants.DisableShading = 1.0f;
-	Renderer.Draw(*GizmoMesh, *GizmoMaterial, Constants);
+	Renderer.Draw(*GizmoMesh, *GizmoMaterial, Constants, 0);
 }
 
 float FGizmo::CalculateGizmoScale(const FVector& GizmoLocation, const FCamera& Camera) const

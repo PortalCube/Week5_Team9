@@ -110,13 +110,19 @@ struct FScopeCycleCounter
     static inline FScopeCycleCounter* Current = nullptr;
     FScopeCycleCounter* Parent = nullptr;
     double ChildMs = 0.0;   // 내 직속 자식들이 먹은 시간
+    bool bIsIndependent = false;
 
-    FScopeCycleCounter(int32 InStatIndex) : StatIndex(InStatIndex)
+    FScopeCycleCounter(int32 InStatIndex, bool IsIndependent = false)
+        : StatIndex(InStatIndex)
+        , bIsIndependent(IsIndependent)
     {
         bActive = FStatsManager::Get().GetEntry(StatIndex).bEnabled;
         if (!bActive) return;
-        Parent = Current;
-        Current = this;
+        if (!bIsIndependent)
+        {
+            Parent = Current;
+            Current = this;
+        }
         QueryPerformanceCounter(&Start);
     }
 
@@ -126,9 +132,17 @@ struct FScopeCycleCounter
         LARGE_INTEGER End; QueryPerformanceCounter(&End);
         const double Ms = (End.QuadPart - Start.QuadPart) * GetMsPerCount();
 
-        Current = Parent;                                          // 원래대로 복구
-        FStatsManager::Get().Accumulate(StatIndex, Ms - ChildMs);   // Exclusive
-        if (Parent) Parent->ChildMs += Ms;                         // 부모에게 "나 이만큼 썼어" 보고
+        if (!bIsIndependent)
+        {
+            Current = Parent;                                          // 원래대로 복구
+            FStatsManager::Get().Accumulate(StatIndex, Ms - ChildMs);   // Exclusive
+            if (Parent) Parent->ChildMs += Ms;                         // 부모에게 "나 이만큼 썼어" 보고
+        }
+        else
+        {
+            // Independent
+            FStatsManager::Get().Accumulate(StatIndex, Ms);
+        }
     }
 
     int32 StatIndex; LARGE_INTEGER Start; bool bActive;
@@ -137,12 +151,15 @@ struct FScopeCycleCounter
 
 // Cycle
 // 지역 변수가 스코프 끝까지 살아남아야 하므로 do-while로 감싸지 않는다.
-#define SCOPE_CYCLE_COUNTER_IMPL(Tag, StatName)                                                    \
+#define SCOPE_CYCLE_COUNTER_IMPL(Tag, StatName, IsIndependent)                                     \
     static const FStatId PP_CAT(_StatId_, Tag)(StatName, FStatsManager::EStatType::Cycle);         \
-    FScopeCycleCounter PP_CAT(_StatScope_, Tag)(PP_CAT(_StatId_, Tag).Index)
+    FScopeCycleCounter PP_CAT(_StatScope_, Tag)(PP_CAT(_StatId_, Tag).Index, IsIndependent)
 
 //스코프를 사용하여 사용 시간 기록
-#define SCOPE_CYCLE_COUNTER(StatName) SCOPE_CYCLE_COUNTER_IMPL(__COUNTER__, StatName)
+#define SCOPE_CYCLE_COUNTER(StatName) SCOPE_CYCLE_COUNTER_IMPL(__COUNTER__, StatName, false)
+
+//Independent
+#define SCOPE_INDEPENDENT_CYCLE_COUNTER(StatName) SCOPE_CYCLE_COUNTER_IMPL(__COUNTER__, StatName, true)
 
 //이미 계산된 ms를 대입해야 하는 경우 사용
 #define SET_CYCLE_COUNTER_IMPL(Tag, StatName, Ms)                                                  \

@@ -5,10 +5,10 @@
 
 #include <algorithm>
 
-FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FAxisAlignedBoundingBox& InBounds, const FMatrix& ModelMatrix)
+FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FAxisAlignedBoundingBox& InBounds, const FMatrix& TransformationMatrix)
 {
-	Center = ModelMatrix.TransformPointRow(InBounds.Center);
-	Extent = ModelMatrix.Abs().TransformPointRow(InBounds.Extent, 0.0f);
+	Center = TransformationMatrix.TransformPointRow(InBounds.Center);
+	Extent = TransformationMatrix.Abs().TransformPointRow(InBounds.Extent, 0.0f);
 
 	Min = Center - Extent;
 	Max = Center + Extent;

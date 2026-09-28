@@ -42,6 +42,9 @@ void FEditorApplication::Initialize_Runtime(USceneManager *SceneManager,
   Editor.InitMultiViewport(FEditorViewportClient{});
   Editor.LoadState();
   Editor.SetViewLayout(Editor.State.GetSplitMode());
+
+  // TEMP: 당분간 기본값으로 활성화
+  EditorViewportWindow.Toggle(FImguiStatsWindow::EStatsWindow::Unit);
 }
 
 void FEditorApplication::Shutdown() { Editor.Shutdown(); }

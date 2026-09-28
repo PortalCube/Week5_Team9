@@ -7,7 +7,6 @@
 #include "Runtime/Core/TArray.h"
 
 // 렌더링에 필요한 드로우 정보
-
 struct FDrawCommand
 {
     FMesh* Mesh = nullptr;
@@ -15,6 +14,9 @@ struct FDrawCommand
     FObjectConstants Constants{};
     ERenderType Type = ERenderType::Primitive;
     TArray<FInstanceData> Instances;
+    float Depth = 0.0f;
+    int32 DepthBucket = 0;
+    uint64 RenderStateKey = 0;
 };
 
 // 한 프레임의 드로우 요청을 수집하는 큐
@@ -30,7 +32,7 @@ public:
             primRenderQ.push_back(Data);
             break;
         case ERenderType::Texture:
-            TextureRenderQ.push_back(Data);
+            primRenderQ.push_back(Data);
             break;
         case ERenderType::Text:
             TextRenderQ.push_back(Data);
@@ -48,7 +50,7 @@ public:
 
     // 수집된 아이템 조회
     const TArray<FDrawCommand>& GetPrimRenderQ() const { return primRenderQ; }
-    const TArray<FDrawCommand>& GetTextureRenderQ() const { return TextureRenderQ; }
+    const TArray<FDrawCommand>& GetTextureRenderQ() const { return primRenderQ; }
     const TArray<FDrawCommand>& GetTextRenderQ() const { return TextRenderQ; }
     const TArray<FDrawCommand>& GetInstancingRenderQ() const { return InstancingRenderQ; }
     const TArray<FDrawCommand>& GetSpotlightRenderQ() const { return SpotlightRenderQ; }
@@ -61,6 +63,8 @@ public:
         InstancingRenderQ.clear();
         SpotlightRenderQ.clear();
     }
+
+    void Sort();
 
     bool IsPrimRQEmpty() const { return primRenderQ.empty(); }
     bool IsTextureRQEmpty() const { return TextureRenderQ.empty(); }
