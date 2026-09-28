@@ -29,13 +29,16 @@ namespace
             return {};
         }
 
+        const bool bIsSpecial = (Data.Type == ERenderType::Text || Data.Type == ERenderType::Instancing);
+        const FMatrix InitialMVP = bIsSpecial ? (Data.ModelMatrix * Camera.CreateViewProjectionMatrix()) : FMatrix::Identity;
+
         FObjectConstants Constants
         {
-            .MVP = FMatrix::Identity,
+            .MVP = InitialMVP,
             .Color = Data.Materials[0].Color,
             .UVScale = Data.Materials[0].UVScale,
             .UVOffset = Data.Materials[0].UVOffset,
-            .World = FMatrix::Identity,
+            .World = Data.ModelMatrix,
             .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
         };
 
@@ -120,9 +123,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         // 인스턴싱 및 텍스트는 인스턴스 배열을 사용하므로 바로 푸시
         if (DrawCommand.Type == ERenderType::Text || DrawCommand.Type == ERenderType::Instancing)
         {
-            DrawCommand.Constants.World = FMatrix::Identity;
-            DrawCommand.Constants.MVP = View.ViewProj;
-
             RenderQueue.Push(DrawCommand);
             continue;
         }
