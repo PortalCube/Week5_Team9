@@ -175,11 +175,13 @@ void UScene::AddRenderComponent(UPrimitiveComponent *prim) {
   if (std::find(RenderComponents.begin(), RenderComponents.end(), prim) ==
       RenderComponents.end()) {
     RenderComponents.push_back(prim);
+    SceneBVH.AddObject(prim);
   }
 }
 
 void UScene::RemoveRenderComponent(UPrimitiveComponent *prim) {
   std::erase(RenderComponents, prim);
+  SceneBVH.RemoveObject(prim);
 }
 
 void UScene::RemoveActor(AActor *Actor) { std::erase(Actors, Actor); }

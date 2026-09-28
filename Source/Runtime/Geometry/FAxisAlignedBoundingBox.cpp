@@ -53,16 +53,15 @@ void FAxisAlignedBoundingBox::GetCorner(FVector OutCorner[8]) const
 	OutCorner[7] = FVector{ Max.X, Max.Y, Max.Z };
 }
 
-//FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FMesh& Mesh, const FMatrix& ModelMatrix)
-//{
-//	for (auto& Item : Mesh.GetPositions())
-//	{
-//		FVector WorldVector = ModelMatrix.TransformPointRow(Item);
-//
-//		for (int i = 0; i < 3; ++i)
-//		{
-//			Min[i] = std::min(WorldVector[i], Min[i]);
-//			Max[i] = std::max(WorldVector[i], Max[i]);
-//		}	
-//	}
-//}
+FAxisAlignedBoundingBox FAxisAlignedBoundingBox::Union(const FAxisAlignedBoundingBox& A, const FAxisAlignedBoundingBox& B)
+{
+	FAxisAlignedBoundingBox R;
+
+	//두 AABB를 품을 수 있는 크기로 Min, Max를 재조정한다.
+	for (int i = 0; i < 3; ++i)
+	{
+		R.Min[i] = std::min(A.Min[i], B.Min[i]);
+		R.Max[i] = std::max(A.Max[i], B.Max[i]);
+	}
+	return R;
+}

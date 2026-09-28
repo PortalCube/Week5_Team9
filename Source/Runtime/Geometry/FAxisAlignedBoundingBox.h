@@ -30,4 +30,16 @@ struct FAxisAlignedBoundingBox
 	FAxisAlignedBoundingBox(const FMesh& Mesh, const FMatrix& ModelMatrix);
 
 	void GetCorner(FVector OutCorner[8]) const;
+
+	[[nodiscard]] bool IsValid() const
+	{
+		return Min.X <= Max.X && Min.Y <= Max.Y && Min.Z <= Max.Z;
+	}
+
+	[[nodiscard]] static FAxisAlignedBoundingBox Union(const FAxisAlignedBoundingBox& A, const FAxisAlignedBoundingBox& B);
+	bool operator==(const FAxisAlignedBoundingBox& Other) const
+	{
+		return Min.X == Other.Min.X && Min.Y == Other.Min.Y && Min.Z == Other.Min.Z
+			&& Max.X == Other.Max.X && Max.Y == Other.Max.Y && Max.Z == Other.Max.Z;
+	}
 };
