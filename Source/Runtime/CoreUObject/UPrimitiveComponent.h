@@ -6,6 +6,7 @@
 #include "Runtime/Math/FMatrix.h"
 #include "Runtime/Geometry/FAxisAlignedBoundingBox.h"
 #include "USceneComponent.h"
+#include "Runtime/Rendering/FMaterial.h"
 
 class UPrimitiveComponent : public USceneComponent {
   GENERATED_BODY()
@@ -36,6 +37,9 @@ public:
     int32 GetBVHIndex() const { return BVHIndex; }
     void SetBVHIndex(int32 i) { BVHIndex = i; }
 
+    const std::vector<FMaterial>& GetCachedMaterials() const { return CachedMaterials; }
+    void UpdateMaterialCache();
+
 protected:
     UPrimitiveComponent() = default;
 
@@ -55,4 +59,6 @@ protected:
 
     //FSceneBVH 내의 역질의용 index, -1면 BVH에 없음
     int32 BVHIndex = -1;
+
+    TArray<FMaterial> CachedMaterials;
 };

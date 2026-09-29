@@ -16,6 +16,7 @@ void UPrimitiveComponent::Initialize()
     FMaterialInstance DefaultMaterial{ Registry.Get<UMaterial>("Material/Simple.json") };
 
     RenderData.Materials.push_back(DefaultMaterial);
+    UpdateMaterialCache();
 }
 
 void UPrimitiveComponent::SetMesh(UStaticMesh* Mesh)
@@ -34,12 +35,14 @@ void UPrimitiveComponent::SetMaterial(UMaterial* Material, int32 Index)
         RenderData.Materials.resize(TargetIndex + 1, FMaterialInstance{ Material });
     }
     RenderData.Materials[TargetIndex] = FMaterialInstance{ Material };
+    UpdateMaterialCache();
 }
 
 void UPrimitiveComponent::SetTexture(UTexture* Texture, int32 Index)
 {
     if (Index < 0 || static_cast<size_t>(Index) >= RenderData.Materials.size()) { return; }
     RenderData.Materials[static_cast<size_t>(Index)].Texture = Texture;
+    UpdateMaterialCache();
 }
 
 void UPrimitiveComponent::SetColor(const FVector4& Color, int32 Index)
@@ -82,4 +85,28 @@ void UPrimitiveComponent::Unregister()
         Scene->RemoveRenderComponent(this);
     }
     Super::Unregister();
+}
+
+void UPrimitiveComponent::UpdateMaterialCache()
+{
+	CachedMaterials.clear();
+	CachedMaterials.reserve(RenderData.Materials.size());
+	
+	for (const auto& Item : RenderData.Materials)
+	{
+		if (!Item.Pipeline)
+		{
+			continue;
+		}
+
+		FMaterial Material{};
+		Material.SetPipeLine(Item.Pipeline->Get());
+
+		if (Item.Texture)
+		{
+			Material.SetTexture(Item.Texture->Get());
+		}
+		Material.SetSamplerDesc(Item.SamplerDesc);
+		CachedMaterials.push_back(Material);
+	}
 }
