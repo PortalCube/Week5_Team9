@@ -239,6 +239,16 @@ void FImguiStatsWindow::DrawUnits()
 
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
         "Prims", "%.0f", Stats.GetDisplay(FName("Prims")), Color, TransColor);
+
+    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+            "Occlusion", "%.2f ms", Stats.GetDisplay(FName("Occlusion")) + Stats.GetDisplay(FName("OcclusionSelect"))
+            + Stats.GetDisplay(FName("OcclusionRaster")) + Stats.GetDisplay(FName("OcclusionTest")), Color, TransColor);
+
+    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+            "Occluders", "%.0f", Stats.GetDisplay(FName("Occluders")), Color, TransColor);
+
+    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+            "Occluded", "%.0f", Stats.GetDisplay(FName("Occluded")), Color, TransColor);
 }
 
 void FImguiStatsWindow::DrawRow(ImDrawList* DrawList,

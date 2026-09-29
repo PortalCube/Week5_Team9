@@ -9,6 +9,7 @@
 #include "Runtime/Engine/FSceneView.h"
 #include "Runtime/Geometry/FFrustum.h"
 #include "Runtime/Engine/FCulling.h"
+#include "Runtime/Engine/FOcclusionCuller.h"
 
 class FCamera;
 class FGizmo;
@@ -87,8 +88,12 @@ public:
 	//렌더 전에 컬링 판정
 	void CullScene(const FSceneView& View, const UScene& Scene);
 
-	//Cull Freeze 토글 시 호출. 다음 프레임에 현재 카메라로 다시 캡쳐
-	void InvalidateFrozenFrustums();
+	void SetOcclusionEnabled(bool bEnable) { bOcclusionEnabled = bEnable; }
+	bool IsOcclusionEnabled() const { return bOcclusionEnabled; }
+	FOcclusionCuller& GetOcclusionCuller() { return OcclusionCuller; }
+
+	//측정 : 다음에 렌더되는 뷰 하나에서 오라클을 실행(한 프레임 멈춤)
+	void RequestOcclusionOracle() { bOracleRequested = true; }
 
 private:
 	FCullingSettings CullingSettings;
@@ -111,5 +116,17 @@ private:
 
 	FFlatFrustumCuller FlatCuller;
 	IPrimitiveCuller* Culler = &FlatCuller;     // 추후 BVH/SIMD 컬러로 교체하는 지점
-	FFrozenView FrozenViews[MaxViewCount];
+
+	//Occlusion Culling
+	FOcclusionCuller OcclusionCuller;
+	bool bOcclusionEnabled = false;
+
+	// [SceneIndex] 오클루전으로 지웠으면 1
+	TArray<uint8> OccludedFlags;
+
+	bool bOracleRequested = false;
+	TArray<FDrawCommand> OracleDrawnCommands;     // 그린 것
+	TArray<FDrawCommand> OracleOccludedCommands;  // 오클루전으로 지운 것 (검증 대상)
+
+	void RunOcclusionOracle();
 };

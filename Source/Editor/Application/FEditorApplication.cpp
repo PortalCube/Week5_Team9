@@ -172,6 +172,8 @@ void FEditorApplication::ExecuteCommand(const char* Command) {
     if (!Command) return;
 
     FString lowerCmd = Command;
+    unsigned int NumberArg = 0;
+
     std::transform(lowerCmd.begin(), lowerCmd.end(), lowerCmd.begin(), ::tolower);
 
     if (lowerCmd.compare("stat memory") == 0) {
@@ -221,12 +223,44 @@ void FEditorApplication::ExecuteCommand(const char* Command) {
         UE_LOG("Culling : %s", RenderView->GetCullingSettings().bEnabled ? "ON" : "OFF");
     }
 
-    else if (lowerCmd.compare("cull freeze") == 0)
+    else if (lowerCmd.compare("cull occlusion?") == 0)
     {
-        //컬링 freeze 토글
-        RenderView->SetCullingFreeze(!RenderView->GetCullingSettings().bFreeze);
-        RenderView->InvalidateFrozenFrustums();
-        UE_LOG("Frustum Freeze : %s", RenderView->GetCullingSettings().bFreeze ? "ON" : "OFF");
+        UE_LOG("Occlusion Culling : %s", RenderView->IsOcclusionEnabled() ? "ON" : "OFF");
+    }
+
+    else if (lowerCmd.compare("cull occlusion") == 0)
+    {
+        RenderView->SetOcclusionEnabled(!RenderView->IsOcclusionEnabled());
+        UE_LOG("Occlusion Culling : %s", RenderView->IsOcclusionEnabled() ? "ON" : "OFF");
+    }
+
+    else if (lowerCmd.compare("occlusion oracle") == 0)
+    {
+        RenderView->RequestOcclusionOracle();
+        UE_LOG("다음 프레임에서 오클루전 오라클을 측정합니다 (한 프레임 멈춤)");
+    }
+
+    else if (sscanf_s(lowerCmd.c_str(), "occlusion budget %u", &NumberArg) == 1)
+    {
+        RenderView->GetOcclusionCuller().OccluderBudget = NumberArg;
+        UE_LOG("Occluder Budget : %u", NumberArg);
+    }
+
+    else if (sscanf_s(lowerCmd.c_str(), "occlusion res %u", &NumberArg) == 1)
+    {
+        RenderView->GetOcclusionCuller().BufferWidth = static_cast<int32>(std::max(16u, NumberArg));
+        UE_LOG("Occlusion Buffer Width : %u", NumberArg);
+    }
+
+    else if (lowerCmd.compare("cull include occluder") == 0)
+    {
+        RenderView->GetOcclusionCuller().bIncludeOccluderCull = !RenderView->GetOcclusionCuller().bIncludeOccluderCull;
+        UE_LOG("bIncludeOccluderCull : %s", RenderView->GetOcclusionCuller().bIncludeOccluderCull ? "ON" : "OFF");
+    }
+
+    else if (lowerCmd.compare("occlusion dump") == 0)
+    {
+        RenderView->GetOcclusionCuller().bDumpNextFrame = true;
     }
 
     else {

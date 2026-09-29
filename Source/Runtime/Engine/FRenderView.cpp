@@ -157,9 +157,20 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         UPrimitiveComponent* PrimitiveComponent = Primitives[i];
         if (!PrimitiveComponent) continue;
 
+        //컬링을 사용중인데 컬링 되어 버렸다면
+        const bool bCulled = bCullResultValid && !VisibleFlags[i];
+        const bool bOccluded = i < OccludedFlags.size() && OccludedFlags[i];
+
+        // 오라클 프레임: 오클루전으로 지운 것은 검증을 위해 명령만 만들고 그리지 않는다
+        //bOracleRequested가 true여야 한다.
+        const bool bCollectForOracleOnly = bCulled && bOccluded && bOracleRequested;
+
+        //컬링 되었는데 오라클을 사용하지 않는다면 조기 종료. 오라클을 사용한다면 진행한다.
+        if (bCulled && !bCollectForOracleOnly) continue;
+
         //bCullResultValid가 false라면 통과
         // bCullResultValid가 true라면 컬링 결과 통과시에만 수집
-        if (bCullResultValid && !VisibleFlags[i]) continue;
+        //if (bCullResultValid && !VisibleFlags[i]) continue;
         
         // 쇼 플래그 확인
         if ((static_cast<uint64>(View.ShowFlags) & static_cast<uint64>(PrimitiveComponent->GetShowFlag())) == 0)
@@ -178,6 +189,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         // 인스턴싱 및 텍스트는 인스턴스 배열을 사용하므로 바로 푸시
         if (DrawCommand.Type == ERenderType::Text || DrawCommand.Type == ERenderType::Instancing)
         {
+            if (bCollectForOracleOnly) continue;
             RenderQueue.Push(DrawCommand);
             continue;
         }
@@ -206,6 +218,19 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         {
             DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.5f };
         }
+
+        if (bCollectForOracleOnly)
+        {
+            //지운 것
+            OracleOccludedCommands.push_back(DrawCommand);
+            continue;
+        }
+        if (bOracleRequested && DrawCommand.Type == ERenderType::Primitive)
+        {
+            //그린것
+            OracleDrawnCommands.push_back(DrawCommand);
+        }
+
         RenderQueue.Push(DrawCommand);
     }
 }
@@ -244,6 +269,13 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
 
     // 기본 씬 오브젝트 패스
     FlushBasePass(View.Camera);
+
+    //BasePass 이후에 깊이 버퍼 기준으로 가시성 질의
+    if (bOracleRequested)
+    {
+        RunOcclusionOracle();
+        bOracleRequested = false;
+    }
 
     Renderer.ClearLastRenderStateKey();
 
@@ -528,35 +560,92 @@ void FRenderView::SetCullingFreeze(bool pCullingFreeze)
 void FRenderView::CullScene(const FSceneView& View, const UScene& Scene)
 {
     const TArray<FAxisAlignedBoundingBox>& CullDataList = Scene.GetCullDataList();
-    const uint32 Count = static_cast<uint32>(CullDataList.size());
+    
+    //와이어 프레임일때는 뒤가 비쳐 보이니 오클루전을 쓰지 않도록 한다.
+    const bool bUseOcclusion = bOcclusionEnabled && View.ViewMode != EViewModeIndex::VMI_Wireframe;
 
-    bCullResultValid = CullingSettings.bEnabled;
-    if (!bCullResultValid)
+    OccludedFlags.clear();
+    bCullResultValid = CullingSettings.bEnabled || bUseOcclusion;
+
+    //컬링하지 않는다면 종료
+    if (!bCullResultValid) return;
+
+    if (CullingSettings.bEnabled)
     {
-        // 컬링 OFF: 전부 가시로 집계
-        return;
+		// 매 프레임 그 프레임의 Frustum으로 전체 판정 (이전 결과 재사용 없음)
+		const FFrustum Frustum = GetCullFrustum(View);
+		Culler->Cull(Frustum, CullDataList, VisibleFlags);
+		//const uint32 VisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
+    }
+    else
+    {
+        //Frustum 없이 오클루전만
+        VisibleFlags.assign(CullDataList.size(), 1);
     }
 
-    // 매 프레임 그 프레임의 Frustum으로 전체 판정 (이전 결과 재사용 없음)
-    const FFrustum Frustum = GetCullFrustum(View);
-    const uint32 VisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
-
-    //Culling 결과를 카운트
-    //...
-}
-
-void FRenderView::InvalidateFrozenFrustums()
-{
-    for (FFrozenView& Frozen : FrozenViews)
+    if (bUseOcclusion)
     {
-        Frozen.bValid = false;
-        Frozen.bHasCorners = false;
+        SCOPE_CYCLE_COUNTER("Occlusion");
+        OcclusionCuller.Cull(View, Scene, VisibleFlags, OccludedFlags);
     }
 }
 
 FFrustum FRenderView::GetCullFrustum(const FSceneView& View)
 {
     return FFrustum::FromViewProjection(View.ViewProj);
+}
+
+void FRenderView::RunOcclusionOracle()
+{
+    TArray<const FDrawCommand*> Commands;
+    Commands.reserve(OracleDrawnCommands.size() + OracleOccludedCommands.size());
+    for (const FDrawCommand& Command : OracleDrawnCommands) 
+    { 
+        Commands.push_back(&Command); 
+    }
+    for (const FDrawCommand& Command : OracleOccludedCommands) 
+    { 
+        Commands.push_back(&Command); 
+    }
+
+    TArray<uint64> Samples;
+    Renderer.QueryVisibility(Commands, Samples);
+
+    const size_t DrawnCount = OracleDrawnCommands.size();
+    const size_t OccludedCount = OracleOccludedCommands.size();
+
+    uint32 DrawnVisible = 0;   // 그렸고 실제로 보임
+    uint32 Violations = 0;     // 오클루전으로 지웠는데 실제로는 보임 (버그)
+    for (size_t i = 0; i < Samples.size(); ++i)
+    {
+        const bool bVisible = Samples[i] > 0;
+        if (i < DrawnCount) 
+        { 
+            DrawnVisible += bVisible ? 1 : 0; 
+        }
+        else 
+        { 
+            Violations += bVisible ? 1 : 0; 
+        }
+    }
+
+    const uint32 Total = static_cast<uint32>(DrawnCount + OccludedCount);     // Frustum 통과 메시 수
+    const uint32 DrawnButHidden = static_cast<uint32>(DrawnCount) - DrawnVisible;
+    const uint32 TrulyHidden = DrawnButHidden + (static_cast<uint32>(OccludedCount) - Violations);
+    const float MaxRatio = Total ? 100.0f * TrulyHidden / Total : 0.0f;
+    const float Achieved = TrulyHidden ? 100.0f * (OccludedCount - Violations) / TrulyHidden : 0.0f;
+
+    UE_LOG("[Oracle] 대상 %u | 그림 %zu (실제 보임 %u, 가려졌는데 그림 %u) | 오클루전 컬링 %zu (위반 %u)",
+           Total, DrawnCount, DrawnVisible, DrawnButHidden, OccludedCount, Violations);
+    UE_LOG("[Oracle] 이론적 최대 컬링 %u개 (%.1f%%) | 현재 달성률 %.1f%%",
+           TrulyHidden, MaxRatio, Achieved);
+    if (Violations > 0)
+    {
+        UE_LOG_ERROR("[Oracle] 보이는 오브젝트 %u개를 지웠습니다. 보수성 버그", Violations);
+    }
+
+    OracleDrawnCommands.clear();
+    OracleOccludedCommands.clear();
 }
 
 FRenderView::~FRenderView()

@@ -17,11 +17,13 @@ struct FOccluderShape
 class FOcclusionBuffer
 {
 public:
+	//Width, Height, Depth 배열 크기 초기화
 	void Resize(int32 InWidth, int32 InHeight);
 	void SetNearW(float InNearW) { NearW = InNearW; }
+	//Depth배열 값 초기화. 막힌 게 없다.
 	void Clear();
 
-	//로컬 박스를 삼각형 12개로 그림다.(Occluder : 실제보다 작고 멀게)
+	//로컬 박스를 삼각형 12개로 그린다.(Occluder : 실제보다 작고 멀게)
 	void RasterizeBox(const FMatrix& ClipMVP, const FVector& Center, const FVector& Extent);
 
 	//월드 AABB가 완전히 가려졌는가(Occludee : 실제보다 크고 가깝게)
@@ -29,6 +31,9 @@ public:
 
 	int32 GetWidth() const { return Width; }
 	int32 GetHeight() const { return Height; }
+
+	//이미지로 저장
+	bool SaveToBMP(const char* Path) const;
 
 private:
 	//픽셀 좌표 + 선형 깊이
@@ -42,6 +47,7 @@ private:
 	//꼭지점 8개를 픽셀 좌표로. 하나라도 Near 앞이면 false(투영 불가)
 	bool ProjectBoxCorners(const FMatrix& Clip, const FVector& Center, const FVector& Extent, FScreenVertex Out[8])const;
 
+	//삼각형으로 뎁스 채우기
 	void RasterizeTriangle(const FScreenVertex& V0, const FScreenVertex& V1, const FScreenVertex& V2);
 
 	float NearW = 0.1f;
@@ -59,8 +65,12 @@ public:
 	uint32 Cull(const FSceneView& View, const UScene& Scene, TArray<uint8>& InOutVisibleFlags,
 				TArray<uint8>& OutOccludedFlags);
 
+	//Occluder에 사용할 오브젝트 수
 	uint32 OccluderBudget = 1024;
 	int32 BufferWidth = 512;
+	bool bIncludeOccluderCull = false;
+
+	bool bDumpNextFrame = false;
 
 private:
 	struct FCandidate
@@ -73,6 +83,6 @@ private:
 	const FOccluderShape& GetOccluderShape(const FMesh& Mesh);
 
 	FOcclusionBuffer Buffer;
-	TArray<FCandidate> Candiadates;
+	TArray<FCandidate> Candidates;
 	TMap<const FMesh*, FOccluderShape> ShapeCache;
 };
