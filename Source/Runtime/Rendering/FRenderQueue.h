@@ -10,11 +10,9 @@
 struct FDrawCommand
 {
     FMesh* Mesh = nullptr;
-    //TArray<FMaterial> Materials;
 	std::span<const FMaterial> Materials;
     FObjectConstants Constants{};
     ERenderType Type = ERenderType::Primitive;
-    //TArray<FInstanceData> Instances;
 	std::span<const FInstanceData> Instances;
     float Depth = 0.0f;
     int32 DepthBucket = 0;
