@@ -35,6 +35,8 @@ project "OiiaiiEngine"
     characterset "Unicode"
     staticruntime "Off"
 
+    vectorextensions "AVX2"
+
     files {
         "**.h",
         "**.cpp",
