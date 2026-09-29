@@ -904,6 +904,17 @@ void FRenderer::UpdateFrameConstants(const FFrameConstants &Constants) {
   Context->PSSetConstantBuffers(0, 1, FrameConstantBuffer.GetAddressOf());
 }
 
+void FRenderer::UpdateViewConstants(const FViewConstants &Constants) {
+  FViewConstants ShaderConstants = Constants;
+  ShaderConstants.View = ShaderConstants.View;
+  ShaderConstants.Projection = ShaderConstants.Projection.ToD3DMatrix();
+
+  Context->UpdateSubresource(ViewConstantBuffer.Get(), 0, nullptr,
+                             &ShaderConstants, 0, 0);
+  Context->VSSetConstantBuffers(1, 1, ViewConstantBuffer.GetAddressOf());
+  Context->PSSetConstantBuffers(1, 1, ViewConstantBuffer.GetAddressOf());
+}
+
 void FRenderer::Draw(const FDrawCommand &Command, uint32 Slot,
                      bool bApplyViewMode) {
   if (!Command.Mesh || Command.Materials.empty()) {
@@ -946,7 +957,7 @@ void FRenderer::DrawInstances(const FCamera &Camera) {
   auto &ResLib = FRenderResourceLibrary::Get();
 
   FObjectConstants SC{};
-  SC.MVP = Camera.GetViewProjectionMatrix();
+  SC.World = FMatrix::Identity;
 
   // 배치 키(MaterialID, MeshID) 순회
   for (const auto &[BatchKey, InstanceData] : ResLib.AllInstancingArrayMap) {

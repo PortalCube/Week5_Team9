@@ -31,11 +31,9 @@ void FGizmo::Draw(FRenderer& Renderer, const FTransform& Transform, const FCamer
 	FMatrix Scale = FMatrix::MakeScale(FVector{ GizmoScale, GizmoScale, GizmoScale });
 	FMatrix ObjectRotation = GetSpace() == EGizmoSpace::World ? FMatrix::GetIdentity() : Transform.GetRotation().ToMatrixRow();
 	FMatrix Translation = FMatrix::MakeTranslation(Transform.GetLocation());
-	FMatrix VP = Camera.GetViewProjectionMatrix();
-	 
-	DrawAxis(Renderer, EGizmoHandle::XAxis, Scale * ObjectRotation * Translation * VP);
-	DrawAxis(Renderer, EGizmoHandle::YAxis, Scale * YAxisRotation * ObjectRotation * Translation * VP);
-	DrawAxis(Renderer, EGizmoHandle::ZAxis, Scale * ZAxisRotation * ObjectRotation * Translation * VP);
+	DrawAxis(Renderer, EGizmoHandle::XAxis, Scale * ObjectRotation * Translation);
+	DrawAxis(Renderer, EGizmoHandle::YAxis, Scale * YAxisRotation * ObjectRotation * Translation);
+	DrawAxis(Renderer, EGizmoHandle::ZAxis, Scale * ZAxisRotation * ObjectRotation * Translation);
 }
 
 EGizmoHandle FGizmo::HitTest(const FTransform& Transform, const FRay& Ray, const FCamera& Camera) const
@@ -205,7 +203,7 @@ void FGizmo::EndInteraction()
 	ActiveHandle = EGizmoHandle::None;
 }
 
-void FGizmo::DrawAxis(FRenderer& Renderer, EGizmoHandle Handle, const FMatrix& MVP) const
+void FGizmo::DrawAxis(FRenderer& Renderer, EGizmoHandle Handle, const FMatrix& World) const
 {
 	constexpr FVector4 Color[3] = {
 		{ 0.8f, 0.0f, 0.0f, 1.0f },
@@ -247,7 +245,7 @@ void FGizmo::DrawAxis(FRenderer& Renderer, EGizmoHandle Handle, const FMatrix& M
 	}
 
 	FObjectConstants Constants{};
-	Constants.MVP = MVP;
+	Constants.World = World;
 	Constants.Color = DrawColor;
 	Constants.DisableShading = 1.0f;
 	Renderer.Draw(*GizmoMesh, *GizmoMaterial, Constants, 0);

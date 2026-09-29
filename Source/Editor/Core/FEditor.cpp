@@ -232,16 +232,13 @@ void FEditor::SpawnActorToCurrentScene(UClass* Type, int Size) {
             Random::GetFloat(Min, Max, 2),
         };
 
-        FTransform Transform;
-        Transform.SetLocation(Location);
-        Transform.SetScale3D(FVector{ 0.5f, 0.5f, 0.5f });
-
         AActor* NewActor = SceneManager->CurrentScene->SpawnActor(Type);
         if (!NewActor) { return; }
 
 
         FTransform CurrentTransform = NewActor->GetTransform();
         CurrentTransform.SetLocation(Location);
+        CurrentTransform.SetScale3D(FVector{ 0.5f, 0.5f, 0.5f });
         NewActor->SetTransform(CurrentTransform);
 
         // 액터 시작 및 선택

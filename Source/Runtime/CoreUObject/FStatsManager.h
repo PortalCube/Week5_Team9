@@ -2,33 +2,38 @@
 
 #include "Runtime/Core/TArray.h"
 #include "Runtime/Core/TMap.h"
+#include "Runtime/Core/TDeque.h"
 #include <dxgi1_4.h>
 #include <Runtime/Core/FName.h>
 
 #define PP_CAT_INNER(A, B) A##B
 #define PP_CAT(A, B)       PP_CAT_INNER(A, B)
 
+enum class EStatType : uint8
+{
+    Cycle,      // 시간(ms). 매 프레임 리셋
+    Counter,    // 개수. 매 프레임 리셋
+    Memory,     // 바이트. 리셋하지 않고 계속 누적
+};
+
+struct FStatEntry
+{
+    EStatType Type = EStatType::Counter;
+    bool bEnabled = false;
+    double Accum = 0.0;
+    int32 Calls = 0;
+    double Avg = 0.0, Max = 0.0;
+    double Display = 0.0;
+
+    TDeque<double> Value = {};
+    int32 DisplayCalls = 0;
+};
+
 class FStatsManager final
 {
 public:
 
-    enum class EStatType : uint8
-    {
-        Cycle,      // 시간(ms). 매 프레임 리셋
-        Counter,    // 개수. 매 프레임 리셋
-        Memory,     // 바이트. 리셋하지 않고 계속 누적
-    };
-
-    struct FStatEntry
-    {
-        EStatType Type = EStatType::Counter;
-        bool bEnabled = false;
-        double Accum = 0.0;
-        int32 Calls = 0;
-        double Avg = 0.0, Max = 0.0;
-        double Display = 0.0;
-        int32 DisplayCalls = 0;
-    };
+    constexpr static int32 MAX_RECORD = 600;
 
     static FStatsManager& Get()
     {
@@ -52,21 +57,27 @@ public:
     // 스탯을 등록하고 인덱스를 돌려준다. 이미 있으면 기존 인덱스를 준다.
     // 원소를 제거하지 않으므로 한 번 받은 인덱스는 영구히 유효하다.
     int32 Register(const FName& Name, EStatType Type);
-    inline FStatEntry& GetEntry(int32 Index) { return Entries[Index]; }
+    FStatEntry& GetEntry(int32 Index) { return Entries[Index]; }
 
-    inline void Accumulate(int32 Index, double Value)
+    const FStatEntry* GetEntry(const FName& Name) const
+    {
+        auto It = NameToIndex.find(Name);
+
+        if (It != NameToIndex.end())
+        {
+            return &Entries[It->second];
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+
+    void Accumulate(int32 Index, double Value)
     {
         FStatEntry& Entry = Entries[Index];
         Entry.Accum += Value;
         Entry.Calls++;
-    }
-
-    // 직전 프레임의 완성된 값. 없으면 0.
-    // 이름으로 찾는 느린 경로라 표시용으로만 쓴다.
-    double GetDisplay(const FName& Name) const
-    {
-        auto It = NameToIndex.find(Name);
-        return (It == NameToIndex.end()) ? 0.0 : Entries[It->second].Display;
     }
 
     void SetUnitStatsEnabled(bool bEnable);
@@ -88,7 +99,7 @@ private:
 // 그때 받은 인덱스를 계속 재사용한다.
 struct FStatId
 {
-    FStatId(const char* InName, FStatsManager::EStatType InType)
+    FStatId(const char* InName, EStatType InType)
         : Name(InName), Index(FStatsManager::Get().Register(Name, InType))
     {
     }
@@ -182,7 +193,7 @@ struct FScopeCycleCounter
 // Cycle
 // 지역 변수가 스코프 끝까지 살아남아야 하므로 do-while로 감싸지 않는다.
 #define SCOPE_CYCLE_COUNTER_IMPL(Tag, StatName, IsIndependent)                                     \
-    static const FStatId PP_CAT(_StatId_, Tag)(StatName, FStatsManager::EStatType::Cycle);         \
+    static const FStatId PP_CAT(_StatId_, Tag)(StatName, EStatType::Cycle);         \
     FScopeCycleCounter PP_CAT(_StatScope_, Tag)(PP_CAT(_StatId_, Tag).Index, IsIndependent)
 
 //스코프를 사용하여 사용 시간 기록
@@ -191,8 +202,8 @@ struct FScopeCycleCounter
 //이미 계산된 ms를 대입해야 하는 경우 사용
 #define SET_CYCLE_COUNTER_IMPL(Tag, StatName, Ms)                                                  \
     do {                                                                                           \
-        static const FStatId PP_CAT(_StatId_, Tag)(StatName, FStatsManager::EStatType::Cycle);     \
-        FStatsManager::FStatEntry& PP_CAT(_StatEntry_, Tag) =                                      \
+        static const FStatId PP_CAT(_StatId_, Tag)(StatName, EStatType::Cycle);     \
+        FStatEntry& PP_CAT(_StatEntry_, Tag) =                                      \
             FStatsManager::Get().GetEntry(PP_CAT(_StatId_, Tag).Index);                            \
         if (PP_CAT(_StatEntry_, Tag).bEnabled)                                                     \
         {                                                                                          \
@@ -208,8 +219,8 @@ struct FScopeCycleCounter
 // do-while(0)으로 감싸 전체를 문장 하나로 만든다. if/else 안에서도 안전.
 #define INC_DWORD_STAT_BY_IMPL(Tag, StatName, N)                                                   \
     do {                                                                                           \
-        static const FStatId PP_CAT(_StatId_, Tag)(StatName, FStatsManager::EStatType::Counter);   \
-        FStatsManager::FStatEntry& PP_CAT(_StatEntry_, Tag) =                                      \
+        static const FStatId PP_CAT(_StatId_, Tag)(StatName, EStatType::Counter);   \
+        FStatEntry& PP_CAT(_StatEntry_, Tag) =                                      \
             FStatsManager::Get().GetEntry(PP_CAT(_StatId_, Tag).Index);                            \
         if (PP_CAT(_StatEntry_, Tag).bEnabled)                                                     \
         {                                                                                          \
@@ -230,7 +241,7 @@ struct FScopeCycleCounter
 // 한 번이라도 거르면 누락된 할당/해제만큼 총량이 영구히 틀어진다.
 #define MEMORY_STAT_BY_IMPL(Tag, StatName, SignedSize)                                             \
     do {                                                                                           \
-        static const FStatId PP_CAT(_StatId_, Tag)(StatName, FStatsManager::EStatType::Memory);    \
+        static const FStatId PP_CAT(_StatId_, Tag)(StatName, EStatType::Memory);    \
         FStatsManager::Get().Accumulate(PP_CAT(_StatId_, Tag).Index, (SignedSize));                \
     } while (0)
 

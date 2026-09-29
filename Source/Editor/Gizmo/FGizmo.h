@@ -56,7 +56,7 @@ public:
 	EGizmoHandle ActiveHandle = EGizmoHandle::None;
 
 private:
-	void DrawAxis(FRenderer& Renderer, EGizmoHandle Handle, const FMatrix& MVP) const;
+	void DrawAxis(FRenderer& Renderer, EGizmoHandle Handle, const FMatrix& World) const;
 	[[nodiscard]] float CalculateGizmoScale(const FVector& GizmoLocation, const FCamera& Camera) const;
 	[[nodiscard]] FVector2 WorldToViewport(const FVector& WorldPosition, const FCamera& Camera, const FVector2& ViewportSize) const;
 

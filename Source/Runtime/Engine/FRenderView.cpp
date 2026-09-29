@@ -34,9 +34,6 @@ namespace
             return {};
         }
 
-        const bool bIsSpecial = (Data.Type == ERenderType::Text || Data.Type == ERenderType::Instancing);
-        const FMatrix InitialMVP = bIsSpecial ? (Data.ModelMatrix * Camera.GetViewProjectionMatrix()) : FMatrix::Identity;
-
         FDrawCommand Command
         {
             .Mesh = Data.Mesh->Get(),
@@ -48,7 +45,6 @@ namespace
 
         Command.Constants =
         {
-            .MVP = InitialMVP,
             .Color = Data.Materials[0].Color,
             .UVScale = Data.Materials[0].UVScale,
             .UVOffset = Data.Materials[0].UVOffset,
@@ -107,36 +103,30 @@ namespace
                 MeshId;
             
             // AABB의 Min X 값을 Depth로 지정
-            Command.Depth = Component.GetViewBounds(Camera).Min.X;
+            FAxisAlignedBoundingBox AABB = Component.GetWorldBounds();
+
+            FVector CameraForward = Camera.GetForwardVector();
+            FVector CameraPosition = Camera.GetPosition();
+            float ProjectedExtent =
+                std::abs(CameraForward.X) * AABB.Extent.X +
+                std::abs(CameraForward.Y) * AABB.Extent.Y +
+                std::abs(CameraForward.Z) * AABB.Extent.Z;
+
+            Command.Depth = (AABB.Center - CameraPosition).Dot(CameraForward) - ProjectedExtent;
             float Near = Camera.GetProjection().GetNearPlane();
             float Far = Camera.GetProjection().GetFarPlane();
             
-            Command.DepthBucket = static_cast<int32>((Command.Depth - Near) * 16 / (Far - Near));
+            Command.DepthBucket = static_cast<int32>((Command.Depth - Near) * 32 / (Far - Near));
         }
 
         return Command;
     }
 }
 
-void FRenderView::ReserveScratchMVPBuffer(size_t RequiredCount)
-{
-	if (RequiredCount <= ScratchMVPAllocated)
-	{
-		return;
-	}
-	if (ScratchMVPBuffer)
-	{
-		_aligned_free(ScratchMVPBuffer);
-	}
-	size_t NewAlloc = (RequiredCount + 3) & ~3;
-	ScratchMVPBuffer = (FMatrix*)_aligned_malloc(sizeof(FMatrix) * NewAlloc, 16);
-	ScratchMVPAllocated = NewAlloc;
-}
-
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
     const auto& SceneTransforms = Scene.GetSceneTransforms();
-    const int32 TotalBatchCount = static_cast<int32>(Scene.GetActors().size());
+    const int32 TotalBatchCount = static_cast<int32>(Scene.GetRenderComponents().size());
 
     if (Globals::bEnableBatchTransform)
     {
@@ -147,7 +137,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         }
     }
 
-    //SCOPE_INDEPENDENT_CYCLE_COUNTER("Test");
     const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
 
     //assert(!bCullResultValid || VisibleFlags.size() == Primitives.size());
@@ -188,13 +177,11 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         if (Globals::bEnableBatchTransform && Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
         {
             DrawCommand.Constants.World = SceneTransforms.WorldMatrices[Index];
-            DrawCommand.Constants.MVP = ScratchMVPBuffer[Index];
         }
         else
         {
             const FMatrix World = PrimitiveComponent->GetRenderMatrix(View.Camera);
             DrawCommand.Constants.World = World;
-            DrawCommand.Constants.MVP = World * View.ViewProj;
         }
         DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.0f };
         DrawCommand.Constants.DisableShading = View.ViewMode == EViewModeIndex::VMI_Unlit ? 1.0f : 0.0f;
@@ -207,7 +194,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         {
             DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.5f };
         }
-        RenderQueue.Push(DrawCommand);
+        RenderQueue.Push(std::move(DrawCommand));
     }
 }
 
@@ -292,7 +279,8 @@ void FRenderView::BeginView(const FSceneView& View)
     // ViewConstants 갱신
     FViewConstants ViewConstants
     {
-        .VP = View.ViewProj,
+        .View = View.Camera.GetViewMatrix(),
+        .Projection = View.Camera.GetProjectionMatrix(),
         .ViewportSize = FVector2
         {
             View.LengthUV.X * Renderer.GetWidth(),
@@ -300,7 +288,7 @@ void FRenderView::BeginView(const FSceneView& View)
         },
     };
 
-    Renderer.UpdateBuffer(ViewConstants, 1);
+    Renderer.UpdateViewConstants(ViewConstants);
 }
 
 void FRenderView::DrawGrid(const FCamera& Camera, FGrid& Grid)
@@ -418,7 +406,6 @@ void FRenderView::DrawStencilMask(const FCamera& Camera,
     FDrawCommand DrawCommand = GetDrawCommand(*PrimComp, Camera);
 
     DrawCommand.Constants.DisableShading = true;
-    DrawCommand.Constants.MVP = ModelMatrix * Camera.GetViewProjectionMatrix();
     DrawCommand.Constants.World = ModelMatrix;
 
     auto OutlineMaterial = FRenderResourceLibrary::Get().GetMaterial("#Outline");
@@ -453,7 +440,7 @@ void FRenderView::ClearTextInstances()
 void FRenderView::FlushLineBatch(const FMatrix& ViewProjection, const FName& PipelineId)
 {
     FObjectConstants Constants{};
-    Constants.MVP = ViewProjection;
+    Constants.World = FMatrix::Identity;
     Constants.DisableShading = 1.0f;
     Renderer.FlushLineBatch(Constants, PipelineId);
 }

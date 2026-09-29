@@ -2,6 +2,7 @@
 
 FCamera::FCamera()
 {
+	UpdateDirectionVectors();
 }
 
 void FCamera::SetPosition(const FVector& Value)
@@ -14,6 +15,7 @@ void FCamera::SetPosition(const FVector& Value)
 void FCamera::SetYaw(float Value)
 {
 	Yaw = Value;
+	UpdateDirectionVectors();
 	bRotationMatrixDirty = true;
 	bViewMatrixDirty = true;
 	bViewProjectionMatrixDirty = true;
@@ -22,6 +24,7 @@ void FCamera::SetYaw(float Value)
 void FCamera::SetPitch(float Value)
 {
 	Pitch = Value;
+	UpdateDirectionVectors();
 	bRotationMatrixDirty = true;
 	bViewMatrixDirty = true;
 	bViewProjectionMatrixDirty = true;
@@ -31,6 +34,7 @@ void FCamera::SetRotation(float NewPitch, float NewYaw)
 {
 	Pitch = NewPitch;
 	Yaw = NewYaw;
+	UpdateDirectionVectors();
 	bRotationMatrixDirty = true;
 	bViewMatrixDirty = true;
 	bViewProjectionMatrixDirty = true;
@@ -90,11 +94,6 @@ void FCamera::SetFarPlane(float Value)
 	bViewProjectionMatrixDirty = true;
 }
 
-void FCamera::SetUpVector(const FVector& Value)
-{
-	UpVector = Value;
-}
-
 const FMatrix& FCamera::GetRotationMatrix() const
 {
 	UpdateRotationMatrixIfDirty();
@@ -128,6 +127,14 @@ void FCamera::UpdateRotationMatrixIfDirty() const
 
 	RotationMatrix = FMatrix::MakeRotation(FVector(0.0f, Pitch, Yaw));
 	bRotationMatrixDirty = false;
+}
+
+void FCamera::UpdateDirectionVectors()
+{
+	const FMatrix Rotation = FMatrix::MakeRotation(FVector(0.0f, Pitch, Yaw));
+	ForwardVector = FVector{ Rotation.M[0][0], Rotation.M[0][1], Rotation.M[0][2] };
+	RightVector = FVector{ Rotation.M[1][0], Rotation.M[1][1], Rotation.M[1][2] };
+	UpVector = FVector{ Rotation.M[2][0], Rotation.M[2][1], Rotation.M[2][2] };
 }
 
 void FCamera::UpdateViewMatrixIfDirty() const

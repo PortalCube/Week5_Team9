@@ -27,11 +27,7 @@ class FRenderView final {
 	FRenderer& Renderer;
 	FRenderQueue RenderQueue;
 
-	FMatrix* ScratchMVPBuffer = nullptr;
-	size_t ScratchMVPAllocated = 0;
-
 public:
-	~FRenderView();
 	FRenderView(FRenderer& Renderer);
 	FRenderer& GetRenderer() { return Renderer; }
 	const FRenderer& GetRenderer() const { return Renderer; }
@@ -72,8 +68,6 @@ public:
 	void ClearTextInstances();
 	void FlushLineBatch(const FMatrix& ViewProjection, const FName& PipelineId = FName("Simple_Line"));
 	void FlushQueue(const FCamera& Camera);
-
-	void ReserveScratchMVPBuffer(size_t RequiredCount);
 
 	FRenderQueue& GetRenderQueue() { return RenderQueue; }
 	const FRenderQueue& GetRenderQueue() const { return RenderQueue; }

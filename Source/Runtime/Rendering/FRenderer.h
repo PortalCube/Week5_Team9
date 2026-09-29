@@ -268,10 +268,6 @@ public:
         ShaderConstants.MVP = ShaderConstants.MVP.ToD3DMatrix();
     }
 
-    if constexpr (requires { ShaderConstants.VP; }) {
-        ShaderConstants.VP = ShaderConstants.VP.ToD3DMatrix();
-    }
-
     D3D11_MAPPED_SUBRESOURCE Mapped{};
     if (FAILED(Context->Map(ObjectConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD,
                             0, &Mapped))) {

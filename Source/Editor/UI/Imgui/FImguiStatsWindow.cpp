@@ -3,6 +3,32 @@
 #include "Runtime/CoreUObject/FStatsManager.h"
 #include "Runtime/Engine/FTimeManager.h"
 
+#include <algorithm>
+
+double FImguiStatsWindow::GetStat(const FName& Name, size_t Range) const
+{
+    if (Range == 0) { return 0.0; }
+
+    FStatsManager& Stat = FStatsManager::Get();
+    const FStatEntry* Entry = Stat.GetEntry(Name);
+
+    if (!Entry) { return 0.0; }
+
+    double Result = 0.0;
+
+    size_t Size = Entry->Value.size();
+    Range = std::min(Size, Range);
+
+    for (int32 i = 0; i < Range; ++i)
+    {
+        Result += Entry->Value[Size - i - 1];
+    }
+
+    Result /= Range;
+
+    return Result;
+}
+
 void FImguiStatsWindow::Process(FEditor& Editor, float InDeltaTime) {
 
     if (bOpenMemory)
@@ -73,19 +99,19 @@ void FImguiStatsWindow::DrawStatsMemory()
     DrawRow(DrawList, Pos, CpuY,
         Width, RowHeight, 240.0f,
         "Total Memory Pool", "%.2f MB",
-        FStatsManager::Get().GetDisplay(FName("MemoryPool")) //, 30.0f);
+        GetStat(FName("MemoryPool")) //, 30.0f);
         / (1024.0 * 1024.0), Color, EvenRowColor);
 
     DrawRow(DrawList, Pos, CpuY,
         Width, RowHeight, 240.0f,
         "Memory Pool Used", "%.2f MB",
-        FStatsManager::Get().GetDisplay(FName("MemoryPoolUsed")) //, 10.0f);
+        GetStat(FName("MemoryPoolUsed")) //, 10.0f);
         / (1024.0 * 1024.0), Color, OddRowColor);
 
     DrawRow(DrawList, Pos, CpuY,
         Width, RowHeight, 240.0f,
         "Memory Pool Free", "%.2f MB",
-        FStatsManager::Get().GetDisplay(FName("MemoryPoolFree")) //, 30.0f);
+        GetStat(FName("MemoryPoolFree")) //, 30.0f);
         / (1024.0 * 1024.0), Color, EvenRowColor);
 }
 
@@ -136,26 +162,26 @@ void FImguiStatsWindow::DrawGPUStatsMemory()
     DrawRow(DrawList, Pos, GpuY,
         Width, RowHeight, 240.0f,
         "VertexShader", "%.2f MB",
-        FStatsManager::Get().GetDisplay(FName("VertexShaderMemory"))
+        GetStat(FName("VertexShaderMemory"))
         / (1024.0 * 1024.0), Color, OddRowColor);
     // Pixel Shader
     DrawRow(DrawList, Pos, GpuY,
         Width, RowHeight, 240.0f,
         "Pixel Shader", "%.2f MB",
-        FStatsManager::Get().GetDisplay(FName("PixelShaderMemory"))
+        GetStat(FName("PixelShaderMemory"))
         / (1024.0 * 1024.0), Color, EvenRowColor);
     // Texture
     DrawRow(DrawList, Pos, GpuY,
         Width, RowHeight, 240.0f,
         "Texture", "%.2f MB",
-        FStatsManager::Get().GetDisplay(FName("TextureMemory"))
+        GetStat(FName("TextureMemory"))
         / (1024.0 * 1024.0), Color, OddRowColor);
 
     // Static Mesh
     DrawRow(DrawList, Pos, GpuY,
         Width, RowHeight, 240.0f,
         "Static Mesh", "%.2f MB",
-        FStatsManager::Get().GetDisplay(FName("StaticMeshMemory")) //, 10.0f);
+        GetStat(FName("StaticMeshMemory")) //, 10.0f);
         / (1024.0 * 1024.0), Color, EvenRowColor);
 }
 
@@ -208,22 +234,22 @@ void FImguiStatsWindow::DrawUnits()
     FVector4 Color(0.0f, 255.0f, 255.0f, 255.0f);
     FVector4 TransColor(0.0f, 0.0f, 0.0f, 128.0f);
 
-    const FStatsManager& Stats = FStatsManager::Get();
+    FStatsManager& Stats = FStatsManager::Get();
 
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
-        "Frame", "%.2f ms", Stats.GetDisplay(FName("Frame")), Color, TransColor);
+        "Frame", "%.2f ms", GetStat(FName("Frame")), Color, TransColor);
 
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
-        "Game", "%.2f ms", Stats.GetDisplay(FName("Game")), Color, TransColor);
+        "Game", "%.2f ms", GetStat(FName("Game")), Color, TransColor);
 
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
-        "Draw", "%.2f ms", Stats.GetDisplay(FName("Draw")), Color, TransColor);
+        "Draw", "%.2f ms", GetStat(FName("Draw")), Color, TransColor);
 
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
-        "GPU Time", "%.2f ms", Stats.GetDisplay(FName("GPU Time")), Color, TransColor);
+        "GPU Time", "%.2f ms", GetStat(FName("GPU Time")), Color, TransColor);
 
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
-        "Input", "%.2f ms", Stats.GetDisplay(FName("Input")), Color, TransColor);
+        "Input", "%.2f ms", GetStat(FName("Input")), Color, TransColor);
 
     // Mem/Vram은 프레임마다 새로 물어보는 값이라 스탯으로 누적하지 않는다.
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
@@ -235,10 +261,10 @@ void FImguiStatsWindow::DrawUnits()
         static_cast<double>(Stats.GetGPUMemoryUsed()) / BytesPerMB, Color, TransColor);
 
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
-        "Draws", "%.0f", Stats.GetDisplay(FName("Draws")), Color, TransColor);
+        "Draws", "%.0f", GetStat(FName("Draws")), Color, TransColor);
 
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
-        "Prims", "%.0f", Stats.GetDisplay(FName("Prims")), Color, TransColor);
+        "Prims", "%.0f", GetStat(FName("Prims")), Color, TransColor);
 }
 
 void FImguiStatsWindow::DrawRow(ImDrawList* DrawList,
