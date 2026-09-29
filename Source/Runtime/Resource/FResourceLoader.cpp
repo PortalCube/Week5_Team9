@@ -259,7 +259,7 @@ void FResourceLoader::LoadAssets()
 	}
 }
 
-bool FResourceLoader::ImportObj(const std::filesystem::path& ObjFilePath)
+bool FResourceLoader::ImportObj(const std::filesystem::path& ObjFilePath, FString* OutAssetId)
 {
 	namespace fs = std::filesystem;
 
@@ -304,6 +304,11 @@ bool FResourceLoader::ImportObj(const std::filesystem::path& ObjFilePath)
 
 	fs::path AssetPath = fs::path(RelativeMeshPath).replace_extension(".json");
 	FName AssetID = FName(AssetPath.generic_string());	
+
+	if (OutAssetId)
+	{
+		*OutAssetId = AssetPath.generic_string();
+	}
 
 	FArchive Archive;
 	Archive.SetString("Name", ModelName);
