@@ -99,6 +99,9 @@ void UScene::Update(float DeltaTime) {
               Actor->Update(DeltaTime);
           }
       }
+
+
+
     //return;
   }
 

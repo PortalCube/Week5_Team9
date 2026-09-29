@@ -159,6 +159,11 @@ struct FMathSSE
 		return _mm_cmplt_ps(A, B);
 	}
 
+	FORCEINLINE static VectorRegister4Float VectorCompareEQ(VectorRegister4Float A, VectorRegister4Float B)
+	{
+		return _mm_cmpeq_ps(A, B);
+	}
+
 	// 4개의 float 슬롯의 최상위 비트만 뽑아 4비트 정수로 변환
 	FORCEINLINE static int32_t VectorMaskBits(VectorRegister4Float Vec)
 	{
@@ -194,5 +199,11 @@ struct FMathSSE
 	FORCEINLINE static VectorRegister4Float VectorSelect(VectorRegister4Float Mask, VectorRegister4Float A, VectorRegister4Float B)
 	{
 		return _mm_blendv_ps(B, A, Mask);
+	}
+
+	FORCEINLINE static VectorRegister4Float VectorTranspose4x4(VectorRegister4Float& Row0, VectorRegister4Float& Row1, VectorRegister4Float& Row2, VectorRegister4Float& Row3)
+	{
+		_MM_TRANSPOSE4_PS(Row0, Row1, Row2, Row3);
+		return Row0;
 	}
 };
