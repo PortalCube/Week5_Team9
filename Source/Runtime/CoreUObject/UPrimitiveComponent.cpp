@@ -75,7 +75,7 @@ FCullData UPrimitiveComponent::CalcWorldCullData() const
     const FVector LocalCenter = (Local.Min + Local.Max) * 0.5f;
     const FVector LocalExtent = (Local.Max - Local.Min) * 0.5f;
 
-    const FMatrix W = GetGlobalTransform().ToMatrix();
+    const FMatrix W = GetGlobalTransform().GetMatrix();
 
     FCullData Out;
 

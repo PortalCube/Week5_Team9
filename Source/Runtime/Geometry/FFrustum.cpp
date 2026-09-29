@@ -46,6 +46,7 @@ FFrustum FFrustum::FromViewProjection(const FMatrix& ViewProj)
 
         const float InvLength = (Length > 1e-10f) ? 1.f / Length : 0.f;
 
+        //Normalize
         Result.Planes[p].Normal = FVector{ A * InvLength, B * InvLength, C * InvLength };
         Result.Planes[p].Dist = Raw[p][3] * InvLength;
     }
