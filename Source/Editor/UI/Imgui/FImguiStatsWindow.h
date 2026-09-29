@@ -20,6 +20,8 @@ public:
 	FImguiStatsWindow(const FImguiStatsWindow&) = delete;
 	FImguiStatsWindow& operator=(const FImguiStatsWindow&) = delete;
 
+	double GetStat(const FName& Name, size_t Range = 1) const;
+
 	void Process(FEditor& Editor, float DeltaTime);
 
 	void DrawStatsMemory();

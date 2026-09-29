@@ -183,6 +183,13 @@ void FStatsManager::ResetFrame()
 {
     for (FStatEntry& Entry : Entries)
     {
+        Entry.Value.push_back(Entry.Accum);
+
+        if (Entry.Value.size() > MAX_RECORD)
+        {
+            Entry.Value.pop_front();
+        }
+
         // 메모리는 현재 총량이므로 평활하지 않고 리셋도 하지 않는다.
         if (Entry.Type == EStatType::Memory)
         {

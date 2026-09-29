@@ -69,12 +69,21 @@ void FObjViewerApplication::Render()
 	{
 		FMatrix ViewProj = Camera.GetViewProjectionMatrix();
 		FMatrix World = FMatrix::GetIdentity();
+		FViewConstants ViewConstants
+		{
+			.VP = ViewProj,
+			.ViewportSize = FVector2
+			{
+				static_cast<float>(Renderer->GetWidth()),
+				static_cast<float>(Renderer->GetHeight()),
+			},
+		};
+		Renderer->UpdateViewConstants(ViewConstants);
 
 		Renderer->UpdateLightConstants(Light, EViewModeIndex::VMI_Lit);
 
 		FObjectConstants Constants;
 		Constants.World = World;
-		Constants.MVP = World * ViewProj;
 		Constants.DisableShading = 0.3f;
 
 		// Set Material on all sections

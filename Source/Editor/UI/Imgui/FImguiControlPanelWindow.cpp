@@ -13,38 +13,12 @@
 #include <ShlObj.h>
 #include <filesystem>
 
-namespace
-{
-    // <디렉토리>/<이름>.Scene 형식으로 씬 경로 생성
-    FString MakeScenePath(const char* SceneName)
-    {
-        PWSTR UserPath = nullptr;
-
-        if (FAILED(SHGetKnownFolderPath(FOLDERID_Profile, 0, nullptr, &UserPath)))
-            return "";
-
-        std::filesystem::path Path = UserPath;
-        CoTaskMemFree(UserPath);
-
-        Path /= "week3_team9";
-        Path /= "SceneData";
-        Path /= FString(SceneName) + ".Scene";
-
-        return Path.string();
-    }
-}
-
 void FImguiControlPanelWindow::Process(FEditor& Editor)
 {
     const uint64 Count = UObject::GetTotalAllocationCount();
     const uint64 Bytes = UObject::GetTotalAllocationBytes();
     ImGui::Begin("Jungle Control Panel");
 
-    ImGui::Text("Hello Jungle World!");
-    //FPS 표시
-    ImGui::Text("FPS %.0f (%.0f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
-    //메모리 사용 표시
-    ImGui::Text("Live UObjects : %llu, UObject Memory: %llu bytes (%.2f KiB)", static_cast<unsigned long long>(Count), static_cast<unsigned long long>(Bytes), static_cast<double>(Bytes) / 1024.0);
     ImGui::Separator();
 
     if (ImGui::Button("대회 씬 바로 불러오기"))
