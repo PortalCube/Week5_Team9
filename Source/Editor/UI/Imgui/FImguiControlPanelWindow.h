@@ -22,4 +22,5 @@ private:
 	void BVHDebugSetting(FEditor& Editor);
 	void RenderStateSort(FEditor& Editor);
 	void SIMDDebugSetting(FEditor& Editor);
+	void LODSetting(FEditor& Editor);
 };

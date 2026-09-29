@@ -2,6 +2,7 @@
 
 FCamera::FCamera()
 {
+	UpdateDirectionVectors();
 }
 
 void FCamera::SetPosition(const FVector& Value)
@@ -14,6 +15,7 @@ void FCamera::SetPosition(const FVector& Value)
 void FCamera::SetYaw(float Value)
 {
 	Yaw = Value;
+	UpdateDirectionVectors();
 	bRotationMatrixDirty = true;
 	bViewMatrixDirty = true;
 	bViewProjectionMatrixDirty = true;
@@ -22,6 +24,7 @@ void FCamera::SetYaw(float Value)
 void FCamera::SetPitch(float Value)
 {
 	Pitch = Value;
+	UpdateDirectionVectors();
 	bRotationMatrixDirty = true;
 	bViewMatrixDirty = true;
 	bViewProjectionMatrixDirty = true;
@@ -31,6 +34,7 @@ void FCamera::SetRotation(float NewPitch, float NewYaw)
 {
 	Pitch = NewPitch;
 	Yaw = NewYaw;
+	UpdateDirectionVectors();
 	bRotationMatrixDirty = true;
 	bViewMatrixDirty = true;
 	bViewProjectionMatrixDirty = true;
@@ -90,11 +94,6 @@ void FCamera::SetFarPlane(float Value)
 	bViewProjectionMatrixDirty = true;
 }
 
-void FCamera::SetUpVector(const FVector& Value)
-{
-	UpVector = Value;
-}
-
 const FMatrix& FCamera::GetRotationMatrix() const
 {
 	UpdateRotationMatrixIfDirty();
@@ -128,6 +127,14 @@ void FCamera::UpdateRotationMatrixIfDirty() const
 
 	RotationMatrix = FMatrix::MakeRotation(FVector(0.0f, Pitch, Yaw));
 	bRotationMatrixDirty = false;
+}
+
+void FCamera::UpdateDirectionVectors()
+{
+	const FMatrix Rotation = FMatrix::MakeRotation(FVector(0.0f, Pitch, Yaw));
+	ForwardVector = FVector{ Rotation.M[0][0], Rotation.M[0][1], Rotation.M[0][2] };
+	RightVector = FVector{ Rotation.M[1][0], Rotation.M[1][1], Rotation.M[1][2] };
+	UpVector = FVector{ Rotation.M[2][0], Rotation.M[2][1], Rotation.M[2][2] };
 }
 
 void FCamera::UpdateViewMatrixIfDirty() const
@@ -164,4 +171,14 @@ void FCamera::UpdateViewProjectionMatrixIfDirty() const
 	UpdateProjectionMatrixIfDirty();
 	ViewProjectionMatrix = ViewMatrix * ProjectionMatrix;
 	bViewProjectionMatrixDirty = false;
+}
+
+FVector FCamera::GetForwardVector() const
+{
+	const FMatrix& Rot = GetRotationMatrix();
+
+	// 엔진의 FMatrix 멤버 변수 형태(M[0][0] 또는 m[0][0] 등)에 맞춰 작성합니다.
+	FVector Forward(Rot.M[0][0], Rot.M[0][1], Rot.M[0][2]);
+	Forward.Normalize();
+	return Forward;
 }

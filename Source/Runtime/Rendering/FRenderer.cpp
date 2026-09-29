@@ -146,7 +146,17 @@ void FRenderer::ClearDepth() {
       DepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 }
 
+void FRenderer::FlushDrawStats() {
+  if (PendingDrawCount != 0u) {
+    INC_DWORD_STAT_BY("Draws", PendingDrawCount);
+    INC_DWORD_STAT_BY("Prims", PendingPrimCount);
+  }
+  PendingDrawCount = 0u;
+  PendingPrimCount = 0u;
+}
+
 void FRenderer::SwapBuffer() {
+  FlushDrawStats();
   EndGPUTimer();
   ResolveGPUTimer();
 
@@ -233,7 +243,9 @@ TSharedPtr<FMesh> FRenderer::CreateMesh(const FMeshDesc &Desc) {
     Mesh->Indices.assign(indices, indices + Desc.IndexCount);
   }
 
-  Mesh->BuildTriangleVertices();
+  if (Desc.bBuildBVH) {
+    Mesh->BuildTriangleVertices();
+  }
 
   Mesh->Topology = Desc.bIsLine ? D3D11_PRIMITIVE_TOPOLOGY_LINELIST
                                 : D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -1001,6 +1013,17 @@ void FRenderer::UpdateFrameConstants(const FFrameConstants &Constants) {
   Context->PSSetConstantBuffers(0, 1, FrameConstantBuffer.GetAddressOf());
 }
 
+void FRenderer::UpdateViewConstants(const FViewConstants &Constants) {
+  FViewConstants ShaderConstants = Constants;
+  ShaderConstants.View = ShaderConstants.View;
+  ShaderConstants.Projection = ShaderConstants.Projection.ToD3DMatrix();
+
+  Context->UpdateSubresource(ViewConstantBuffer.Get(), 0, nullptr,
+                             &ShaderConstants, 0, 0);
+  Context->VSSetConstantBuffers(1, 1, ViewConstantBuffer.GetAddressOf());
+  Context->PSSetConstantBuffers(1, 1, ViewConstantBuffer.GetAddressOf());
+}
+
 void FRenderer::Draw(const FDrawCommand &Command, uint32 Slot,
                      bool bApplyViewMode) {
   if (!Command.Mesh || Command.Materials.empty()) {
@@ -1043,7 +1066,7 @@ void FRenderer::DrawInstances(const FCamera &Camera) {
   auto &ResLib = FRenderResourceLibrary::Get();
 
   FObjectConstants SC{};
-  SC.MVP = Camera.GetViewProjectionMatrix();
+  SC.World = FMatrix::Identity;
 
   // 배치 키(MaterialID, MeshID) 순회
   for (const auto &[BatchKey, InstanceData] : ResLib.AllInstancingArrayMap) {

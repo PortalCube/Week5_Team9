@@ -15,7 +15,8 @@ static_assert(sizeof(FFrameConstants) % 16 == 0);
 
 // Register = b1
 struct FViewConstants {
-	FMatrix VP;
+	FMatrix View;
+	FMatrix Projection;
 	FVector2 ViewportSize;
 	FVector2 Padding;
 };
@@ -23,7 +24,7 @@ static_assert(sizeof(FViewConstants) % 16 == 0);
 
 // Register = b2
 struct FObjectConstants {
-  FMatrix MVP;
+  //FMatrix MVP;
   FVector4 Color{0.0f, 0.0f, 0.0f, 0.0f};
   FVector2 UVScale{1.0f, 1.0f};
   FVector2 UVOffset{0.0f, 0.0f};

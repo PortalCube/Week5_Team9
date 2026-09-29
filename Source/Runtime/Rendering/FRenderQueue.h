@@ -10,13 +10,14 @@
 struct FDrawCommand
 {
     FMesh* Mesh = nullptr;
-    TArray<FMaterial> Materials;
+	std::span<const FMaterial> Materials;
     FObjectConstants Constants{};
     ERenderType Type = ERenderType::Primitive;
-    TArray<FInstanceData> Instances;
+	std::span<const FInstanceData> Instances;
     float Depth = 0.0f;
     int32 DepthBucket = 0;
     uint64 RenderStateKey = 0;
+    uint32 LODIndex = 0;
 };
 
 // 한 프레임의 드로우 요청을 수집하는 큐
@@ -24,21 +25,21 @@ class FRenderQueue
 {
 public:
     // 아이템 추가
-    void Push(const FDrawCommand& Data)
+    void Push(FDrawCommand&& Data)
     {
         switch (Data.Type)
         {
         case ERenderType::Primitive:
-            primRenderQ.push_back(Data);
+            primRenderQ.push_back(std::move(Data));
             break;
         case ERenderType::Text:
-            TextRenderQ.push_back(Data);
+            TextRenderQ.push_back(std::move(Data));
             break;
         case ERenderType::Instancing:
-            InstancingRenderQ.push_back(Data);
+            InstancingRenderQ.push_back(std::move(Data));
             break;
         case ERenderType::Spotlight:
-            SpotlightRenderQ.push_back(Data);
+            SpotlightRenderQ.push_back(std::move(Data));
             break;
         default:
             break;

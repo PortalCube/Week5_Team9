@@ -33,6 +33,12 @@ public:
 
     virtual EEngineShowFlags GetShowFlag() const;
 
+    // 바운딩 구의 지름이 화면 높이의 몇 배를 차지하는지 계산한다.
+    float ComputeScreenSize(const FCamera& Camera) const;
+    // ComputeScreenSize의 제곱. 제곱근이 없어 LOD 선택처럼 매 프레임 도는 곳에서 쓴다.
+    float ComputeScreenSizeSquared(const FCamera& Camera) const;
+    uint32 SelectLOD(const FCamera& Camera) const;
+
 protected:
     UStaticMeshComponent() = default;
 

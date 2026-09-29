@@ -7,6 +7,7 @@
 #include "Runtime/Geometry/FAxisAlignedBoundingBox.h"
 #include "USceneComponent.h"
 #include "Runtime/Engine/FCulling.h"
+#include "Runtime/Rendering/FMaterial.h"
 
 class UPrimitiveComponent : public USceneComponent {
   GENERATED_BODY()
@@ -27,10 +28,10 @@ public:
     virtual void SetRelativeTransform(const FTransform& RelativeTransform) override;
 
     virtual const FRenderData& GetRenderData(const FCamera& Camera) const { return RenderData; }
-    virtual FMatrix GetRenderMatrix(const FCamera& Camera) const { return GetGlobalTransform().GetMatrix(); }
+    virtual FMatrix GetRenderMatrix(const FCamera& Camera) const { return GetGlobalTransformMatrix(); }
 
     virtual FAxisAlignedBoundingBox GetLocalBounds() const { return LocalBounds; }
-    virtual FAxisAlignedBoundingBox GetWorldBounds() const;
+    virtual const FAxisAlignedBoundingBox& GetWorldBounds() const;
     virtual FAxisAlignedBoundingBox GetViewBounds(const FCamera& Camera) const;
     const UStaticMesh* GetMeshAsset() const { return RenderData.Mesh; }
 
@@ -47,6 +48,9 @@ public:
 
     //월드 AABB 업데이트
     void UpdateWorldBounds();
+
+    const std::vector<FMaterial>& GetCachedMaterials() const { return CachedMaterials; }
+    void UpdateMaterialCache();
 
 protected:
     UPrimitiveComponent() = default;
@@ -73,4 +77,6 @@ protected:
 private:
     int32 SceneIndex = -1;
     bool bBoundDirtyQueued = false;
+
+    TArray<FMaterial> CachedMaterials;
 };

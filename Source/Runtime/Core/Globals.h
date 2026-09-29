@@ -26,4 +26,13 @@ namespace Globals
 
 	inline bool bSortTest = false;
 	inline bool bEnableBatchTransform = true;
+
+	// LOD 설정. ForcedLOD가 0 이상이면 화면 크기와 상관없이 해당 LOD로 고정한다.
+	inline bool bEnableLOD = true;
+	inline int32 ForcedLOD = -1;
+
+	// LOD 디버그. 색상 표시를 켜면 LOD마다 다른 색으로 칠한다.
+	constexpr uint32 MaxDebugLODCount = 4;
+	inline bool bShowLODColor = false;
+	inline uint32 LODDrawCounts[MaxDebugLODCount] = {};	// 마지막으로 그린 뷰의 LOD별 컴포넌트 수
 };

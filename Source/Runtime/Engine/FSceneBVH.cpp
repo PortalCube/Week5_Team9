@@ -21,7 +21,7 @@ void FSceneBVH::Build(const TArray<UPrimitiveComponent*>& Components)
         //빈 박스는 BVH에서 제외한다.
         if (!Local.IsValid()) { continue; }
 
-        const FMatrix& World = C->GetGlobalTransform().GetMatrix();
+        const FMatrix World = C->GetGlobalTransformMatrix();
         FAxisAlignedBoundingBox WorldBox(Local, World);
 
         //{AABB, 중심점, 컴포넌트}
@@ -135,7 +135,7 @@ void FSceneBVH::RefitObject(UPrimitiveComponent* Moved)
 
 
     //변경된 Transform으로 AABB 다시 넣기
-    ObjectBounds[ObjectIndex] = FAxisAlignedBoundingBox(Local, Moved->GetGlobalTransform().GetMatrix());
+    ObjectBounds[ObjectIndex] = FAxisAlignedBoundingBox(Local, Moved->GetGlobalTransformMatrix());
 
     RefitFromLeaf(LeafOfObject[ObjectIndex]);
 }
@@ -207,7 +207,7 @@ bool FSceneBVH::QueryRay(const FRay &Ray, UPrimitiveComponent*& OutHit, FVector 
         if (!Local.IsValid()) { continue; }
 
         //대기열은 바운드 캐시가 없으므로 즉석 계산
-        const FAxisAlignedBoundingBox World(Local, C->GetGlobalTransform().GetMatrix());
+        const FAxisAlignedBoundingBox World(Local, C->GetGlobalTransformMatrix());
         TestObjectRay(C, World, Ray, Closest, OutHit, OutImpact);
     }
 
@@ -277,40 +277,13 @@ void FSceneBVH::TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBounding
 
     float Dist = 0.0f;
     FVector Impact{};
-    if (FRayCastingManager::RayIntersectsMesh(Ray, *Mesh, C->GetGlobalTransform().GetMatrix(), Dist, Impact)
+    if (FRayCastingManager::RayIntersectsMesh(Ray, *Mesh, C->GetGlobalTransformMatrix(), Dist, Impact)
         && Dist < Closest)
     {
         Closest = Dist;
         OutHit = C;
         OutImpact = Impact;
     }
-}
-
-bool FSceneBVH::Validate() const
-{
-    for (uint32 n = 0; n < Nodes.size(); ++n)
-    {
-        const FSceneBVHNode& N = Nodes[n];
-
-        if (N.ObjCount > 0) // 리프: 구간의 모든 박스를 품어야 함
-        {
-            for (uint32 i = N.ObjStart; i < N.ObjStart + N.ObjCount; ++i)
-            {
-                for (int a = 0; a < 3; ++a)
-                {
-                    if (ObjectBounds[i].Min[a] < N.Bounds.Min[a]) { return false; }
-                    if (ObjectBounds[i].Max[a] > N.Bounds.Max[a]) { return false; }
-                }
-            }
-        }
-        else  // 내부: 자식 둘의 합집합과 같아야 함
-        {
-            const FAxisAlignedBoundingBox M = FAxisAlignedBoundingBox::Union(Nodes[N.Left].Bounds, Nodes[N.Left + 1].Bounds);
-            if (!(M == N.Bounds)) { return false; }
-            if (Nodes[N.Left].Parent != n || Nodes[N.Left + 1].Parent != n) { return false; }
-        }
-    }
-    return true;
 }
 
 void FSceneBVH::AddObject(UPrimitiveComponent* C)

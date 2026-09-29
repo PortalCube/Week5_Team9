@@ -11,6 +11,8 @@ class FCamera
 	float Pitch = 0.0f;
 	FCameraProjection Projection;
 	FVector UpVector{ 0.0f, 0.0f, 1.0f };
+	FVector ForwardVector{ 1.0f, 0.0f, 0.0f };
+	FVector RightVector{ 0.0f, 1.0f, 0.0f };
 
 	mutable bool bRotationMatrixDirty = true;
 	mutable bool bViewMatrixDirty = true;
@@ -23,6 +25,7 @@ class FCamera
 	mutable FMatrix ViewProjectionMatrix;
 
 	void UpdateRotationMatrixIfDirty() const;
+	void UpdateDirectionVectors();
 	void UpdateViewMatrixIfDirty() const;
 	void UpdateProjectionMatrixIfDirty() const;
 	void UpdateViewProjectionMatrixIfDirty() const;
@@ -35,6 +38,9 @@ public:
 	float GetPitch() const { return Pitch; }
 	const FCameraProjection& GetProjection() const { return Projection; }
 	const FVector& GetUpVector() const { return UpVector; }
+	//const FVector& GetForwardVector() const { return ForwardVector; }
+	FVector GetForwardVector() const;
+	const FVector& GetRightVector() const { return RightVector; }
 
 	void SetPosition(const FVector& Value);
 	void SetYaw(float Value);
@@ -47,7 +53,6 @@ public:
 	void SetOrthographicHeight(float Value);
 	void SetNearPlane(float Value);
 	void SetFarPlane(float Value);
-	void SetUpVector(const FVector& Value);
 
 	const FMatrix& GetRotationMatrix() const;
 	const FMatrix& GetViewMatrix() const;

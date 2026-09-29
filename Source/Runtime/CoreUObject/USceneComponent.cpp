@@ -58,6 +58,7 @@ void USceneComponent::SetupAttachment(USceneComponent* InParent)
     if (InParent == this) { return; }
 
     SceneOwner = InParent;
+    bGlobalDirty = true;
     if (InParent)
     {
         ActorOwner = InParent->GetActorOwner();
@@ -101,34 +102,66 @@ void USceneComponent::SetRelativeTransform(const FTransform& RelativeTransform)
     MarkActorTransformDirty();
 }
 
-FTransform USceneComponent::GetGlobalTransform() const //나중에 부모 rootcomponent world좌표 써야됨
+USceneComponent* USceneComponent::GetTransformParent() const
 {
     if (SceneOwner)
     {
-        return SceneOwner->GetGlobalTransform() * RelativeTransform;
+        return SceneOwner;
     }
 
-    if (!ActorOwner || ActorOwner->GetRootComponent() == this)
+    if (!ActorOwner)
     {
-        return RelativeTransform;
+        return nullptr;
     }
 
-    FTransform ParentWorld = ActorOwner->GetRootComponent()->GetGlobalTransform();
-    
-    if (!bInheritRotation)
+    USceneComponent* Root = ActorOwner->GetRootComponent();
+    return Root == this ? nullptr : Root;
+}
+
+const FTransform& USceneComponent::GetGlobalTransform() const //나중에 부모 rootcomponent world좌표 써야됨
+{
+    const USceneComponent* Parent = GetTransformParent();
+    uint32 ParentVersion = 0;
+    if (Parent)
+    {
+        Parent->GetGlobalTransform(); // 부모 캐시를 먼저 최신화
+        ParentVersion = Parent->GlobalVersion;
+    }
+
+    if (!bGlobalDirty && CachedParent == Parent && CachedParentVersion == ParentVersion)
+    {
+        return CachedGlobal;
+    }
+
+    if (!Parent)
+    {
+        CachedGlobal = RelativeTransform;
+    }
+    else if (SceneOwner || bInheritRotation)
+    {
+        CachedGlobal = Parent->CachedGlobal * RelativeTransform;
+    }
+    else
     {
         // 부모 회전 무시 - 위치와 스케일만 상속
         FTransform Result;
         Result.SetScale3D(RelativeTransform.GetScale3D());
         Result.SetRotation(RelativeTransform.GetRotation()); // 자신의 회전만 사용
-        Result.SetLocation(ParentWorld.GetLocation() + RelativeTransform.GetLocation()); // 월드 축 기준 오프셋
-        return Result;
+        Result.SetLocation(Parent->CachedGlobal.GetLocation() + RelativeTransform.GetLocation()); // 월드 축 기준 오프셋
+        CachedGlobal = Result;
     }
-    return ParentWorld * RelativeTransform;
+
+    CachedGlobal.GetMatrix(); // 행렬도 이 시점에 한 번만 계산해 둔다
+    CachedParent = Parent;
+    CachedParentVersion = ParentVersion;
+    bGlobalDirty = false;
+    ++GlobalVersion;
+    return CachedGlobal;
 }
 
 void USceneComponent::MarkActorTransformDirty()
-{    
+{
+    bGlobalDirty = true;
     OnTransformChanged();
 
     if (ActorOwner)

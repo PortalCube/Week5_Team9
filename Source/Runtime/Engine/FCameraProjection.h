@@ -21,6 +21,10 @@ private:
 	float FarZ = 100.0f;
 	
 	FMatrix ProjectionMatrix;
+
+	// Perspective 전용. 반지름 R, 거리 D인 구의 화면 점유율은 ScreenSizeMultiple * R / D.
+	// tan을 매번 계산하지 않도록 투영이 바뀔 때만 갱신한다.
+	float ScreenSizeMultiple = 1.0f;
 	void UpdateProjectionMatrix();
 
 public:
@@ -33,6 +37,7 @@ public:
 	float GetNearPlane() const { return NearZ; }
 	float GetFarPlane() const { return FarZ; }
 	const FMatrix& GetProjectionMatrix() const { return ProjectionMatrix; }
+	float GetScreenSizeMultiple() const { return ScreenSizeMultiple; }
 
 	void SetProjectionType(EProjectionType Value);
 	void SetFOV(float Value);
