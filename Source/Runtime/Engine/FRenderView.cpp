@@ -146,7 +146,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         }
     }
 
-    SCOPE_INDEPENDENT_CYCLE_COUNTER("Test");
+    //SCOPE_INDEPENDENT_CYCLE_COUNTER("Test");
     const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
 
     //assert(!bCullResultValid || VisibleFlags.size() == Primitives.size());

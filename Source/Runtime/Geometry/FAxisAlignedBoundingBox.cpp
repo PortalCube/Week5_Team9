@@ -43,17 +43,9 @@ FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FVector& pCenter, const F
 {
 	Center = pCenter;
 	Extent = pExtent;
-
+	
 	Min = Center - Extent;
 	Max = Center + Extent;
-}
-
-FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FVector& _Min, const FVector& _Max)
-{
-	Min = _Min;
-	Max = _Max;
-	Center = (Min + Max) / 2;
-	Extent = Center - Min;
 }
 
 FAxisAlignedBoundingBox FAxisAlignedBoundingBox::Union(const FAxisAlignedBoundingBox& A, const FAxisAlignedBoundingBox& B)

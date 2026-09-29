@@ -32,7 +32,6 @@ struct FAxisAlignedBoundingBox
 	FAxisAlignedBoundingBox(const FMesh& Mesh);
 	FAxisAlignedBoundingBox(const FMesh& Mesh, const FMatrix& ModelMatrix);
 	FAxisAlignedBoundingBox(const FVector& pCenter, const FVector& pExtent);
-	FAxisAlignedBoundingBox(const FVector& _Min, const FVector& _Max);
 
 	bool IsValid() const
 	{
