@@ -120,6 +120,13 @@ void FEditor::LoadScene(const FString &Path)
   FEditorViewportClient* Viewport = GetActiveViewport();
   SceneManager->LoadScene(Path, Viewport ? &Viewport->ViewportCamera : nullptr);
   SelectedActor = nullptr;
+
+  // 로드된 컴포넌트는 대기열에만 쌓이므로, 트랜스폼이 모두 설정된 지금 트리를 만든다.
+  if (SceneManager->CurrentScene)
+  {
+    UScene* Scene = SceneManager->CurrentScene;
+    Scene->GetSceneBVH().Build(Scene->GetRenderComponents());
+  }
 }
 
 bool FEditor::CheckSceneExists() {
@@ -185,8 +192,9 @@ void FEditor::UnSelectActor() {
 }
 
 const TArray<UPrimitiveComponent *> &FEditor::GetPrimitiveComponents() const {
+    static const TArray<UPrimitiveComponent*> Empty;
   if (!SceneManager || !SceneManager->CurrentScene) {
-    return {};
+    return Empty;
   }
   return SceneManager->CurrentScene->GetRenderComponents();
 }
