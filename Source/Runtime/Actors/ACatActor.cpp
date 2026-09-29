@@ -42,8 +42,10 @@ void ACatActor::Update(float DeltaTime)
 
 	if (bIsSpin)
 	{
-		FTransform CurrentTransform = GetTransform();		
-		CurrentTransform.Rotation.RotateLocalAxisAngle(FVector(0.0f, 0.0f, 1.0f), SpinSpeed * DeltaTime);
+		FTransform CurrentTransform = GetTransform();
+		FQuaternion Rotation = CurrentTransform.GetRotation();
+		Rotation.RotateLocalAxisAngle(FVector(0.0f, 0.0f, 1.0f), SpinSpeed * DeltaTime);
+		CurrentTransform.SetRotation(Rotation);
 		SetTransform(CurrentTransform);
 	}
 }

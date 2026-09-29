@@ -18,6 +18,12 @@ void UPrimitiveComponent::Initialize()
     RenderData.Materials.push_back(DefaultMaterial);
 }
 
+void UPrimitiveComponent::SetMesh(UStaticMesh* Mesh)
+{
+    RenderData.Mesh = Mesh;
+    LocalBounds = Mesh->Get()->GetLocalBounds();
+}
+
 void UPrimitiveComponent::SetMaterial(UMaterial* Material, int32 Index)
 {
     if (!Material || Index < 0) { return; }
@@ -42,13 +48,27 @@ void UPrimitiveComponent::SetColor(const FVector4& Color, int32 Index)
     RenderData.Materials[static_cast<size_t>(Index)].Color = Color;
 }
 
+void UPrimitiveComponent::SetRelativeTransform(const FTransform& RelativeTransform)
+{
+    Super::SetRelativeTransform(RelativeTransform);
+    WorldBounds = FAxisAlignedBoundingBox(GetLocalBounds(), RelativeTransform.GetMatrix());
+}
+
+FAxisAlignedBoundingBox UPrimitiveComponent::GetWorldBounds() const
+{
+    return WorldBounds;
+}
+
+FAxisAlignedBoundingBox UPrimitiveComponent::GetViewBounds(const FCamera& Camera) const
+{
+    return FAxisAlignedBoundingBox(GetWorldBounds(), Camera.GetViewMatrix());
+}
+
 void UPrimitiveComponent::Register(UScene& InScene)
 {
     if (RenderData.Type == ERenderType::None)
     {
-        RenderData.Type = (RenderData.Materials.size() > 0 && RenderData.Materials[0].Texture)
-            ? ERenderType::Texture
-            : ERenderType::Primitive;
+        RenderData.Type = ERenderType::Primitive;
     }
 
     Super::Register(InScene);

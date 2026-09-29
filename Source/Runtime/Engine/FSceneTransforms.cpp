@@ -95,9 +95,9 @@ void FSceneTransforms::Reserve(int32 NewCapacity)
 
 void FSceneTransforms::SetTransform(int32 Index, const FTransform& Transform)
 {
-	const FVector& Position = Transform.Location;
-	const FQuaternion& Rotation = Transform.Rotation;
-	const FVector& Scale = Transform.Scale3D;
+	const FVector& Position = Transform.GetLocation();
+	const FQuaternion& Rotation = Transform.GetRotation();
+	const FVector& Scale = Transform.GetScale3D();
 
 	PosX[Index] = Position.X;
 	PosY[Index] = Position.Y;

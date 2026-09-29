@@ -44,11 +44,19 @@ protected:
 	FTransform RelativeTransform;
 
 public:
-	FTransform& GetRelativeTransform() { return RelativeTransform; }
 	const FTransform& GetRelativeTransform() const { return RelativeTransform; }
 	virtual void SetRelativeTransform(const FTransform& RelativeTransform);
 	FTransform GetGlobalTransform() const;
 	//void SetRelativeTransformFromGlobal(const FTransform& GlobalTransform);
+
+    virtual void SetRelativeLocation(const FVector& RelativeLocation);
+    virtual void SetRelativeRotation(const FVector& RelativeRotation);
+    virtual void SetRelativeRotation(const FQuaternion& RelativeRotation);
+    virtual void SetRelativeScale(const FVector& RelativeScale);
+
+    virtual const FVector& GetRelativeLocation() const;
+    virtual const FQuaternion& GetRelativeRotation() const;
+    virtual const FVector& GetRelativeScale() const;
 
     void SetBatchIndex(int32 Index) { BatchIndex = Index; }
     int32 GetBatchIndex() const { return BatchIndex; }

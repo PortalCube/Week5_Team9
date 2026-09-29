@@ -21,8 +21,8 @@ void FGrid::DrawLine(FRenderer &Renderer, const FCamera &Camera) {
   const int32 HalfLineCount = static_cast<int32>(500.0f / CellSize);
   const float Extent = HalfLineCount * CellSize;
 
-  const float SnapX = std::floor(Camera.Position.X / CellSize) * CellSize;
-  const float SnapY = std::floor(Camera.Position.Y / CellSize) * CellSize;
+  const float SnapX = std::floor(Camera.GetPosition().X / CellSize) * CellSize;
+  const float SnapY = std::floor(Camera.GetPosition().Y / CellSize) * CellSize;
 
   const FVector4 MinorGridColor{0.1f, 0.1f, 0.1f, 1.0f};
   const FVector4 MajorGridColor{0.3f, 0.3f, 0.3f, 1.0f};

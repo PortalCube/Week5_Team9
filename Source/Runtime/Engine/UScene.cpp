@@ -237,20 +237,5 @@ AActor *UScene::SpawnActor(UClass *ClassType) {
 
   Actors.push_back(Actor);
 
-  int Count = 0;
-
-  for (TObjectIterator<AActor> It; It; ++It)
-  {
-      AActor* Actor = *It;
-
-      if (Actor)
-      {
-          ++Count;
-      }
-  }
-
-  UE_LOG("Total Actor Count : %d", Count);
-
-
   return Actor;
 }

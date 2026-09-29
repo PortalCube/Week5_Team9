@@ -74,10 +74,10 @@ void FEditor::SaveState() {
   if (!Viewport) { return; }
 
   const FCamera& Camera = Viewport->ViewportCamera;
-  State.SetCameraLocation(Camera.Position);
-  State.SetCameraPitch(Camera.Pitch);
-  State.SetCameraYaw(Camera.Yaw);
-  State.SetCameraFOV(Camera.Projection.FOV);
+  State.SetCameraLocation(Camera.GetPosition());
+  State.SetCameraPitch(Camera.GetPitch());
+  State.SetCameraYaw(Camera.GetYaw());
+  State.SetCameraFOV(Camera.GetProjection().GetFOV());
   State.SetGridCellSize(Viewport->GetGrid().GetCellSize());
   State.SetGizmoMode(static_cast<uint8>(Gizmo.Mode));
   State.SetGizmoSpace(static_cast<uint8>(Gizmo.GetSpace()));
@@ -91,10 +91,9 @@ void FEditor::LoadState()
 
     FCamera& Camera = Viewport->ViewportCamera;
 
-    Camera.Position = State.GetCameraLocation();
-    Camera.Pitch = State.GetCameraPitch();
-    Camera.Yaw = State.GetCameraYaw();
-    Camera.Projection.FOV = State.GetCameraFOV();
+    Camera.SetPosition(State.GetCameraLocation());
+    Camera.SetRotation(State.GetCameraPitch(), State.GetCameraYaw());
+    Camera.SetFOV(State.GetCameraFOV());
     Viewport->GetGrid().SetCellSize(State.GetGridCellSize());
     Gizmo.Mode = static_cast<EGizmoMode>(State.GetGizmoMode());
     Gizmo.SetGizmoSpace(static_cast<EGizmoSpace>(State.GetGizmoSpace()));
@@ -158,7 +157,7 @@ bool FEditor::SelectActor(AActor *Actor) {
   SelectedActor = Actor;
   if (SelectedActor) {
     SelectedTransform = SelectedActor->GetTransform();
-    SelectedEulerDegDisplay = SelectedTransform.Rotation.GetEulerXYZ();
+    SelectedEulerDegDisplay = SelectedTransform.GetRotation().GetEulerXYZ();
     if (Gizmo.Mode == EGizmoMode::None) {
       Gizmo.Mode = EGizmoMode::Translate;
     }
@@ -166,7 +165,7 @@ bool FEditor::SelectActor(AActor *Actor) {
     if (SelectedActorTextComp) {
       SelectedActorTextComp->SetActorOwner(SelectedActor.Get());
       FTransform RelativeTrans;
-      RelativeTrans.Location = FVector{ 0.0f, 0.0f, 1.5f }; 
+      RelativeTrans.SetLocation(FVector{ 0.0f, 0.0f, 1.5f });
       SelectedActorTextComp->SetRelativeTransform(RelativeTrans);
       SelectedActorTextComp->SetText(L"UUID : " + std::to_wstring(SelectedActor->GetUUID()));
     }
@@ -226,15 +225,15 @@ void FEditor::SpawnActorToCurrentScene(UClass* Type, int Size) {
         };
 
         FTransform Transform;
-        Transform.Location = Location;
-        Transform.Scale3D = FVector{ 0.5f, 0.5f, 0.5f };
+        Transform.SetLocation(Location);
+        Transform.SetScale3D(FVector{ 0.5f, 0.5f, 0.5f });
 
         AActor* NewActor = SceneManager->CurrentScene->SpawnActor(Type);
         if (!NewActor) { return; }
 
 
         FTransform CurrentTransform = NewActor->GetTransform();
-        CurrentTransform.Location = Location;
+        CurrentTransform.SetLocation(Location);
         NewActor->SetTransform(CurrentTransform);
 
         // 액터 시작 및 선택
@@ -316,7 +315,7 @@ void FEditor::SetViewLayout(FEditorState::SplitViewMode mode) {
     {
         FEditorViewportClient& Viewport = EditorViewports[ViewportIndex];
         Viewport.eOrthogonalType = FEditorViewportClient::EOrthogonalType::PERSPECTIVE;
-        Viewport.ViewportCamera.Projection.ProjectionType = EProjectionType::Perspective;
+        Viewport.ViewportCamera.SetProjectionType(EProjectionType::Perspective);
     };
 
     auto SetOrthographicView = [this](int32 ViewportIndex, FEditorViewportClient::EOrthogonalType Type)

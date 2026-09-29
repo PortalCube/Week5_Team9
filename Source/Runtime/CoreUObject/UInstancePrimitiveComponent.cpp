@@ -37,7 +37,7 @@ void UInstancePrimitiveComponent::BuildRenderData() const
     {
         // 등록된 인스턴스 없으면 자기 자신 트랜스폼 적용
         Built.push_back(FInstanceData{
-            .World    = BaseTransform.ToMatrix(),
+            .World    = BaseTransform.GetMatrix(),
             .Color    = FVector4(1.0f, 1.0f, 1.0f, 1.0f),
             .UVScale  = {1.0f, 1.0f},
             .UVOffset = {0.0f, 0.0f},
@@ -49,9 +49,9 @@ void UInstancePrimitiveComponent::BuildRenderData() const
         for (const auto& Entry : InstanceTransforms)
         {
             FTransform InstTransform = BaseTransform;
-            InstTransform.Location = Entry.Position;
+            InstTransform.SetLocation(Entry.Position);
             Built.push_back(FInstanceData{
-                .World    = InstTransform.ToMatrix(),
+                .World    = InstTransform.GetMatrix(),
                 .Color    = Entry.Color,
                 .UVScale  = {1.0f, 1.0f},
                 .UVOffset = {0.0f, 0.0f},

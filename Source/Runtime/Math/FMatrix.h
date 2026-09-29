@@ -273,6 +273,21 @@ struct alignas(16) FMatrix
 		return operator*(UnrealClipToD3DClip);
 	}
 
+	// 모든 원소를 절대값을 씌워서 반환
+	inline FMatrix Abs() const
+	{
+		FMatrix Result;
+		for (int Row = 0; Row < 4; ++Row)
+		{
+			for (int Column = 0; Column < 4; ++Column)
+			{
+				Result.M[Row][Column] = std::fabs(M[Row][Column]);
+			}
+		}
+
+		return Result;
+	}
+
 
 	[[nodiscard]]
 	static FMatrix MakeRotation(const FVector& Deg);

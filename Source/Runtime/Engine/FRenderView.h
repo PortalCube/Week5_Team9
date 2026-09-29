@@ -8,7 +8,7 @@
 #include "Runtime/Rendering/FRenderQueue.h"
 #include "Runtime/Engine/FSceneView.h"
 
-struct FCamera;
+class FCamera;
 class FGizmo;
 class FGrid;
 class AActor;

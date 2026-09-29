@@ -21,7 +21,7 @@ void FSceneBVH::Build(const TArray<UPrimitiveComponent*>& Components)
         //빈 박스는 BVH에서 제외한다.
         if (!Local.IsValid()) { continue; }
 
-        const FMatrix World = C->GetGlobalTransform().ToMatrix();
+        const FMatrix& World = C->GetGlobalTransform().GetMatrix();
         FAxisAlignedBoundingBox WorldBox(Local, World);
 
         //{AABB, 중심점, 컴포넌트}
@@ -99,7 +99,8 @@ void FSceneBVH::BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint3
     if (Count <= LeafSize || (bDegenerate && Count <= LeafSize * 4))
     {
         Nodes[NodeIdx].ObjStart = Start;
-        Nodes[NodeIdx].ObjCount = Count; 
+        Nodes[NodeIdx].ObjCount = Count;
+        Nodes[NodeIdx].bLeafNode = true;
         return;
     }
 
@@ -114,6 +115,7 @@ void FSceneBVH::BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint3
     Nodes.push_back({});
     Nodes.push_back({});
 
+    //리프 노드가 아니면 ObjCount = 0
     Nodes[NodeIdx].Left = LeftIdx;
     Nodes[NodeIdx].ObjCount = 0;
 
@@ -133,7 +135,7 @@ void FSceneBVH::RefitObject(UPrimitiveComponent* Moved)
 
 
     //변경된 Transform으로 AABB 다시 넣기
-    ObjectBounds[ObjectIndex] = FAxisAlignedBoundingBox(Local, Moved->GetGlobalTransform().ToMatrix());
+    ObjectBounds[ObjectIndex] = FAxisAlignedBoundingBox(Local, Moved->GetGlobalTransform().GetMatrix());
 
     RefitFromLeaf(LeafOfObject[ObjectIndex]);
 }
@@ -205,7 +207,7 @@ bool FSceneBVH::QueryRay(const FRay &Ray, UPrimitiveComponent*& OutHit, FVector 
         if (!Local.IsValid()) { continue; }
 
         //대기열은 바운드 캐시가 없으므로 즉석 계산
-        const FAxisAlignedBoundingBox World(Local, C->GetGlobalTransform().ToMatrix());
+        const FAxisAlignedBoundingBox World(Local, C->GetGlobalTransform().GetMatrix());
         TestObjectRay(C, World, Ray, Closest, OutHit, OutImpact);
     }
 
@@ -219,16 +221,21 @@ void FSceneBVH::TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPr
     //삭제로 비어버린 가지
     if (!N.Bounds.IsValid()) { return; }
 
-    if (N.ObjCount > 0)     //리프
+    //리프노드이면
+    if (N.bLeafNode)
     {
         for (uint32 i = N.ObjStart; i < N.ObjStart + N.ObjCount; ++i)
         {
-            if (!Objects[i]) { continue; }      //삭제된 슬롯
+            //FSceneBVH::RemoveObject에서 삭제된 UPrimComp는 nullptr로 되어있다
+            //Buil되기 전에는 빈 공간을 남아있으므로 Ray 검사중엔 건너뛴다.
+            if (!Objects[i]) { continue; }
+
             TestObjectRay(Objects[i], ObjectBounds[i], Ray, Closest, OutHit, OutImpact);
         }
         return;
     }
 
+    //리프가 아니면, 왼쪽 자식 오른쪽 자식 순회 준비
     const uint32 L = N.Left;
     const uint32 R = N.Left + 1;
 
@@ -238,6 +245,7 @@ void FSceneBVH::TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPr
     const bool bR = Nodes[R].Bounds.IsValid()
         && FRayCastingManager::RayIntersectsAABB(Ray, Nodes[R].Bounds, tR);
 
+    //둘 다 Ray가 맞았으면
     if (bL && bR)
     {
         //가까운 쪽부터 들어가야 Closest 가 일찍 작아진다
@@ -250,10 +258,13 @@ void FSceneBVH::TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPr
         //먼 쪽 박스 진입점이 이미 찾은 히트보다 뒤면 서브트리 전체를 버린다
         if (tFar < Closest) { TraverseRay(Far, Ray, Closest, OutHit, OutImpact); }
     }
+
+    //왼쪽 혹은 오른쪽만 맞았으면 안맞은 서브트리는 버린다.
     else if (bL) { if (tL < Closest) { TraverseRay(L, Ray, Closest, OutHit, OutImpact); } }
     else if (bR) { if (tR < Closest) { TraverseRay(R, Ray, Closest, OutHit, OutImpact); } }
 }
 
+//AABB -> 뮐러 트럼보어
 void FSceneBVH::TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBoundingBox& WorldBox, const FRay& Ray, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const
 {
     float tNear = 0.0f;
@@ -266,7 +277,7 @@ void FSceneBVH::TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBounding
 
     float Dist = 0.0f;
     FVector Impact{};
-    if (FRayCastingManager::RayIntersectsMesh(Ray, *Mesh, C->GetGlobalTransform().ToMatrix(), Dist, Impact)
+    if (FRayCastingManager::RayIntersectsMesh(Ray, *Mesh, C->GetGlobalTransform().GetMatrix(), Dist, Impact)
         && Dist < Closest)
     {
         Closest = Dist;

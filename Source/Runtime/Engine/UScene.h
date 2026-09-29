@@ -52,8 +52,8 @@ public:
 
     if (Actor->GetRootComponent()) {
       FTransform Transform{};
-      Transform.Location = Location;
-      Transform.Scale3D = Scale;
+      Transform.SetLocation(Location);
+      Transform.SetScale3D(Scale);
       Actor->GetRootComponent()->SetRelativeTransform(Transform);
     }
 
