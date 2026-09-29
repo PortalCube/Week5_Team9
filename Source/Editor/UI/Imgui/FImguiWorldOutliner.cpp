@@ -4,17 +4,12 @@
 #include "Runtime/CoreUObject/USceneComponent.h"
 #include "Runtime/Engine/UScene.h"
 #include "ThirdParty/Imgui/imgui.h"
-#include <algorithm>
-#include <cctype>
 #include <string>
+#include <algorithm>
 
 void FImguiWorldOutliner::Process(FEditor& Editor)
 {
-	if (!ImGui::Begin("World Outliner"))
-	{
-		ImGui::End();
-		return;
-	}
+	ImGui::Begin("World Outliner");
 
 	UScene* Scene = Editor.GetCurrentScene();
 	if (!Scene)
@@ -24,46 +19,64 @@ void FImguiWorldOutliner::Process(FEditor& Editor)
 		return;
 	}
 
+	ImGui::Checkbox("아웃라이너 최적화 적용", &bUseOptimized);
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("체크: 캐쉬된 라벨 및 화면에 보이는 일부 노드만 랜더\n"
+			"해제: 매 프레임 동적 생성 및 전체 순회");
+	}
+	ImGui::Separator();
+
 	// 검색 필터 버퍼
-	const std::string FilterStr = ShowSearchBar();
+	const bool bFilterChanged = ShowSearchBar();
 	ImGui::Separator();
 
 	auto& Actors = Scene->GetActors();
 	AActor* SelectedActor = Editor.GetSelectedActor();
-
 	// 액터 목록 표시
 	ImGui::BeginChild("ActorList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing()), false);
 
-	TArray<FWorldOutlinerRow> VisibleRows;
-	BuildVisibleRows(VisibleRows, Actors, FilterStr);
-
-	// 액터들 중 현재 스크롤에 보이는 부분만 렌더링
-	ImGuiListClipper Clipper;
-	Clipper.Begin(static_cast<int>(VisibleRows.size()));
-	while (Clipper.Step())
+	if (bUseOptimized)
 	{
-		for (int32 RowIndex = Clipper.DisplayStart; RowIndex < Clipper.DisplayEnd; ++RowIndex)
+		if (bCacheDirty || Scene != LastScene || Actors.size() != LastActorCount)
 		{
-			const FWorldOutlinerRow& Row = VisibleRows[RowIndex];
+			RefreshCache(Scene);
+			UpdateFilter(CurrentFilterStr.c_str());
+			RebuildDisplayList();
+			LastScene = Scene;
+			bDisplayListDirty = false;
+		}
+		else if (bFilterChanged || bDisplayListDirty)
+		{
+			if (bFilterChanged)
+			{
+				UpdateFilter(CurrentFilterStr.c_str());
+			}
+			RebuildDisplayList();
+			bDisplayListDirty = false;
+		}
 
-			if (Row.Depth > 0)
-			{
-				ImGui::Indent();
-			}
+		ImGuiListClipper Clipper;
+		Clipper.Begin(static_cast<int>(DisplayList.size()));
 
-			if (Row.Type == FWorldOutlinerRow::EType::Actor)
+		while (Clipper.Step())
+		{
+			for (int i = Clipper.DisplayStart; i < Clipper.DisplayEnd; ++i)
 			{
-				ShowActorNode(Editor, static_cast<AActor*>(Row.Object), SelectedActor);
+				ShowActorNode_Cached(Editor, DisplayList[i], SelectedActor);
 			}
-			else
+		}
+	}
+	else
+	{
+		for (AActor* Actor : Actors)
+		{
+			if (!Actor)
 			{
-				ShowComponentNode(*static_cast<USceneComponent*>(Row.Object));
+				continue;
 			}
-
-			if (Row.Depth > 0)
-			{
-				ImGui::Unindent();
-			}
+			//액터 노드 표시
+			ShowActorNode(Editor, Actor, CurrentFilterStr.c_str(), SelectedActor);
 		}
 	}
 
@@ -79,6 +92,7 @@ void FImguiWorldOutliner::Process(FEditor& Editor)
 			AActor* ActorToDelete = SelectedActor;
 			Editor.UnSelectActor();
 			ActorToDelete->Destroy();
+			bCacheDirty = true;
 		}
 	}
 	else
@@ -89,69 +103,70 @@ void FImguiWorldOutliner::Process(FEditor& Editor)
 	ImGui::End();
 }
 
-void FImguiWorldOutliner::BuildVisibleRows(
-	TArray<FWorldOutlinerRow>& VisibleRows,
-	const TArray<AActor*>& Actors,
-	const std::string& FilterStr) const
+void FImguiWorldOutliner::RefreshCache(UScene* Scene)
 {
-	VisibleRows.reserve(Actors.size());
+	CachedActors.clear();
+	const auto& Actors = Scene->GetActors();
+	CachedActors.reserve(Actors.size());
 
 	for (AActor* Actor : Actors)
 	{
-		if (!Actor || !Actor->GetClass())
-		{
-			continue;
-		}
+		if (!Actor) { continue; }
 
-		if (!FilterStr.empty())
-		{
-			FString LowerName = Actor->GetClass()->GetDisplayName();
+		FOutlinerItem Item;
+		Item.Type = EOutlinerItemRowType::Actor;
+		Item.Actor = Actor;
+		Item.UUID = Actor->GetUUID();
 
-			std::transform(LowerName.begin(), LowerName.end(), LowerName.begin(),
-				[](unsigned char Character)
-				{
-					return static_cast<char>(std::tolower(Character));
-				}
-			);
+		const char* ClassName = Actor->GetClass() ? Actor->GetClass()->GetDisplayName().c_str() : "Actor";
+		Item.DisplayLabel = FString(ClassName) + " (ID: " + std::to_string(Item.UUID) + ")";
 
-			if (LowerName.find(FilterStr) == FString::npos)
-			{
-				continue;
-			}
-		}
+		Item.LowerLabel = Item.DisplayLabel;
+		std::transform(Item.LowerLabel.begin(), Item.LowerLabel.end(), Item.LowerLabel.begin(),
+			[](unsigned char c) { return static_cast<char>(::tolower(c)); });
 
-		VisibleRows.push_back({ FWorldOutlinerRow::EType::Actor, Actor, 0 });
-
-		const auto& Components = Actor->GetAttachedComponents();
-		if (Components.empty())
-		{
-			continue;
-		}
-
-		const void* ActorId = reinterpret_cast<void*>(static_cast<uintptr_t>(Actor->GetUUID()));
-		const bool bIsOpen = ImGui::GetStateStorage()->GetBool(ImGui::GetID(ActorId));
-		if (!bIsOpen)
-		{
-			continue;
-		}
-
-		for (USceneComponent* Component : Components)
-		{
-			if (Component)
-			{
-				VisibleRows.push_back({ FWorldOutlinerRow::EType::Component, Component, 1 });
-			}
-		}
+		CachedActors.push_back(std::move(Item));
 	}
+
+	LastActorCount = Actors.size();
+	bCacheDirty = false;
 }
 
-void FImguiWorldOutliner::ShowActorNode(FEditor& Editor, AActor* Actor, AActor* SelectedActor)
+void FImguiWorldOutliner::UpdateFilter(const FString& FilterStr)
+{
+	FilteredIndices.clear();
+	FilteredIndices.reserve(CachedActors.size());
+
+	const bool bHasFilter = !FilterStr.empty();
+
+	for (int32 i = 0; i < static_cast<int32>(CachedActors.size()); ++i)
+	{
+		if (!bHasFilter || CachedActors[i].LowerLabel.find(FilterStr) != FString::npos)
+		{
+			FilteredIndices.push_back(i);
+		}
+	}
+
+	LastFilterStr = FilterStr;
+}
+
+void FImguiWorldOutliner::ShowActorNode(FEditor& Editor, AActor* Actor, const std::string& FilterStr, AActor* SelectedActor)
 {
 	if (!Actor->GetClass()) { return; }
 
+	// 검색어 필터링
+	if (!FilterStr.empty())
+	{
+		// 액터 이름 생성
+		const FString& ActorName = Actor->GetClass()->GetDisplayName();
+		if (ActorName.find(FilterStr) == FString::npos)
+		{
+			return;
+		}
+	}
+
 	const bool bIsSelected = (Actor == SelectedActor);
-	ImGuiTreeNodeFlags NodeFlags = ImGuiTreeNodeFlags_OpenOnArrow |
-		ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	ImGuiTreeNodeFlags NodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 	if (bIsSelected)
 	{
 		NodeFlags |= ImGuiTreeNodeFlags_Selected;
@@ -160,17 +175,11 @@ void FImguiWorldOutliner::ShowActorNode(FEditor& Editor, AActor* Actor, AActor* 
 	const auto& Components = Actor->GetAttachedComponents();
 	if (Components.empty())
 	{
-		NodeFlags |= ImGuiTreeNodeFlags_Leaf;
+		NodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 	}
 
-	uint32 UUID = Actor->GetUUID();
-	uintptr_t UUIDPtr = static_cast<uintptr_t>(Actor->GetUUID());
-	void* Ptr = reinterpret_cast<void*>(UUIDPtr);
-
-	const char* Name = Actor->GetClass()->GetDisplayName().c_str();
-
 	// 트리 노드 렌더링
-	ImGui::TreeNodeEx(Ptr, NodeFlags, "%s (ID: %u)", Name, UUID);
+	const bool bNodeOpen = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(Actor->GetUUID())), NodeFlags, "%s (ID: %u)", Actor->GetClass()->GetDisplayName().c_str(), Actor->GetUUID());
 
 	// 클릭 시 액터 선택
 	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
@@ -178,22 +187,144 @@ void FImguiWorldOutliner::ShowActorNode(FEditor& Editor, AActor* Actor, AActor* 
 		Editor.SelectActor(Actor);
 	}
 
+
+	// 자식 컴포넌트 목록 전개
+	if (bNodeOpen && !Components.empty())
+	{
+		for (USceneComponent* Comp : Components)
+		{
+			if (!Comp)
+			{
+				return;
+			}
+			ShowComponentNode(*Comp);
+
+		}
+
+		ImGui::TreePop();
+	}
+
+}
+
+void FImguiWorldOutliner::ShowActorNode_Cached(FEditor& Editor, const FOutlinerItem& Item, AActor* SelectedActor)
+{
+	if (Item.Depth > 0)
+	{
+		ImGui::Indent(Item.Depth * 16.0f);
+	}
+
+	if (Item.Type == EOutlinerItemRowType::Actor)
+	{
+		AActor* Actor = Item.Actor;
+		if (!Actor) return;
+
+		const bool bIsOpen = ExpandedActorUUIDs.contains(Item.UUID);
+		const bool bIsSelected = (Actor == SelectedActor);
+		ImGuiTreeNodeFlags NodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+		if (bIsSelected)
+		{
+			NodeFlags |= ImGuiTreeNodeFlags_Selected;
+		}
+
+		const auto& Components = Actor->GetAttachedComponents();
+		if (Components.empty())
+		{
+			NodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+		}
+
+		const bool bNodeOpen = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(Item.UUID)), NodeFlags, "%s", Item.DisplayLabel.c_str());
+
+		if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+		{
+			Editor.SelectActor(Actor);
+		}
+
+		if (!Components.empty())
+		{
+			if (bNodeOpen != bIsOpen)
+			{
+				if (bNodeOpen)
+				{
+					ExpandedActorUUIDs.insert(Item.UUID);
+				}
+				else
+				{
+					ExpandedActorUUIDs.erase(Item.UUID);
+				}
+				bDisplayListDirty = true;
+			}
+
+			if (bNodeOpen)
+			{
+				ImGui::TreePop();
+			}
+		}
+	}
+	else
+	{
+		ImGuiTreeNodeFlags CompFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+		ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(Item.UUID)), CompFlags, "%s", Item.DisplayLabel.c_str());
+		ImGui::Unindent(16.0f);
+	}
 }
 
 void FImguiWorldOutliner::ShowComponentNode(USceneComponent& Comp) const
 {
 	const char* CompClassName = Comp.GetClass() ? Comp.GetClass()->GetDisplayName().c_str() : "Component";
-	
+
 	ImGuiTreeNodeFlags CompFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
 	ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(Comp.GetUUID())), CompFlags, "%s (ID: %u)", CompClassName, Comp.GetUUID());
 }
 
-std::string FImguiWorldOutliner::ShowSearchBar()
+
+
+bool FImguiWorldOutliner::ShowSearchBar()
 {
 	ImGui::SetNextItemWidth(-1.0f);
-	ImGui::InputTextWithHint("##OutlinerFilter", "Search...", FilterBuffer, sizeof(FilterBuffer));
+	if (ImGui::InputTextWithHint("##OutlinerFilter", "Search...", FilterBuffer, sizeof(FilterBuffer)))
+	{
+		CurrentFilterStr = FilterBuffer;
 
-	std::string FilterStr = FilterBuffer;
-	std::transform(FilterStr.begin(), FilterStr.end(), FilterStr.begin(), ::tolower);
-	return FilterStr;
+		std::transform(CurrentFilterStr.begin(), CurrentFilterStr.end(), CurrentFilterStr.begin(),
+			[](unsigned char c) { return static_cast<char>(::tolower(c)); });
+
+		return true;;
+	}
+
+	return false;
+}
+
+void FImguiWorldOutliner::RebuildDisplayList()
+{
+	DisplayList.clear();
+
+	for (int32 ItemIndex : FilteredIndices)
+	{
+		const FOutlinerItem& ActorItem = CachedActors[ItemIndex];
+		AActor* Actor = ActorItem.Actor;
+		if (!Actor) continue;
+
+		FOutlinerItem Row = ActorItem;
+		Row.Depth = 0;
+		DisplayList.push_back(Row);
+
+		if (ExpandedActorUUIDs.contains(ActorItem.UUID))
+		{
+			for (USceneComponent* Comp : Actor->GetAttachedComponents())
+			{
+				if (!Comp) continue;
+
+				FOutlinerItem CompItem;
+				CompItem.Type = EOutlinerItemRowType::Component;
+				CompItem.UUID = Comp->GetUUID();
+				const char* CompName = Comp->GetClass() ? Comp->GetClass()->GetDisplayName().c_str() : "Component";
+				CompItem.DisplayLabel = FString(CompName) + " (ID: " + std::to_string(CompItem.UUID) + ")";
+				CompItem.Depth = 1;
+				CompItem.Component = Comp;
+				CompItem.Actor = Actor;
+
+				DisplayList.push_back(CompItem);
+			}
+		}
+	}
 }
