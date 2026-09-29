@@ -62,18 +62,14 @@ void FImguiWorldOutliner::Process(FEditor& Editor)
 
 void FImguiWorldOutliner::ShowActorNode(FEditor& Editor,AActor* Actor, const std::string& FilterStr, AActor* SelectedActor)
 {
-
-
-	// 액터 이름 생성
-	const char* ClassName = Actor->GetClass() ? Actor->GetClass()->GetDisplayName().c_str() : "Actor";
-	std::string ActorLabel = std::string(ClassName) + " (ID: " + std::to_string(Actor->GetUUID()) + ")";
+	if (!Actor->GetClass()) { return; }
 
 	// 검색어 필터링
 	if (!FilterStr.empty())
 	{
-		std::string LowerLabel = ActorLabel;
-		std::transform(LowerLabel.begin(), LowerLabel.end(), LowerLabel.begin(), ::tolower);
-		if (LowerLabel.find(FilterStr) == std::string::npos)
+		// 액터 이름 생성
+		const FString& ActorName = Actor->GetClass()->GetDisplayName();
+		if (ActorName.find(FilterStr) == FString::npos)
 		{
 			return;
 		}
@@ -93,7 +89,7 @@ void FImguiWorldOutliner::ShowActorNode(FEditor& Editor,AActor* Actor, const std
 	}
 
 	// 트리 노드 렌더링
-	const bool bNodeOpen = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(Actor->GetUUID())), NodeFlags, "%s", ActorLabel.c_str());
+	const bool bNodeOpen = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(Actor->GetUUID())), NodeFlags, "%s (ID: %u)", Actor->GetClass()->GetDisplayName().c_str(), Actor->GetUUID());
 
 	// 클릭 시 액터 선택
 	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
@@ -122,13 +118,10 @@ void FImguiWorldOutliner::ShowActorNode(FEditor& Editor,AActor* Actor, const std
 
 void FImguiWorldOutliner::ShowComponentNode(USceneComponent& Comp) const
 {
-
-
 	const char* CompClassName = Comp.GetClass() ? Comp.GetClass()->GetDisplayName().c_str() : "Component";
-	std::string CompLabel = std::string(CompClassName) + " (ID: " + std::to_string(Comp.GetUUID()) + ")";
-
+	
 	ImGuiTreeNodeFlags CompFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
-	ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(Comp.GetUUID())), CompFlags, "%s", CompLabel.c_str());
+	ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(Comp.GetUUID())), CompFlags, "%s (ID: %u)", CompClassName, Comp.GetUUID());
 }
 
 
