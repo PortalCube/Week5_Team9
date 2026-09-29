@@ -4,7 +4,6 @@
 #include "Runtime/Engine/FRayCastingManager.h"
 #include "Runtime/Engine/FSceneBVH.h"
 #include "Runtime/Engine/UScene.h"
-#include <chrono>
 #include "Runtime/Input/FInputManager.h"
 #include "Runtime/Math/FVector.h"
 #include "Runtime/Core/Log.h"
@@ -12,6 +11,7 @@
 #include "Runtime/Actors/AActor.h"
 #include "ThirdParty/Imgui/imgui.h"
 #include "ThirdParty/Imgui/imgui_internal.h"
+#include <Runtime/CoreUObject/FStatsManager.h>
 
 namespace
 {
@@ -397,8 +397,6 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
             return;
         }
     }
-    const FRay PickRay = FRayCastingManager::CreateRayFromScreenPosition(
-        Viewport.ViewportCamera, LocalMousePixels, ViewportSizePixels);
 
     UPrimitiveComponent *HitComponent = nullptr;
     FVector ImpactPoint;
@@ -406,9 +404,18 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
 
     UScene *PickScene = Editor.GetCurrentScene();
 
-    // 선택된 경로만 실행하고 소요 시간을 잰다.
-    const auto PickBegin = std::chrono::high_resolution_clock::now();
+    // 1) 마우스 화면 좌표 획득
+    // 2) 화면 좌표 -> 월드 좌표로의 픽 레이(Pick Ray) 계산
+    const FRay PickRay = FRayCastingManager::CreateRayFromScreenPosition(
+        Viewport.ViewportCamera, LocalMousePixels, ViewportSizePixels);
 
+    // 3) 퍼포먼스 측정용 카운터 시작
+    FScopeCycleCounter PickCounter;
+
+    // 4) 전체 Picking 횟수 누적
+    ++Editor.PickingAttempts;
+
+    // 5) 모든 오브젝트(프리미티브)에 대해 충돌 판정
     if (Editor.bUseBVHPicking && PickScene)
     {
         bHit = PickScene->GetSceneBVH().QueryRay(PickRay, HitComponent, ImpactPoint);
@@ -420,12 +427,11 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
             PickRay, Viewport.ViewportCamera, Components, HitComponent, ImpactPoint);
     }
 
-    const auto PickEnd = std::chrono::high_resolution_clock::now();
-
-    Editor.LastPickingMs = std::chrono::duration<double, std::milli>(PickEnd - PickBegin).count();
+    // 6) 퍼포먼스 측정 종료 및 시간 누적
+    Editor.LastPickingMs = PickCounter.Finish();
     Editor.AccumulatedPickingMs += Editor.LastPickingMs;
-    ++Editor.PickingAttempts;
 
+    // 필요 시 'isHit' 결과를 활용해 추가 로직 처리
     // 피킹은 액터 단위로 선택한다. 소유 액터가 없으면 선택할 수 없다.
     if (!bHit || !HitComponent || !HitComponent->GetActorOwner())
     {
@@ -433,7 +439,7 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
         return;
     }
 
-    AActor *OwnerActor = HitComponent->GetActorOwner();
+    AActor* OwnerActor = HitComponent->GetActorOwner();
     Editor.SelectActor(OwnerActor);
 
     const char *ActorClass =

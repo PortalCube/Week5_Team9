@@ -112,9 +112,18 @@ struct FScopeCycleCounter
     double ChildMs = 0.0;   // 내 직속 자식들이 먹은 시간
     bool bIsIndependent = false;
 
+    // 스탯에 기록하지 않고 시간만 잰다. Finish()의 반환값으로 결과를 받는다.
+    FScopeCycleCounter()
+        : bIsIndependent(true)
+        , StatIndex(INDEX_NONE_STAT)
+        , bActive(true)
+    {
+        QueryPerformanceCounter(&Start);
+    }
+
     FScopeCycleCounter(int32 InStatIndex, bool IsIndependent = false)
-        : StatIndex(InStatIndex)
-        , bIsIndependent(IsIndependent)
+        : bIsIndependent(IsIndependent)
+        , StatIndex(InStatIndex)
     {
         bActive = FStatsManager::Get().GetEntry(StatIndex).bEnabled;
         if (!bActive) return;
@@ -128,9 +137,23 @@ struct FScopeCycleCounter
 
     ~FScopeCycleCounter()
     {
-        if (!bActive) return;
+        Finish();
+    }
+
+    // 경과 시간(ms)을 돌려준다. 여러 번 불러도 기록은 한 번만 하고 같은 값을 준다.
+    double Finish()
+    {
+        if (!bActive) return ElapsedMs;
+        bActive = false;
+
         LARGE_INTEGER End; QueryPerformanceCounter(&End);
         const double Ms = (End.QuadPart - Start.QuadPart) * GetMsPerCount();
+        ElapsedMs = Ms;
+
+        if (StatIndex == INDEX_NONE_STAT)
+        {
+            return Ms;
+        }
 
         if (!bIsIndependent)
         {
@@ -143,9 +166,13 @@ struct FScopeCycleCounter
             // Independent
             FStatsManager::Get().Accumulate(StatIndex, Ms);
         }
+        return Ms;
     }
 
+    static constexpr int32 INDEX_NONE_STAT = -1;
+
     int32 StatIndex; LARGE_INTEGER Start; bool bActive;
+    double ElapsedMs = 0.0;
 };
 
 
@@ -157,9 +184,6 @@ struct FScopeCycleCounter
 
 //스코프를 사용하여 사용 시간 기록
 #define SCOPE_CYCLE_COUNTER(StatName) SCOPE_CYCLE_COUNTER_IMPL(__COUNTER__, StatName, false)
-
-//Independent
-#define SCOPE_INDEPENDENT_CYCLE_COUNTER(StatName) SCOPE_CYCLE_COUNTER_IMPL(__COUNTER__, StatName, true)
 
 //이미 계산된 ms를 대입해야 하는 경우 사용
 #define SET_CYCLE_COUNTER_IMPL(Tag, StatName, Ms)                                                  \

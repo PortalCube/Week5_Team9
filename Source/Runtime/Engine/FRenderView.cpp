@@ -116,7 +116,6 @@ namespace
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
-    SCOPE_INDEPENDENT_CYCLE_COUNTER("Test");
     for (auto& PrimitiveComponent : Scene.GetRenderComponents())
     {
         if (!PrimitiveComponent) continue;
