@@ -53,19 +53,6 @@ namespace
             .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
         };
 
-        /*FObjectConstants Constants
-        Command.Constants = 
-        {
-            .MVP = Data.ModelMatrix * Camera.GetViewProjectionMatrix(),
-            .MVP = InitialMVP,
-            .Color = Data.Materials[0].Color,
-            .UVScale = Data.Materials[0].UVScale,
-            .UVOffset = Data.Materials[0].UVOffset,
-            .World = Data.ModelMatrix,
-            .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
-        };*/
-
-
         for (const auto& Item : Data.Materials)
         {
             if (!Item.Pipeline)
@@ -148,7 +135,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     const auto& SceneTransforms = Scene.GetSceneTransforms();
     const int32 TotalBatchCount = static_cast<int32>(Scene.GetActors().size());
 
-    ReserveScratchMVPBuffer(TotalBatchCount);
     if (Globals::bEnableBatchTransform)
     {
         ReserveScratchMVPBuffer(TotalBatchCount);
@@ -186,9 +172,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
 		int32 Index = PrimitiveComponent->GetBatchIndex();
 
-        //const FMatrix World = PrimitiveComponent->GetRenderMatrix(View.Camera);
-        //DrawCommand.Constants.MVP = World * View.ViewProj;
-        //DrawCommand.Constants.World = World;
         if (Globals::bEnableBatchTransform && Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
         {
             DrawCommand.Constants.World = SceneTransforms.WorldMatrices[Index];
