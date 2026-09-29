@@ -1,7 +1,7 @@
 #include "FCulling.h"
 #include "Runtime/Geometry/FFrustum.h"
 
-uint32 FFlatFrustumCuller::Cull(const FFrustum& Frustum, const TArray<FCullData>& CullDataList, TArray<uint8>& OutVisibleFlags)
+uint32 FFlatFrustumCuller::Cull(const FFrustum& Frustum, const TArray<FAxisAlignedBoundingBox>& CullDataList, TArray<uint8>& OutVisibleFlags)
 {
 	const size_t Count = CullDataList.size();
 	OutVisibleFlags.resize(Count);
@@ -29,7 +29,7 @@ uint32 FFlatFrustumCuller::Cull(const FFrustum& Frustum, const TArray<FCullData>
 		Az[p] = std::fabs(Plane.Normal.Z);
 	}
 
-	const FCullData* Data = CullDataList.data();
+	const FAxisAlignedBoundingBox* Data = CullDataList.data();
 	uint8* Out = OutVisibleFlags.data();
 	uint32 VisibleCount = 0;
 

@@ -101,7 +101,7 @@ public:
     const FSceneBVH& GetSceneBVH() const { return SceneBVH; }
 
     // 컬링 전용 월드 AABB 배열 (RenderComponents와 같은 인덱스)
-    [[nodiscard]] const TArray<FCullData>& GetCullDataList() const { return CullDataList; }
+    [[nodiscard]] const TArray<FAxisAlignedBoundingBox>& GetCullDataList() const { return CullDataList; }
 
     void MarkBoundsDirty(UPrimitiveComponent* Prim);
 
@@ -121,7 +121,7 @@ private:
   FSceneBVH SceneBVH;
 
   //RenderComponents와 같은 인덱스
-  TArray<FCullData> CullDataList;
+  TArray<FAxisAlignedBoundingBox> CullDataList;
   // 이번 프레임 재계산 대상
   TArray<UPrimitiveComponent*> DirtyBoundsList;
 };

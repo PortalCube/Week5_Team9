@@ -191,6 +191,7 @@ void UScene::AddRenderComponent(UPrimitiveComponent *prim) {
 void UScene::RemoveRenderComponent(UPrimitiveComponent *prim) {
     if (prim == nullptr || prim->GetSceneIndex() < 0)
         return;
+    //TODO 제거할 때 마지막 요소와 교환하는 방식의 Swap and Pop으로 처리하도록 수정할 것
 
   std::erase(RenderComponents, prim);
   SceneBVH.RemoveObject(prim);
@@ -251,11 +252,10 @@ void UScene::MarkBoundsDirty(UPrimitiveComponent* Prim)
 
 void UScene::UpdateDirtyBounds()
 {
-    // 입력(Transform, Mesh)이 같으면 결과가 같은 순수 계산의 재사용. 가시성은 매 프레임 새로 판정
     for (UPrimitiveComponent* Prim : DirtyBoundsList)
     {
         Prim->SetBoundDirtyQueued(false);
-        CullDataList[static_cast<size_t>(Prim->GetSceneIndex())] = Prim->CalcWorldCullData();
+        CullDataList[static_cast<size_t>(Prim->GetSceneIndex())] = Prim->GetWorldBounds();
     }
     DirtyBoundsList.clear();
 }

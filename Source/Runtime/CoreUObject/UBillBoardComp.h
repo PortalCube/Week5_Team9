@@ -34,8 +34,6 @@ public:
   FVector2 GetUVScale() const;
   FVector2 GetUVOffset() const;
 
-  // 카메라를 향해 회전하므로 AABB를 미리 계산할 수 없다 : 항상 가시
-  virtual bool HasCameraDependentTransform() const override { return true; }
 
 };
 

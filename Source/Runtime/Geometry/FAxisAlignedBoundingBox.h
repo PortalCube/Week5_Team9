@@ -31,6 +31,7 @@ struct FAxisAlignedBoundingBox
 	FAxisAlignedBoundingBox(const FAxisAlignedBoundingBox& InBounds, const FMatrix& TransformationMatrix);
 	FAxisAlignedBoundingBox(const FMesh& Mesh);
 	FAxisAlignedBoundingBox(const FMesh& Mesh, const FMatrix& ModelMatrix);
+	FAxisAlignedBoundingBox(const FVector& pCenter, const FVector& pExtent);
 
 	bool IsValid() const
 	{

@@ -101,7 +101,7 @@ private:
 		bool bHasCorners = false;
 	};
 
-	FFrustum SelectCullFrustum(const FSceneView& View);
+	FFrustum GetCullFrustum(const FSceneView& View);
 	static void CaptureFrozenCorners(FFrozenView& Frozen);
 	void DrawFrozenFrustum(const FSceneView& View);
 

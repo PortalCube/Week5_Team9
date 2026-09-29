@@ -130,7 +130,8 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         UPrimitiveComponent* PrimitiveComponent = Primitives[i];
         if (!PrimitiveComponent) continue;
 
-        //컬링 사용 여부와 컬링 결과 통과시에만 수집
+        //bCullResultValid가 false라면 통과
+        // bCullResultValid가 true라면 컬링 결과 통과시에만 수집
         if (bCullResultValid && !VisibleFlags[i]) continue;
         
         // 쇼 플래그 확인
@@ -487,7 +488,7 @@ void FRenderView::SetCullingFreeze(bool pCullingFreeze)
 
 void FRenderView::CullScene(const FSceneView& View, const UScene& Scene)
 {
-    const TArray<FCullData>& CullDataList = Scene.GetCullDataList();
+    const TArray<FAxisAlignedBoundingBox>& CullDataList = Scene.GetCullDataList();
     const uint32 Count = static_cast<uint32>(CullDataList.size());
 
     bCullResultValid = CullingSettings.bEnabled;
@@ -498,7 +499,7 @@ void FRenderView::CullScene(const FSceneView& View, const UScene& Scene)
     }
 
     // 매 프레임 그 프레임의 Frustum으로 전체 판정 (이전 결과 재사용 없음)
-    const FFrustum Frustum = SelectCullFrustum(View);
+    const FFrustum Frustum = GetCullFrustum(View);
     const uint32 VisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
 
     //Culling 결과를 카운트
@@ -514,7 +515,7 @@ void FRenderView::InvalidateFrozenFrustums()
     }
 }
 
-FFrustum FRenderView::SelectCullFrustum(const FSceneView& View)
+FFrustum FRenderView::GetCullFrustum(const FSceneView& View)
 {
     //// 디버그 기능: 고정 중에도 오브젝트 판정은 매 프레임 수행되고, 평면만 고정된다
     //if (!CullingSettings.bFreeze || View.ViewIndex >= MaxViewCount)
@@ -532,6 +533,7 @@ FFrustum FRenderView::SelectCullFrustum(const FSceneView& View)
     //}
     //return Frozen.Frustum;
 
+    //ViewProjection 행렬을 통해 Frustum을 가져옵니다.
     FFrustum Result;
     Result = FFrustum::FromViewProjection(View.ViewProj);
     return Result;
