@@ -15,7 +15,7 @@ FRay FRayCastingManager::CreateRayFromScreenPosition(const FCamera& Camera, cons
 	float ViewportHeight = ViewportSize.Y;
 
 	FMatrix InvVP;
-	Camera.CreateViewProjectionMatrix().Inverse(InvVP);
+	Camera.GetViewProjectionMatrix().Inverse(InvVP);
 
 	const float screenNdcX = (MousePosition.X / ViewportWidth) * 2.0f - 1.0f;
 	const float screenNdcY = 1.0f - (MousePosition.Y / ViewportHeight) * 2.0f;

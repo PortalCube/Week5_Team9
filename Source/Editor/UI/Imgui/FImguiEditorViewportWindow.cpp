@@ -239,7 +239,7 @@ void FImguiEditorViewportWindow::SyncViewportRect(FEditorViewportClient &Viewpor
         return;
     }
 
-    Viewport.ViewportCamera.Projection.Aspect = Rect.GetWidth() / Rect.GetHeight();
+    Viewport.ViewportCamera.SetAspectRatio(Rect.GetWidth() / Rect.GetHeight());
 
     // 픽셀 -> 0~1 비율. 창 크기가 바뀌어도 이 값은 그대로 쓸 수 있다.
     Viewport.TopLeftUV = FVector2{Rect.Left / ClientSize.X, Rect.Top / ClientSize.Y};
@@ -310,7 +310,7 @@ void FImguiEditorViewportWindow::UpdateCamera(FEditor &Editor, FEditorViewportCl
     
 
     // ORTHOGRAPHIC 화면모드와의 분기
-    if (Camera.Projection.ProjectionType == EProjectionType::Orthographic)
+    if (Camera.GetProjection().GetProjectionType() == EProjectionType::Orthographic)
     {
         CameraController.UpdateMouseInput_ORTHOGRAPHIC(Camera);
     }
@@ -590,16 +590,16 @@ void FImguiEditorViewportWindow::DrawViewportHeader(int32 ViewportIndex,FEditor&
             ImGui::Separator();
             if(ImGui::MenuItem("Perspective"))
             {
-                if (Camera.Projection.ProjectionType != EProjectionType::Perspective)
-                    Camera.Projection.ProjectionType = EProjectionType::Perspective;
+                if (Camera.GetProjection().GetProjectionType() != EProjectionType::Perspective)
+                    Camera.SetProjectionType(EProjectionType::Perspective);
                 Viewport->eOrthogonalType = FEditorViewportClient::EOrthogonalType::PERSPECTIVE;
             }
             ImGui::TextUnformatted("ORTHOGRAPHIC");
             ImGui::Separator();
             if (ImGui::MenuItem("Orthographic"))
             {
-                if(Camera.Projection.ProjectionType != EProjectionType::Orthographic)
-                Camera.Projection.ProjectionType = EProjectionType::Orthographic;
+                if(Camera.GetProjection().GetProjectionType() != EProjectionType::Orthographic)
+                    Camera.SetProjectionType(EProjectionType::Orthographic);
                 Viewport->eOrthogonalType = FEditorViewportClient::EOrthogonalType::ORTHOGRAPHIC;
             }
             

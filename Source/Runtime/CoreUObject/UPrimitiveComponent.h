@@ -16,16 +16,20 @@ public:
     void Register(UScene& InScene) override;
     void Unregister() override;
 
-    virtual void SetMesh(UStaticMesh* Mesh) { RenderData.Mesh = Mesh; }
+    virtual void SetMesh(UStaticMesh* Mesh);
     void SetMaterial(UMaterial* Material, int32 Index = 0);
     void SetTexture(UTexture* Texture, int32 Index = 0);
     void SetRenderType(ERenderType Type) { RenderData.Type = Type; }
     void SetColor(const FVector4& Color, int32 Index = 0);
 
-    virtual const FRenderData& GetRenderData(const FCamera& Camera) const { return RenderData; }
-    virtual FMatrix GetRenderMatrix(const FCamera& Camera) const { return GetGlobalTransform().ToMatrix(); }
+    virtual void SetRelativeTransform(const FTransform& RelativeTransform) override;
 
-    virtual FAxisAlignedBoundingBox GetLocalBounds() const { return {}; }
+    virtual const FRenderData& GetRenderData(const FCamera& Camera) const { return RenderData; }
+    virtual FMatrix GetRenderMatrix(const FCamera& Camera) const { return GetGlobalTransform().GetMatrix(); }
+
+    virtual FAxisAlignedBoundingBox GetLocalBounds() const { return LocalBounds; }
+    virtual FAxisAlignedBoundingBox GetWorldBounds() const;
+    virtual FAxisAlignedBoundingBox GetViewBounds(const FCamera& Camera) const;
     const UStaticMesh* GetMeshAsset() const { return RenderData.Mesh; }
 
     virtual EEngineShowFlags GetShowFlag() const { return EEngineShowFlags::SF_Primitives; }
@@ -42,6 +46,9 @@ protected:
        .ModelMatrix = FMatrix::Identity,
        .Type = ERenderType::None,
     };
+
+    FAxisAlignedBoundingBox LocalBounds{};
+    FAxisAlignedBoundingBox WorldBounds{};
 
     FVector Color{1.0f, 1.0f, 1.0f};
     float ColorAmount = 0.0f;

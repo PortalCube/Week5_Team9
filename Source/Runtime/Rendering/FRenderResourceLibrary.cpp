@@ -307,9 +307,6 @@ bool FRenderResourceLibrary::CreateInstancingArrayMap() {
 }
 
 TSharedPtr<FMaterial> FRenderResourceLibrary::RegisterMaterial(const FName& Id, TSharedPtr<FMaterial> inMaterial) {
-  if (inMaterial) {
-    inMaterial->MaterialId = Id;
-  }
   AllMaterialMap[Id] = inMaterial;
   return inMaterial;
 }

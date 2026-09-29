@@ -20,7 +20,7 @@
 
 class FTexture;
 struct FTextureDesc;
-struct FCamera;
+class FCamera;
 class UTextInstanceComponent;
 struct FDrawCommand;
 
@@ -85,6 +85,7 @@ public:
   float GetWidth() const { return Viewport.Width; }
   float GetHeight() const { return Viewport.Height; }
 
+  void ClearLastRenderStateKey();
 
 private:
   bool InitializeDeviceAndSwapChain(HWND Window);
@@ -107,7 +108,6 @@ private:
   Microsoft::WRL::ComPtr<ID3D11SamplerState>
   GetOrCreateSamplerState(const FTextureSamplerDesc& Desc);
 
-private:
   FLineBatcher LineBatcher;
   Microsoft::WRL::ComPtr<ID3D11Device> Device;
   Microsoft::WRL::ComPtr<ID3D11DeviceContext> Context;
@@ -162,6 +162,8 @@ private:
   // 회수에 실패한 프레임에 0을 넣으면 평균이 눌리므로 직전 값을 들고 있는다.
   double LastGPUTimeMs = 0.0;
   
+    uint64 LastRenderStateKey = 0;
+
 public:
   template <typename TConstants>
   void FlushLineBatch(
@@ -178,22 +180,29 @@ public:
       const FMesh &Mesh,
       const FMaterial &Material,
       const TConstants &Constants,
+      uint64 RenderStateKey,
       uint32 Slot = 2,
       bool bApplyViewMode = true
   )
   {
     UpdateBuffer(Constants, 2);
 
-    FRenderPipeline* Pipeline = Material.Pipeline;
-    if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {
-      Pipeline = GetPipeline(FName("#Simple_Wireframe")).get();
-    }
-    if (Pipeline) {
-      Pipeline->Bind(*Context.Get());
-    }
+    if (RenderStateKey == 0 || LastRenderStateKey != RenderStateKey)
+    {
+        LastRenderStateKey = RenderStateKey;
 
-    Material.BindResources(*Context.Get());
-    Mesh.BindResources(*Context.Get());
+        FRenderPipeline* Pipeline = Material.Pipeline;
+
+        if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {
+          Pipeline = GetPipeline(FName("#Simple_Wireframe")).get();
+        }
+        if (Pipeline) {
+          Pipeline->Bind(*Context.Get());
+        }
+
+        Material.BindResources(*Context.Get());
+        Mesh.BindResources(*Context.Get());
+    }
 
     if (Mesh.HasIndices()) {
       Context->DrawIndexed(Mesh.IndexCount, 0, 0);
@@ -210,6 +219,7 @@ public:
       const FMesh& Mesh,
       const FMaterial& Material,
       const TConstants& Constants,
+      uint64 RenderStateKey,
       uint32 StartIndex,
       uint32 IndexCount,
       uint32 Slot = 2,
@@ -217,17 +227,21 @@ public:
   )
   {
       UpdateBuffer(Constants, Slot);
-      
-      FRenderPipeline* Pipeline = Material.Pipeline;
-      if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {
-          Pipeline = GetPipeline(FName("#Simple_Wireframe")).get();
-      }
-      if (Pipeline) {
-          Pipeline->Bind(*Context.Get());
-      }
+      if (RenderStateKey == 0 || LastRenderStateKey != RenderStateKey)
+      {
+          LastRenderStateKey = RenderStateKey;
+          FRenderPipeline* Pipeline = Material.Pipeline;
+          if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {
+              Pipeline = GetPipeline(FName("#Simple_Wireframe")).get();
+          }
 
-      Material.BindResources(*Context.Get());
-      Mesh.BindResources(*Context.Get());
+          if (Pipeline) {
+              Pipeline->Bind(*Context.Get());
+          }
+
+          Material.BindResources(*Context.Get());
+          Mesh.BindResources(*Context.Get());
+      }
 
       if (Mesh.HasIndices()) {
           Context->DrawIndexed(IndexCount, StartIndex, 0);

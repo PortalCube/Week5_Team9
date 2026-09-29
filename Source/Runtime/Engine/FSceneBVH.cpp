@@ -21,7 +21,7 @@ void FSceneBVH::Build(const TArray<UPrimitiveComponent*>& Components)
         //빈 박스는 BVH에서 제외한다.
         if (!Local.IsValid()) { continue; }
 
-        const FMatrix World = C->GetGlobalTransform().ToMatrix();
+        const FMatrix& World = C->GetGlobalTransform().GetMatrix();
         FAxisAlignedBoundingBox WorldBox(Local, World);
 
         //{AABB, 중심점, 컴포넌트}
@@ -135,7 +135,7 @@ void FSceneBVH::RefitObject(UPrimitiveComponent* Moved)
 
 
     //변경된 Transform으로 AABB 다시 넣기
-    ObjectBounds[ObjectIndex] = FAxisAlignedBoundingBox(Local, Moved->GetGlobalTransform().ToMatrix());
+    ObjectBounds[ObjectIndex] = FAxisAlignedBoundingBox(Local, Moved->GetGlobalTransform().GetMatrix());
 
     RefitFromLeaf(LeafOfObject[ObjectIndex]);
 }
@@ -207,7 +207,7 @@ bool FSceneBVH::QueryRay(const FRay &Ray, UPrimitiveComponent*& OutHit, FVector 
         if (!Local.IsValid()) { continue; }
 
         //대기열은 바운드 캐시가 없으므로 즉석 계산
-        const FAxisAlignedBoundingBox World(Local, C->GetGlobalTransform().ToMatrix());
+        const FAxisAlignedBoundingBox World(Local, C->GetGlobalTransform().GetMatrix());
         TestObjectRay(C, World, Ray, Closest, OutHit, OutImpact);
     }
 
@@ -277,7 +277,7 @@ void FSceneBVH::TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBounding
 
     float Dist = 0.0f;
     FVector Impact{};
-    if (FRayCastingManager::RayIntersectsMesh(Ray, *Mesh, C->GetGlobalTransform().ToMatrix(), Dist, Impact)
+    if (FRayCastingManager::RayIntersectsMesh(Ray, *Mesh, C->GetGlobalTransform().GetMatrix(), Dist, Impact)
         && Dist < Closest)
     {
         Closest = Dist;
