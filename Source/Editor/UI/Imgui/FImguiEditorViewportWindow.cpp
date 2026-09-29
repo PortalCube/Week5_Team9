@@ -22,7 +22,7 @@ namespace
 
         char Buffer[256];
         snprintf(Buffer, sizeof(Buffer),
-                 "Picking Time %.2f ms : Num Attempts %d : Accumulated Time %.2f ms",
+                 "Picking Time %.3f ms : Num Attempts %d : Accumulated Time %.3f ms",
                  Editor.LastPickingMs, Editor.PickingAttempts, Editor.AccumulatedPickingMs);
 
         const ImGuiViewport* MainViewport = ImGui::GetMainViewport();

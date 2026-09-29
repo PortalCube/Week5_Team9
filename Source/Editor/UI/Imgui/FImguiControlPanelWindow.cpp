@@ -135,6 +135,15 @@ void FImguiControlPanelWindow::BVHDebugSetting(FEditor& Editor)
         ImGui::SetTooltip("체크 해제 시 기존 인덱스 방식(Positions[Indices[i]])으로 삼각형 검사");
     }
 
+    if (ImGui::Checkbox("Use Mesh BVH", &FRayCastingManager::bUseMeshBVH))
+    {
+        Editor.ResetPickingStats();
+    }
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("체크 해제 시 메시의 모든 삼각형을 선형으로 검사 (위 Flattened 옵션을 따름)");
+    }
+
     ImGui::SameLine();
     if (ImGui::Button("Reset Stats"))
     {

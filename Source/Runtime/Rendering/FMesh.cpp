@@ -48,6 +48,100 @@ void FMesh::BuildTriangleVertices()
 	{
 		TriangleVertices = Positions;
 	}
+
+	//BVH Build
+	TArray<FTriRef> Tris; BVHNodes.clear();
+	Tris.reserve(TriangleVertices.size() / 3);
+
+	for (size_t i = 0; i + 2 < TriangleVertices.size(); i += 3)
+	{
+		const FVector& A = TriangleVertices[i];
+		const FVector& B = TriangleVertices[i + 1];
+		const FVector& C = TriangleVertices[i + 2];
+
+		FVector Min, Max;
+		for (int a = 0; a < 3; ++a)
+		{
+			Min[a] = std::min({ A[a], B[a], C[a] });
+			Max[a] = std::max({ A[a], B[a], C[a] });
+		}
+
+		Tris.emplace_back(Min, Max, (Min + Max) / 2, static_cast<uint32>(i / 3));
+	}
+
+	// 삼각형이 없으면 트리를 만들지 않는다. 빈 루트는 내부 노드로 오인될 수 있다.
+	if (Tris.empty()) { return; }
+
+	BVHNodes.reserve(Tris.size() * 2 / LeafSize);
+	BVHNodes.push_back({});
+	BuildRecursive(0, 0, (uint32)Tris.size(), Tris);
+
+	TArray<FVector> Reordered;
+	Reordered.resize(Tris.size() * 3);
+
+	for (size_t k = 0; k < Tris.size(); ++k)
+	{
+		const size_t Src = static_cast<size_t>(Tris[k].TriIndex) * 3;
+		const size_t Dst = k * 3;
+
+		Reordered[Dst] = TriangleVertices[Src];
+		Reordered[Dst + 1] = TriangleVertices[Src + 1];
+		Reordered[Dst + 2] = TriangleVertices[Src + 2];
+	}
+
+	TriangleVertices = std::move(Reordered);
+}
+
+void FMesh::BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, TArray<FTriRef> &Tris)
+{
+	FAxisAlignedBoundingBox Bounds;
+	FAxisAlignedBoundingBox CentroidBounds;
+
+	for (uint32 i = Start; i < Start + Count; ++i)
+	{
+		const FTriRef& P = Tris[i];
+		for (int a = 0; a < 3; ++a)
+		{
+			Bounds.Min[a] = std::min(Bounds.Min[a], P.Min[a]);
+			Bounds.Max[a] = std::max(Bounds.Max[a], P.Max[a]);
+			CentroidBounds.Min[a] = std::min(CentroidBounds.Min[a], P.Centroid[a]);
+			CentroidBounds.Max[a] = std::max(CentroidBounds.Max[a], P.Centroid[a]);
+		}
+	}
+
+	BVHNodes[NodeIdx].BoundsMax = Bounds.Max;
+	BVHNodes[NodeIdx].BoundsMin = Bounds.Min;
+
+	const FVector Extent = CentroidBounds.Max - CentroidBounds.Min;
+	int Axis = 0;
+	if (Extent.Y > Extent[Axis]) Axis = 1;
+	if (Extent.Z > Extent[Axis]) Axis = 2;
+
+	const bool bDegenerate = Extent[Axis] < 1e-6f;
+	if (Count <= LeafSize || (bDegenerate && Count <= LeafSize * 4))
+	{
+		BVHNodes[NodeIdx].LeftOrFirst = Start;
+		BVHNodes[NodeIdx].TriCount = Count;
+		return;
+	}
+
+	const uint32 Mid = Start + Count / 2;
+	std::nth_element(
+		Tris.begin() + Start,
+		Tris.begin() + Mid,
+		Tris.begin() + Start + Count,
+		[Axis](const FTriRef& A, const FTriRef& B) { return A.Centroid[Axis] < B.Centroid[Axis];});
+
+	const uint32 LeftIdx = (uint32)BVHNodes.size();
+	BVHNodes.push_back({});
+	BVHNodes.push_back({});
+
+	//리프 노드가 아니면 TriCount = 0
+	BVHNodes[NodeIdx].LeftOrFirst = LeftIdx;
+	BVHNodes[NodeIdx].TriCount = 0;
+
+	BuildRecursive(LeftIdx, Start, Mid - Start, Tris);
+	BuildRecursive(LeftIdx + 1, Mid, Start + Count - Mid, Tris);
 }
 
 bool FMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Context, const FMeshDesc& Desc)

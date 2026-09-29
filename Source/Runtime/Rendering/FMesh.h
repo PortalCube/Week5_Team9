@@ -22,7 +22,24 @@ class FMesh final
 {
 	friend class FRenderer;
 
+	//AxisAlignedBox 사용할 필요 없이 Min, Max만 저장해서 사용한다.
+	struct FTriRef
+	{
+		FVector Min, Max;
+		FVector Centroid;
+		uint32  TriIndex;
+	};
+
 public:
+
+	struct FMeshBVHNode
+	{
+		FVector BoundsMin;
+		FVector BoundsMax;
+		uint32  LeftOrFirst;
+		uint32  TriCount;
+	};
+
 	~FMesh();
 	[[nodiscard]] bool HasIndices() const { return IndexCount > 0; }
 	[[nodiscard]] uint32 GetVertexCount() const { return VertexCount; }
@@ -31,6 +48,7 @@ public:
 	[[nodiscard]] const TArray<uint32>& GetIndices() const { return Indices; }
 	[[nodiscard]] const FAxisAlignedBoundingBox& GetLocalBounds() const { return LocalBounds; }
 	[[nodiscard]] const TArray<FVector>& GetTriangleVertices() const { return TriangleVertices; }
+	[[nodiscard]] const TArray<FMeshBVHNode>& GetMeshBVHNodes() const { return BVHNodes; }
 	const uint32 GetSectionCount() const { return static_cast<uint32>(Sections.size()); }
 	const TArray<FMeshSection>& GetSections() const { return Sections; }
 
@@ -42,6 +60,7 @@ public:
 private:
 	void BindResources(ID3D11DeviceContext& Context) const;
 	void BuildTriangleVertices();
+	void BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, TArray<FTriRef>& Tris);
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> VertexBuffer;
 	uint32 VertexCount = 0u;
@@ -56,6 +75,12 @@ private:
 	TArray<uint32> Indices;
 	TArray<FMeshSection> Sections;
 	TArray<FVector> TriangleVertices;   // 삼각형 순서대로 펼친 정점 (3개씩)
+
+	//=================
+	//Mesh BVH
+	TArray<FMeshBVHNode> BVHNodes;
+	uint32 LeafSize = 8;
+	//=================
 
 	D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	FAxisAlignedBoundingBox LocalBounds = {};
