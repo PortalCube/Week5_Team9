@@ -21,7 +21,7 @@ void FSceneBVH::Build(const TArray<UPrimitiveComponent*>& Components)
         //빈 박스는 BVH에서 제외한다.
         if (!Local.IsValid()) { continue; }
 
-        const FMatrix& World = C->GetGlobalTransform().GetMatrix();
+        const FMatrix World = C->GetGlobalTransform().GetMatrix();
         FAxisAlignedBoundingBox WorldBox(Local, World);
 
         //{AABB, 중심점, 컴포넌트}
