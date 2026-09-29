@@ -97,10 +97,11 @@ namespace
                 TextureId = static_cast<uint64>(PrimaryMaterial.Texture->GetID().GetHash());
             }
             
-            Command.RenderStateKey = (PipelineId << 48) |
-                (MaterialId << 32) |
-                (TextureId << 16) |
-                MeshId;
+            Command.RenderStateKey =
+                ((PipelineId & 0xFFFFull) << 48) |
+                ((MaterialId & 0xFFFFull) << 32) |
+                ((TextureId & 0xFFFFull) << 16) |
+                ((MeshId & 0xFFFFull));
             
             // AABB의 Min X 값을 Depth로 지정
             FAxisAlignedBoundingBox AABB = Component.GetWorldBounds();
