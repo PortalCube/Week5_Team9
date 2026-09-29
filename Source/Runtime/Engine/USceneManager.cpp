@@ -8,6 +8,9 @@
 #include "Runtime/CoreUObject/FUObjectArray.h"
 #include "Runtime/Core/Log.h"
 
+// 임시코드
+#include "Converter.h"
+
 void USceneManager::SaveScene(const FString& path) const
 {
 	std::filesystem::path fsPath(path);
@@ -37,7 +40,7 @@ void USceneManager::SaveScene(const FString& path) const
 	file << Archive.GetJSON().dump(4);
 }
 
-void USceneManager::LoadScene(const FString& path)
+void USceneManager::LoadScene(const FString& path, FCamera* OutCamera)
 {
 
 	std::ifstream file(path);
@@ -52,6 +55,12 @@ void USceneManager::LoadScene(const FString& path)
 
 	nlohmann::json JSON = nlohmann::json::parse(buffer.str());
 	FArchive Archive{ JSON };
+
+	// TODO: TEMP: 경연 대회용 임시 컨버터 로직
+	if (Archive.IsNull("Version") || Archive.GetInt32("Version") == 1)
+	{
+		Archive = Converter::GetStandardArchive(Archive, std::filesystem::path(path), OutCamera);
+	}
 
 	int32 Version = Archive.GetInt32("Version");
 	if (Version != 2)

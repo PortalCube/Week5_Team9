@@ -1,4 +1,4 @@
-﻿#include "FInputManager.h"
+#include "FInputManager.h"
 
 #include "Runtime/Core/IntTypes.h"
 #include <Windows.h>
@@ -6,12 +6,6 @@
 
 void FInputManager::BeginFrame()
 {
-	memcpy(PreviousKeyStates, CurrentKeyStates, sizeof(bool) * MAX_KEYS);
-	for (int i = 0; i < MAX_KEYS; ++i)
-	{
-		CurrentKeyStates[i] = GetAsyncKeyState(i) & 0x8000 ? true : false;
-	}
-
 	MouseDelta = CurrentMousePosition - PreviousMousePosition;
 	PreviousMousePosition = CurrentMousePosition;
 
@@ -19,8 +13,14 @@ void FInputManager::BeginFrame()
 	AccmulatedWheelData = 0.0f;
 }
 
+void FInputManager::EndFrame()
+{
+	memcpy(PreviousKeyStates, CurrentKeyStates, sizeof(bool) * MAX_KEYS);
+	memcpy(bPreviousMouseState, bCurrentMouseState, sizeof(bool) * MAX_MOUSE_BUTTONS);
+}
 
-bool FInputManager::IsKeyDown(uint32 Key) const
+
+bool FInputManager::IsKeyPressed(uint32 Key) const
 {
 	if (Key >= MAX_KEYS)
 	{
@@ -29,83 +29,54 @@ bool FInputManager::IsKeyDown(uint32 Key) const
 	return CurrentKeyStates[Key];
 }
 
-bool FInputManager::IsKeyJustPressed(uint32 Key) const
+bool FInputManager::IsKeyDown(uint32 Key) const
 {
 	if (Key >= MAX_KEYS)
 	{
 		return false;
 	}
-	return IsKeyDown(Key) && !IsPrevKeyDown(Key);
+	return IsKeyPressed(Key) && !IsPrevKeyDown(Key);
 }
 
-bool FInputManager::IsKeyJustReleased(uint32 Key) const
+bool FInputManager::IsKeyUp(uint32 Key) const
 {
 	if (Key >= MAX_KEYS)
 	{
 		return false;
 	}
-	return !IsKeyDown(Key) && IsPrevKeyDown(Key);
+	return !IsKeyPressed(Key) && IsPrevKeyDown(Key);
 }
 
 bool FInputManager::IsMouseDown(EMouseButton Button) const
 {
-	switch (Button)
-	{
-	case EMouseButton::Left:
-		return bMouseLeftPressed;
-	case EMouseButton::Right:
-		return bMouseRightPressed;
-	case EMouseButton::Middle:
-		return bMouseMiddlePressed;
-	}
-
-	return false;
+	size_t MouseIndex = static_cast<size_t>(Button);
+	return !bPreviousMouseState[MouseIndex] && bCurrentMouseState[MouseIndex];
 }
 
-void FInputManager::OnMouseMove(FVector2 Position)
+bool FInputManager::IsMousePressed(EMouseButton Button) const
+{
+	size_t MouseIndex = static_cast<size_t>(Button);
+	return bCurrentMouseState[MouseIndex];
+}
+
+bool FInputManager::IsMouseUp(EMouseButton Button) const
+{
+	size_t MouseIndex = static_cast<size_t>(Button);
+	return bPreviousMouseState[MouseIndex] && !bCurrentMouseState[MouseIndex];
+}
+
+void FInputManager::SetMousePosition(FVector2 Position)
 {
 	CurrentMousePosition = Position;
 }
 
-void FInputManager::OnMouseButtonDown(EMouseButton Button, FVector2 Position)
+void FInputManager::SetMouseButton(EMouseButton Button, bool Value)
 {
-	switch (Button)
-	{
-	case EMouseButton::Left:
-		bMouseLeftPressed = true;
-		break;
-	case EMouseButton::Right:
-		bMouseRightPressed = true;
-		break;
-	case EMouseButton::Middle:
-		bMouseMiddlePressed = true;
-		break;
-	}
-
-	CurrentMousePosition = Position;
-	PreviousMousePosition = Position;
+	size_t MouseIndex = static_cast<size_t>(Button);
+	bCurrentMouseState[MouseIndex] = Value;
 }
 
-void FInputManager::OnMouseButtonUp(EMouseButton Button, FVector2 Position)
-{
-	switch (Button)
-	{
-	case EMouseButton::Left:
-		bMouseLeftPressed = false;
-		break;
-	case EMouseButton::Right:
-		bMouseRightPressed = false;
-		break;
-	case EMouseButton::Middle:
-		bMouseMiddlePressed = false;
-		break;
-	}
-
-	CurrentMousePosition = Position;
-	PreviousMousePosition = Position;
-}
-
-void FInputManager::OnMouseWheel(float Delta)
+void FInputManager::SetMouseWheel(float Delta)
 {
 	AccmulatedWheelData += Delta;
 }
@@ -123,6 +94,11 @@ FVector2 FInputManager::GetMouseDelta() const
 float FInputManager::GetMouseWheelDelta() const
 {
 	return MouseWheelDelta;
+}
+
+void FInputManager::SetKey(uint32 Key, bool Value)
+{
+	CurrentKeyStates[Key] = Value;
 }
 
 bool FInputManager::IsPrevKeyDown(uint32 Key) const

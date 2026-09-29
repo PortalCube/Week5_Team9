@@ -47,15 +47,9 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     ImGui::Text("Live UObjects : %llu, UObject Memory: %llu bytes (%.2f KiB)", static_cast<unsigned long long>(Count), static_cast<unsigned long long>(Bytes), static_cast<double>(Bytes) / 1024.0);
     ImGui::Separator();
 
-    ImGui::Checkbox("정렬 활성화", &Globals::bSortTest);
-
-    if (ImGui::Button("1000 random spawn"))
+    if (ImGui::Button("대회 씬 바로 불러오기"))
     {
-        for (int i = 0; i < 1000; ++i)
-        {
-            uint32 Index = Random::Get<uint32>(0, 4);
-            Editor.SpawnActorToCurrentScene(EditorConstant::SpawnableActors[Index]);
-        }
+        Editor.LoadScene("DefaultScene/Default.scene");
     }
 
     //액터 스폰
@@ -73,6 +67,12 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
 
     ImGui::Separator();
     BVHDebugSetting(Editor);
+
+    ImGui::Separator();
+    RenderStateSort(Editor);
+
+    ImGui::Separator();
+	SIMDDebugSetting(Editor);
 
     ImGui::End();
 }
@@ -130,6 +130,27 @@ void FImguiControlPanelWindow::BVHDebugSetting(FEditor& Editor)
     {
         Editor.ResetPickingStats();
     }
+}
+
+void FImguiControlPanelWindow::RenderStateSort(FEditor& Editor)
+{
+    ImGui::Text("Render State Sort");
+    ImGui::Checkbox("정렬 활성화", &Globals::bSortTest);
+
+    if (ImGui::Button("1000 random spawn"))
+    {
+        for (int i = 0; i < 1000; ++i)
+        {
+            uint32 Index = Random::Get<uint32>(0, 4);
+            Editor.SpawnActorToCurrentScene(EditorConstant::SpawnableActors[Index]);
+        }
+    }
+}
+
+void FImguiControlPanelWindow::SIMDDebugSetting(FEditor& Editor)
+{
+    ImGui::Text("SIMD Debug");
+    ImGui::Checkbox("배치 변환 최적화", &Globals::bEnableBatchTransform);
 }
 
 void FImguiControlPanelWindow::ActorSpawnSetting(FEditor& Editor)

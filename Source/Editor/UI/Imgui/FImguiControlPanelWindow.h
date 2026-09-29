@@ -20,5 +20,6 @@ private:
 	//TODO : Directional light또한 Actor가 되어야하므로 지워야함
 	void DirectionLightSetting(FEditor& Editor);
 	void BVHDebugSetting(FEditor& Editor);
-
+	void RenderStateSort(FEditor& Editor);
+	void SIMDDebugSetting(FEditor& Editor);
 };

@@ -175,7 +175,7 @@ void FImguiStatsWindow::DrawStatsFPS()
 
     float Y = FPSPos.y;
     FVector4 FPSColor(0.0f, 255.0f, 255.0f, 255.0f);
-    FVector4 TransColor(0.0f, 0.0f, 0.0f, 0.0f);
+    FVector4 TransColor(0.0f, 0.0f, 0.0f, 128.0f);
     char Buffer[64];
 
     double DeltaTime = FTimeManager::GetDeltaTime();
@@ -206,7 +206,7 @@ void FImguiStatsWindow::DrawUnits()
 
     float Y = Pos.y;
     FVector4 Color(0.0f, 255.0f, 255.0f, 255.0f);
-    FVector4 TransColor(0.0f, 0.0f, 0.0f, 0.0f);
+    FVector4 TransColor(0.0f, 0.0f, 0.0f, 128.0f);
 
     const FStatsManager& Stats = FStatsManager::Get();
 

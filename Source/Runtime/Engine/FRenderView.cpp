@@ -34,6 +34,9 @@ namespace
             return {};
         }
 
+        const bool bIsSpecial = (Data.Type == ERenderType::Text || Data.Type == ERenderType::Instancing);
+        const FMatrix InitialMVP = bIsSpecial ? (Data.ModelMatrix * Camera.GetViewProjectionMatrix()) : FMatrix::Identity;
+
         FDrawCommand Command
         {
             .Mesh = Data.Mesh->Get(),
@@ -42,15 +45,27 @@ namespace
         };
 
 
-        Command.Constants = 
+        Command.Constants =
         {
-            .MVP = Data.ModelMatrix * Camera.GetViewProjectionMatrix(),
+            .MVP = InitialMVP,
             .Color = Data.Materials[0].Color,
             .UVScale = Data.Materials[0].UVScale,
             .UVOffset = Data.Materials[0].UVOffset,
             .World = Data.ModelMatrix,
             .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
         };
+
+        /*FObjectConstants Constants
+        Command.Constants = 
+        {
+            .MVP = Data.ModelMatrix * Camera.GetViewProjectionMatrix(),
+            .MVP = InitialMVP,
+            .Color = Data.Materials[0].Color,
+            .UVScale = Data.Materials[0].UVScale,
+            .UVOffset = Data.Materials[0].UVOffset,
+            .World = Data.ModelMatrix,
+            .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
+        };*/
 
 
         for (const auto& Item : Data.Materials)
@@ -115,9 +130,36 @@ namespace
     }
 }
 
+void FRenderView::ReserveScratchMVPBuffer(size_t RequiredCount)
+{
+	if (RequiredCount <= ScratchMVPAllocated)
+	{
+		return;
+	}
+	if (ScratchMVPBuffer)
+	{
+		_aligned_free(ScratchMVPBuffer);
+	}
+	size_t NewAlloc = (RequiredCount + 3) & ~3;
+	ScratchMVPBuffer = (FMatrix*)_aligned_malloc(sizeof(FMatrix) * NewAlloc, 16);
+	ScratchMVPAllocated = NewAlloc;
+}
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
+    const auto& SceneTransforms = Scene.GetSceneTransforms();
+    const int32 TotalBatchCount = static_cast<int32>(Scene.GetActors().size());
+
+    ReserveScratchMVPBuffer(TotalBatchCount);
+    if (Globals::bEnableBatchTransform)
+    {
+        ReserveScratchMVPBuffer(TotalBatchCount);
+        if (TotalBatchCount > 0)
+        {
+            SceneTransforms.ComputeBatchMVP(View.ViewProj, ScratchMVPBuffer, TotalBatchCount);
+        }
+    }
+
     SCOPE_INDEPENDENT_CYCLE_COUNTER("Test");
     /*for (auto& PrimitiveComponent : Scene.GetRenderComponents())*/
     //컬링 결과 인덱스를 맞추기 위해 인덱스 for문으로 변경
@@ -155,9 +197,22 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
             continue;
         }
 
-        const FMatrix World = PrimitiveComponent->GetRenderMatrix(View.Camera);
-        DrawCommand.Constants.MVP = World * View.ViewProj;
-        DrawCommand.Constants.World = World;
+		int32 Index = PrimitiveComponent->GetBatchIndex();
+
+        //const FMatrix World = PrimitiveComponent->GetRenderMatrix(View.Camera);
+        //DrawCommand.Constants.MVP = World * View.ViewProj;
+        //DrawCommand.Constants.World = World;
+        if (Globals::bEnableBatchTransform && Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
+        {
+            DrawCommand.Constants.World = SceneTransforms.WorldMatrices[Index];
+            DrawCommand.Constants.MVP = ScratchMVPBuffer[Index];
+        }
+        else
+        {
+            const FMatrix World = PrimitiveComponent->GetRenderMatrix(View.Camera);
+            DrawCommand.Constants.World = World;
+            DrawCommand.Constants.MVP = World * View.ViewProj;
+        }
         DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.0f };
         DrawCommand.Constants.DisableShading = View.ViewMode == EViewModeIndex::VMI_Unlit ? 1.0f : 0.0f;
 
@@ -186,6 +241,8 @@ void FRenderView::PrepareRender()
 
 void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const FEditorRenderContext& EditorCtx)
 {
+
+
     // 뷰포트 시작
     BeginView(View);
 
@@ -590,3 +647,12 @@ void FRenderView::DrawFrozenFrustum(const FSceneView& View)
     //}
 }
 
+FRenderView::~FRenderView()
+{
+	if (ScratchMVPBuffer)
+	{
+		_aligned_free(ScratchMVPBuffer);
+		ScratchMVPBuffer = nullptr;
+	}
+	ScratchMVPAllocated = 0;
+}

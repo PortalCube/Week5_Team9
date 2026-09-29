@@ -42,7 +42,7 @@ FRenderResourceLibrary *FEditor::GetRendererLibrary() {
 void FEditor::Process() {
   // 씬의 액터 업데이트
   
-    if (FInputManager::Get().IsKeyDown(VK_DELETE) && SelectedActor)
+    if (FInputManager::Get().IsKeyPressed(VK_DELETE) && SelectedActor)
     {
         AActor* Target = SelectedActor;
         UnSelectActor();
@@ -116,9 +116,9 @@ void FEditor::SaveScene(const FString &Path) { SceneManager->SaveScene(Path); }
 
 void FEditor::LoadScene(const FString &Path) 
 {
-
   // 씬 로드
-  SceneManager->LoadScene(Path);
+  FEditorViewportClient* Viewport = GetActiveViewport();
+  SceneManager->LoadScene(Path, Viewport ? &Viewport->ViewportCamera : nullptr);
   SelectedActor = nullptr;
 }
 
@@ -208,8 +208,14 @@ void FEditor::SpawnActorToCurrentScene(UClass* Type, int Size) {
     const float Max = State.GetSpawnActorMaxLocation();
     if (Min > Max) { return; }
 
+	auto& Transforms = SceneManager->CurrentScene->GetSceneTransforms();
+	const int32 CurrentActorCount = static_cast<int32>(SceneManager->CurrentScene->GetActors().size());
+
+    Transforms.Reserve(CurrentActorCount + Size);
+
     for (int i = 0; i < Size; ++i)
     {
+		const int32 TargetIndex = CurrentActorCount + i;
 
         FVector Location
         {

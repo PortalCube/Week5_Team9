@@ -26,44 +26,44 @@ void FCameraInputController::UpdateKeyInput(FCamera& Camera, float DeltaTime)
 
 	float RelativeSpeed = 1.0f;
 
-	if (FInputManager::Get().IsKeyDown(VK_LEFT) || FInputManager::Get().IsKeyDown('A'))
+	if (FInputManager::Get().IsKeyPressed(VK_LEFT) || FInputManager::Get().IsKeyPressed('A'))
 	{
 		Direction -= Right;
 	}
 
-	if (FInputManager::Get().IsKeyDown(VK_RIGHT) || FInputManager::Get().IsKeyDown('D'))
+	if (FInputManager::Get().IsKeyPressed(VK_RIGHT) || FInputManager::Get().IsKeyPressed('D'))
 	{
 		Direction += Right;
 	}
 
-	if (FInputManager::Get().IsKeyDown(VK_UP) || FInputManager::Get().IsKeyDown('W'))
+	if (FInputManager::Get().IsKeyPressed(VK_UP) || FInputManager::Get().IsKeyPressed('W'))
 	{
 		Direction += Forward;
 	}
 
-	if (FInputManager::Get().IsKeyDown(VK_DOWN) || FInputManager::Get().IsKeyDown('S'))
+	if (FInputManager::Get().IsKeyPressed(VK_DOWN) || FInputManager::Get().IsKeyPressed('S'))
 	{
 		Direction -= Forward;
 	}
 
 	// 하강 이동
-	if (FInputManager::Get().IsKeyDown('Q'))
+	if (FInputManager::Get().IsKeyPressed('Q'))
 	{
 		Direction += FVector{0.0f, 0.0f, -1.0f};
 	}
 
 	// 상승 이동
-	if (FInputManager::Get().IsKeyDown('E'))
+	if (FInputManager::Get().IsKeyPressed('E'))
 	{
 		Direction += FVector{ 0.0f, 0.0f, 1.0f };
 	}
 
-	if (FInputManager::Get().IsKeyDown(VK_LSHIFT))
+	if (FInputManager::Get().IsKeyPressed(VK_LSHIFT))
 	{
 		RelativeSpeed *= 2.0f;
 	}
 
-	if (FInputManager::Get().IsKeyDown(VK_LCONTROL))
+	if (FInputManager::Get().IsKeyPressed(VK_LCONTROL))
 	{
 		RelativeSpeed *= 0.5f;
 	}
@@ -89,7 +89,7 @@ void FCameraInputController::UpdateKeyInput(FCamera& Camera, float DeltaTime)
 
 void FCameraInputController::UpdateMouseInput(FCamera& Camera) const
 {
-	if (FInputManager::Get().IsMouseDown(EMouseButton::Right))
+	if (FInputManager::Get().IsMousePressed(EMouseButton::Right))
 	{
 		FVector2 Delta = FInputManager::Get().GetMouseDelta() * CameraRotateSpeed;
 		const float Yaw = Camera.GetYaw() + Delta.X;
