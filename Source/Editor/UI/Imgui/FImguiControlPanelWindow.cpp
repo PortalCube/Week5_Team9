@@ -47,17 +47,6 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     ImGui::Text("Live UObjects : %llu, UObject Memory: %llu bytes (%.2f KiB)", static_cast<unsigned long long>(Count), static_cast<unsigned long long>(Bytes), static_cast<double>(Bytes) / 1024.0);
     ImGui::Separator();
 
-    ImGui::Checkbox("정렬 활성화", &Globals::bSortTest);
-
-    if (ImGui::Button("1000 random spawn"))
-    {
-        for (int i = 0; i < 1000; ++i)
-        {
-            uint32 Index = Random::Get<uint32>(0, 4);
-            Editor.SpawnActorToCurrentScene(EditorConstant::SpawnableActors[Index]);
-        }
-    }
-
     //액터 스폰
     ActorSpawnSetting(Editor);
     // 그리드 설정
@@ -73,6 +62,9 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
 
     ImGui::Separator();
     BVHDebugSetting(Editor);
+
+    ImGui::Separator();
+    RenderStateSort(Editor);
 
     ImGui::End();
 }
@@ -129,6 +121,21 @@ void FImguiControlPanelWindow::BVHDebugSetting(FEditor& Editor)
     if (ImGui::Button("Reset Stats"))
     {
         Editor.ResetPickingStats();
+    }
+}
+
+void FImguiControlPanelWindow::RenderStateSort(FEditor& Editor)
+{
+    ImGui::Text("Render State Sort");
+    ImGui::Checkbox("정렬 활성화", &Globals::bSortTest);
+
+    if (ImGui::Button("1000 random spawn"))
+    {
+        for (int i = 0; i < 1000; ++i)
+        {
+            uint32 Index = Random::Get<uint32>(0, 4);
+            Editor.SpawnActorToCurrentScene(EditorConstant::SpawnableActors[Index]);
+        }
     }
 }
 
