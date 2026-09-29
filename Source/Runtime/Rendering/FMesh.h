@@ -30,6 +30,7 @@ public:
 	[[nodiscard]] const TArray<FVector>& GetPositions() const { return Positions; }
 	[[nodiscard]] const TArray<uint32>& GetIndices() const { return Indices; }
 	[[nodiscard]] const FAxisAlignedBoundingBox& GetLocalBounds() const { return LocalBounds; }
+	[[nodiscard]] const TArray<FVector>& GetTriangleVertices() const { return TriangleVertices; }
 	const uint32 GetSectionCount() const { return static_cast<uint32>(Sections.size()); }
 	const TArray<FMeshSection>& GetSections() const { return Sections; }
 
@@ -40,6 +41,7 @@ public:
 	uint32 GetBufferSize() { return VertexBufferSize + IndexBufferSize; }
 private:
 	void BindResources(ID3D11DeviceContext& Context) const;
+	void BuildTriangleVertices();
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> VertexBuffer;
 	uint32 VertexCount = 0u;
@@ -53,6 +55,7 @@ private:
 	TArray<FVector> Positions;
 	TArray<uint32> Indices;
 	TArray<FMeshSection> Sections;
+	TArray<FVector> TriangleVertices;   // 삼각형 순서대로 펼친 정점 (3개씩)
 
 	D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	FAxisAlignedBoundingBox LocalBounds = {};

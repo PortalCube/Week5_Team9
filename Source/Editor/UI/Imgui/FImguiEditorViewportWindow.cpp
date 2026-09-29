@@ -422,7 +422,7 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
     }
     else
     {
-        TArray<UPrimitiveComponent *> Components = Editor.GetPrimitiveComponents();
+        const TArray<UPrimitiveComponent *> &Components = Editor.GetPrimitiveComponents();
         bHit = FRayCastingManager::RayIntersectsMeshes(
             PickRay, Viewport.ViewportCamera, Components, HitComponent, ImpactPoint);
     }

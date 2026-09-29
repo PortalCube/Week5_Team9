@@ -184,7 +184,7 @@ void FEditor::UnSelectActor() {
   }
 }
 
-TArray<UPrimitiveComponent *> FEditor::GetPrimitiveComponents() const {
+const TArray<UPrimitiveComponent *> &FEditor::GetPrimitiveComponents() const {
   if (!SceneManager || !SceneManager->CurrentScene) {
     return {};
   }

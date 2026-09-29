@@ -125,40 +125,35 @@ bool FRayCastingManager::RayIntersectsAABB(const FRay& Ray, const FAxisAlignedBo
 	return TNear <= TFar;
 }
 
-bool FRayCastingManager::RayIntersectsMesh(const FRay& Ray, const FMesh& Mesh, const FMatrix& ModelMatrix, float& OutDistance, FVector& OutImpactPoint)
+// 펼친 삼각형 배열을 순서대로 검사한다.
+static bool IntersectFlattenedTriangles(const FRay& ObjectRay, const FMesh& Mesh, float& OutClosestHit)
+{
+	const TArray<FVector>& Tri = Mesh.GetTriangleVertices();
+
+	bool bHit = false;
+	for (uint32 i = 0; i + 2 < Tri.size(); i += 3)
+	{
+		float HitT = 0.0f;
+		if (FRayCastingManager::RayIntersectsTriangle(ObjectRay, Tri[i], Tri[i+1], Tri[i+2], HitT) &&
+			HitT < OutClosestHit)
+		{
+			OutClosestHit = HitT;
+			bHit = true;
+		}
+	}
+	return bHit;
+}
+
+// 기존 방식: 매 삼각형마다 인덱스로 정점을 찾아간다.
+static bool IntersectIndexedTriangles(const FRay& ObjectRay, const FMesh& Mesh, float& OutClosestHit)
 {
 	const auto& Positions = Mesh.GetPositions();
 	const auto& Indices = Mesh.GetIndices();
-
-	if (Positions.size() < 3)
-	{
-		return false;
-	}
-	
-	// Ray를 Object 좌표계로 변환
-	FMatrix InvM;
-	if (!ModelMatrix.Inverse(InvM))
-	{
-		return false;
-	}
-
-	const FVector ObjectOrigin = InvM.TransformPointRow(Ray.Origin);
-	const FVector ObjectDirection = InvM.TransformPointRow(Ray.Direction, 0.0f); // 1.0은 점을 나타내므로 0.0으로 하여 벡터로 유지
-	const FRay ObjectRay{ ObjectOrigin, ObjectDirection };
-
-	float DummyNear;
-	FAxisAlignedBoundingBox AABB = Mesh.GetLocalBounds();
-	if (!RayIntersectsAABB(ObjectRay, AABB, DummyNear))
-	{
-		return false;
-	}
 
 	const uint32 elementCount = Mesh.HasIndices()
 		? static_cast<uint32>(Indices.size())
 		: static_cast<uint32>(Positions.size());
 
-	float ClosestHit = (std::numeric_limits<float>::max)();
-	FVector ClosestImpactPoint;
 	bool bHit = false;
 	for (uint32 i = 0; i + 2 < elementCount; i += 3)
 	{
@@ -179,18 +174,55 @@ bool FRayCastingManager::RayIntersectsMesh(const FRay& Ray, const FMesh& Mesh, c
 		FVector C = Positions[i2];
 
 		float HitT = 0.0f;
-		if (RayIntersectsTriangle(ObjectRay, A, B, C, HitT) &&
-			HitT < ClosestHit)
+		if (FRayCastingManager::RayIntersectsTriangle(ObjectRay, A, B, C, HitT) &&
+			HitT < OutClosestHit)
 		{
-			ClosestHit = HitT;
-			ClosestImpactPoint = Ray.Origin + Ray.Direction * HitT;
+			OutClosestHit = HitT;
 			bHit = true;
 		}
 	}
+	return bHit;
+}
+
+bool FRayCastingManager::RayIntersectsMesh(const FRay& Ray, const FMesh& Mesh, const FMatrix& ModelMatrix, float& OutDistance, FVector& OutImpactPoint)
+{
+	const size_t VertexCount = bUseFlattenedTriangles
+		? Mesh.GetTriangleVertices().size()
+		: Mesh.GetPositions().size();
+	if (VertexCount < 3)
+	{
+		return false;
+	}
+
+	// Ray를 Object 좌표계로 변환
+	FMatrix InvM;
+	if (!ModelMatrix.Inverse(InvM))
+	{
+		return false;
+	}
+
+	const FVector ObjectOrigin = InvM.TransformPointRow(Ray.Origin);
+	const FVector ObjectDirection = InvM.TransformPointRow(Ray.Direction, 0.0f); // 1.0은 점을 나타내므로 0.0으로 하여 벡터로 유지
+	const FRay ObjectRay{ ObjectOrigin, ObjectDirection };
+
+	float DummyNear;
+	FAxisAlignedBoundingBox AABB = Mesh.GetLocalBounds();
+	if (!RayIntersectsAABB(ObjectRay, AABB, DummyNear))
+	{
+		return false;
+	}
+
+	float ClosestHit = (std::numeric_limits<float>::max)();
+	const bool bHit = bUseFlattenedTriangles
+		? IntersectFlattenedTriangles(ObjectRay, Mesh, ClosestHit)
+		: IntersectIndexedTriangles(ObjectRay, Mesh, ClosestHit);
 
 	OutDistance = ClosestHit;
-	OutImpactPoint = ClosestImpactPoint;
-	
+	if (bHit)
+	{
+		OutImpactPoint = Ray.Origin + Ray.Direction * ClosestHit;
+	}
+
 	return bHit;
 }
 

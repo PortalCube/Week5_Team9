@@ -27,6 +27,29 @@ void FMesh::BindResources(ID3D11DeviceContext& Context) const
 	Context.IASetIndexBuffer(IndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 }
 
+void FMesh::BuildTriangleVertices()
+{
+	TriangleVertices.clear();
+	if (!Indices.empty())
+	{
+		size_t PositionSize = Positions.size();
+		TriangleVertices.reserve(Indices.size());
+		for (size_t i = 0; i + 2 < Indices.size(); i += 3)
+		{
+			if (Indices[i] < PositionSize && Indices[i+1] < PositionSize && Indices[i+2] < PositionSize)
+			{
+				TriangleVertices.push_back(Positions[Indices[i]]);
+				TriangleVertices.push_back(Positions[Indices[i+1]]);
+				TriangleVertices.push_back(Positions[Indices[i+2]]);
+			}
+		}
+	}
+	else
+	{
+		TriangleVertices = Positions;
+	}
+}
+
 bool FMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Context, const FMeshDesc& Desc)
 {
 	if (!Device || !Context || !Desc.VertexData || Desc.VertexCount == 0)
@@ -119,6 +142,8 @@ bool FMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Context, co
 		const auto* indices = static_cast<const uint32*>(Desc.IndexData);
 		Indices.assign(indices, indices + Desc.IndexCount);
 	}
+
+	BuildTriangleVertices();
 
 	// 바운딩 박스 갱신
 	LocalBounds = FAxisAlignedBoundingBox{ *this };
