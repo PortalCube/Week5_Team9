@@ -45,6 +45,9 @@ public:
     bool GetBoundDirtyQueued()const { return bBoundDirtyQueued; }
     void SetBoundDirtyQueued(bool pDirtyQueued) { bBoundDirtyQueued = pDirtyQueued; }
 
+    //월드 AABB 업데이트
+    void UpdateWorldBounds();
+
 protected:
     UPrimitiveComponent() = default;
 

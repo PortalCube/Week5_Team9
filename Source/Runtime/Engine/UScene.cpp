@@ -286,6 +286,7 @@ void UScene::UpdateDirtyBounds()
     for (UPrimitiveComponent* Prim : DirtyBoundsList)
     {
         Prim->SetBoundDirtyQueued(false);
+        Prim->UpdateWorldBounds();
         CullDataList[static_cast<size_t>(Prim->GetSceneIndex())] = Prim->GetWorldBounds();
     }
     DirtyBoundsList.clear();

@@ -58,6 +58,11 @@ void UPrimitiveComponent::MarkBoundDirty()
     }
 }
 
+void UPrimitiveComponent::UpdateWorldBounds()
+{
+    WorldBounds = FAxisAlignedBoundingBox(GetLocalBounds(), GetGlobalTransform().GetMatrix());
+}
+
 void UPrimitiveComponent::OnTransformChanged()
 {
     MarkBoundDirty();
@@ -66,7 +71,7 @@ void UPrimitiveComponent::OnTransformChanged()
 void UPrimitiveComponent::SetRelativeTransform(const FTransform& RelativeTransform)
 {
     Super::SetRelativeTransform(RelativeTransform);
-    WorldBounds = FAxisAlignedBoundingBox(GetLocalBounds(), RelativeTransform.GetMatrix());
+    UpdateWorldBounds();
 }
 
 FAxisAlignedBoundingBox UPrimitiveComponent::GetWorldBounds() const

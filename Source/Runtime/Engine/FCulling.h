@@ -4,14 +4,6 @@
 
 struct FFrustum;
 
-//컬링 전용 월드 AABB 데이터
-//struct FCullData
-//{
-//	FVector Center{ 0.f, 0.f, 0.f };
-//	FVector Extent{ 0.f, 0.f, 0.f };
-//};
-
-
 //항상 보이게 된다. 아주 큰 Extent를 가진 AABB를 사용하므로 어떤 평면에서도 d < -r이 되지 않는다.
 inline FAxisAlignedBoundingBox MakeAlwaysVisibleCullData()
 {

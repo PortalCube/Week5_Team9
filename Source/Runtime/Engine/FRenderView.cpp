@@ -591,9 +591,7 @@ FFrustum FRenderView::GetCullFrustum(const FSceneView& View)
     //return Frozen.Frustum;
 
     //ViewProjection 행렬을 통해 Frustum을 가져옵니다.
-    FFrustum Result;
-    Result = FFrustum::FromViewProjection(View.ViewProj);
-    return Result;
+    return FFrustum::FromViewProjection(View.ViewProj);
 }
 
 void FRenderView::CaptureFrozenCorners(FFrozenView& Frozen)
