@@ -5,25 +5,22 @@
 
 #include <algorithm>
 
-FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FAxisAlignedBoundingBox& InBounds, const FMatrix& ModelMatrix)
+FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FAxisAlignedBoundingBox& InBounds, const FMatrix& TransformationMatrix)
 {
-	FVector Corner[8];
-	InBounds.GetCorner(Corner);
+	Center = TransformationMatrix.TransformPointRow(InBounds.Center);
+	Extent = TransformationMatrix.Abs().TransformPointRow(InBounds.Extent, 0.0f);
 
-	for (int i = 0; i < 8; i++)
-	{
-		FVector WorldVector = ModelMatrix.TransformPointRow(Corner[i]);
-
-		for (int j = 0; j < 3;j++)
-		{
-			Min[j] = std::min(WorldVector[j], Min[j]);
-			Max[j] = std::max(WorldVector[j], Max[j]);
-		}
-	}
+	Min = Center - Extent;
+	Max = Center + Extent;
 }
 
 FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FMesh& Mesh)
 {	
+	if (Mesh.GetPositions().empty())
+	{
+		return;
+	}
+
 	for (auto& Item : Mesh.GetPositions())
 	{
 		for (int i = 0; i < 3; ++i)
@@ -32,6 +29,9 @@ FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FMesh& Mesh)
 			Max[i] = std::max(Item[i], Max[i]);
 		}
 	}
+
+	Center = (Max + Min) / 2;
+	Extent = Center - Min;
 }
 
 FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FMesh& Mesh, const FMatrix& ModelMatrix)
@@ -39,30 +39,19 @@ FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FMesh& Mesh, const FMatri
 {
 }
 
-void FAxisAlignedBoundingBox::GetCorner(FVector OutCorner[8]) const
+FAxisAlignedBoundingBox FAxisAlignedBoundingBox::Union(const FAxisAlignedBoundingBox& A, const FAxisAlignedBoundingBox& B)
 {
-	// Bottom
-	OutCorner[0] = FVector{ Min.X, Min.Y, Min.Z };
-	OutCorner[1] = FVector{ Min.X, Max.Y, Min.Z };
-	OutCorner[2] = FVector{ Max.X, Min.Y, Min.Z };
-	OutCorner[3] = FVector{ Max.X, Max.Y, Min.Z };
-	// Top
-	OutCorner[4] = FVector{ Min.X, Min.Y, Max.Z };
-	OutCorner[5] = FVector{ Min.X, Max.Y, Max.Z };
-	OutCorner[6] = FVector{ Max.X, Min.Y, Max.Z };
-	OutCorner[7] = FVector{ Max.X, Max.Y, Max.Z };
-}
+	FAxisAlignedBoundingBox R;
 
-//FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FMesh& Mesh, const FMatrix& ModelMatrix)
-//{
-//	for (auto& Item : Mesh.GetPositions())
-//	{
-//		FVector WorldVector = ModelMatrix.TransformPointRow(Item);
-//
-//		for (int i = 0; i < 3; ++i)
-//		{
-//			Min[i] = std::min(WorldVector[i], Min[i]);
-//			Max[i] = std::max(WorldVector[i], Max[i]);
-//		}	
-//	}
-//}
+	//두 AABB를 품을 수 있는 크기로 Min, Max를 재조정한다.
+	for (int i = 0; i < 3; ++i)
+	{
+		R.Min[i] = std::min(A.Min[i], B.Min[i]);
+		R.Max[i] = std::max(A.Max[i], B.Max[i]);
+	}
+
+	R.Center = (R.Max + R.Min) / 2;
+	R.Extent = R.Center - R.Min;
+
+	return R;
+}

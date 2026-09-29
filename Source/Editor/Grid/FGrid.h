@@ -4,7 +4,7 @@
 #include "Runtime/Rendering/FMesh.h"
 #include "Runtime/Rendering/FMaterial.h"
 
-struct FCamera;
+class FCamera;
 
 class FGrid
 {

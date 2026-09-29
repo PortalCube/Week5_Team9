@@ -23,4 +23,7 @@ namespace Globals
 	inline bool bIsRequestingResize = false;
 	inline uint32 ResizeWidth = 0u;
 	inline uint32 ResizeHeight = 0u;
+
+	inline bool bSortTest = false;
+	inline bool bEnableBatchTransform = true;
 };

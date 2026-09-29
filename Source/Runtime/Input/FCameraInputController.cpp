@@ -9,8 +9,7 @@
 
 void FCameraInputController::UpdateKeyInput(FCamera& Camera, float DeltaTime) 
 {
-	const FMatrix Rotation =
-		FMatrix::MakeRotation(FVector(0.0f, Camera.Pitch, Camera.Yaw));
+	const FMatrix& Rotation = Camera.GetRotationMatrix();
 
 	const FVector Forward{
 		Rotation.M[0][0], Rotation.M[0][1], Rotation.M[0][2]
@@ -85,7 +84,7 @@ void FCameraInputController::UpdateKeyInput(FCamera& Camera, float DeltaTime)
 	// 아주 느려지면 0으로 떨어뜨려 미세하게 떠다니는 것을 막는다
 	if (Velocity.SizeSquared() < 0.0001f) { Velocity = FVector{}; }
 
-	Camera.Position += Velocity * DeltaTime;
+	Camera.SetPosition(Camera.GetPosition() + Velocity * DeltaTime);
 }
 
 void FCameraInputController::UpdateMouseInput(FCamera& Camera) const
@@ -93,9 +92,9 @@ void FCameraInputController::UpdateMouseInput(FCamera& Camera) const
 	if (FInputManager::Get().IsMousePressed(EMouseButton::Right))
 	{
 		FVector2 Delta = FInputManager::Get().GetMouseDelta() * CameraRotateSpeed;
-		Camera.Yaw += Delta.X;
-		Camera.Pitch -= Delta.Y;
-		Camera.Pitch = std::clamp(Camera.Pitch, -89.0f, 89.0f);
+		const float Yaw = Camera.GetYaw() + Delta.X;
+		const float Pitch = std::clamp(Camera.GetPitch() - Delta.Y, -89.0f, 89.0f);
+		Camera.SetRotation(Pitch, Yaw);
 	}
 }
 
@@ -112,7 +111,7 @@ void FCameraInputController::UpdateMouseInput_ORTHOGRAPHIC(FCamera& Camera) cons
 		//카메라 로컬 +Y방향
 		const FVector Up{ Rotation.M[2][0], Rotation.M[2][1], Rotation.M[2][2] };
 		
-		const float PanSpeed = Camera.Projection.Height * 0.001f;
-		Camera.Position += (Up * Delta.Y - Right * Delta.X) * PanSpeed;
+		const float PanSpeed = Camera.GetProjection().GetOrthographicHeight() * 0.001f;
+		Camera.SetPosition(Camera.GetPosition() + (Up * Delta.Y - Right * Delta.X) * PanSpeed);
 	}
 }

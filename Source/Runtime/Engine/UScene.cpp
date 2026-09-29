@@ -24,6 +24,8 @@ void UScene::Initialize() {
   }
   Super::Initialize();
   bInitialized = true;
+
+  SceneTransforms.Initialize(10000);
 }
 
 void UScene::Release() {
@@ -43,6 +45,7 @@ void UScene::Release() {
   RenderComponents.clear();
   RenderResourceLibrary = nullptr;
   bInitialized = false;
+  SceneTransforms.ShutDown();
 
   Super::Release();
 }
@@ -90,14 +93,42 @@ void UScene::BeginPlay() {
 }
 
 void UScene::Update(float DeltaTime) {
-  if (!bHasBegunPlay) {
-    return;
+  if (bHasBegunPlay) {
+      for (AActor* Actor : Actors) {
+          if (Actor) {
+              Actor->Update(DeltaTime);
+          }
+      }
+
+
+
+    //return;
   }
 
-  for (AActor *Actor : Actors) {
+  /*for (AActor *Actor : Actors) {
     if (Actor) {
       Actor->Update(DeltaTime);
     }
+  }*/
+
+  const auto& RenderComponents = GetRenderComponents();
+  const int32 PrimCount = static_cast<int32>(RenderComponents.size());
+
+  SceneTransforms.Reserve(PrimCount);
+
+  for (int32 i = 0; i < PrimCount; ++i)
+  {
+	  UPrimitiveComponent* PrimComp = RenderComponents[i];
+	  if (!PrimComp) continue;
+	  
+	  PrimComp->SetBatchIndex(i);
+
+	  SceneTransforms.SetTransform(i, PrimComp->GetGlobalTransform());
+  }
+
+  if(PrimCount > 0)
+  {
+    SceneTransforms.UpdateWorldMatrices(PrimCount);
   }
 }
 
@@ -175,11 +206,13 @@ void UScene::AddRenderComponent(UPrimitiveComponent *prim) {
   if (std::find(RenderComponents.begin(), RenderComponents.end(), prim) ==
       RenderComponents.end()) {
     RenderComponents.push_back(prim);
+    SceneBVH.AddObject(prim);
   }
 }
 
 void UScene::RemoveRenderComponent(UPrimitiveComponent *prim) {
   std::erase(RenderComponents, prim);
+  SceneBVH.RemoveObject(prim);
 }
 
 void UScene::RemoveActor(AActor *Actor) { std::erase(Actors, Actor); }
@@ -203,21 +236,6 @@ AActor *UScene::SpawnActor(UClass *ClassType) {
   Actor->Register(*this);
 
   Actors.push_back(Actor);
-
-  int Count = 0;
-
-  for (TObjectIterator<AActor> It; It; ++It)
-  {
-      AActor* Actor = *It;
-
-      if (Actor)
-      {
-          ++Count;
-      }
-  }
-
-  UE_LOG("Total Actor Count : %d", Count);
-
 
   return Actor;
 }

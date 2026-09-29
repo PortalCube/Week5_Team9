@@ -30,8 +30,6 @@ void FViewerCameraController::UpdateMouseInput(FCamera& Camera)
 
 	FVector Forward{ Rotation.M[0][0], Rotation.M[0][1], Rotation.M[0][2] };
 
-	Camera.Position = TargetPosition - (Forward * TargetDistance);
-
-	Camera.Pitch = Pitch;
-	Camera.Yaw = Yaw;
+	Camera.SetPosition(TargetPosition - (Forward * TargetDistance));
+	Camera.SetRotation(Pitch, Yaw);
 }

@@ -6,6 +6,7 @@
 #include "Runtime/Engine/ShowFlags.h"
 #include "Runtime/Core/TArray.h"
 #include "Runtime/Material/FMaterialInstance.h"
+#include <Runtime/Geometry/FAxisAlignedBoundingBox.h>
 
 class UStaticMeshComponent : public UMeshComponent {
     GENERATED_BODY()
@@ -24,6 +25,7 @@ public:
     void SetTexture(UTexture* Texture, int Index = 0);
 
     virtual const FRenderData& GetRenderData(const FCamera& Camera) const override;
+    virtual FAxisAlignedBoundingBox GetLocalBounds() const override;
 
     void ClearMaterial();
 

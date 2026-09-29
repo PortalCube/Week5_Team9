@@ -14,7 +14,6 @@ struct PS_INPUT
 float4 MainPS(PS_INPUT Input) : SV_Target
 {
     float4 Sampled = DiffuseTexture.Sample(DiffuseSampler, Input.UV);
-    clip(Sampled.a - 0.1f);
     
     // 하이라이트 색상 보간
     float3 Tint = lerp(float3(1.0f, 1.0f, 1.0f), ColorOverride, ColorOverrideAmount);

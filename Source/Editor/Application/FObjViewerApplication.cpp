@@ -16,7 +16,7 @@ FObjViewerApplication::FObjViewerApplication(FRenderer& InRenderer)
 void FObjViewerApplication::Initialize(HWND hWnd, ID3D11Device* Device, ID3D11DeviceContext* Context)
 {
 	// Default Value
-	Camera.Position = FVector{ -5.0f, 0.0f, 0.0f };
+	Camera.SetPosition(FVector{ -5.0f, 0.0f, 0.0f });
 
 	// ImGui Initailize
 	IMGUI_CHECKVERSION();
@@ -67,7 +67,7 @@ void FObjViewerApplication::Render()
 
 	if (CurrentMesh)
 	{
-		FMatrix ViewProj = Camera.CreateViewProjectionMatrix();
+		FMatrix ViewProj = Camera.GetViewProjectionMatrix();
 		FMatrix World = FMatrix::GetIdentity();
 
 		Renderer->UpdateLightConstants(Light, EViewModeIndex::VMI_Lit);
@@ -98,14 +98,14 @@ void FObjViewerApplication::Render()
 				{
 					TextureMaterial->SetTexture(TexIt->second.get());
 					Constants.Color = FVector4{ Mtl.Kd, 0.0f };
-					Renderer->DrawSection(*CurrentMesh, *TextureMaterial, Constants, Section.StartIndex, Section.IndexCount);
+					Renderer->DrawSection(*CurrentMesh, *TextureMaterial, Constants, 0, Section.StartIndex, Section.IndexCount);
 				}
 
 				continue;
 			}
 
 			Constants.Color = FVector4{ Mtl.Kd, 1.0f };
-			Renderer->DrawSection(*CurrentMesh, *SimpleMaterial, Constants, Section.StartIndex, Section.IndexCount);
+			Renderer->DrawSection(*CurrentMesh, *SimpleMaterial, Constants, 0, Section.StartIndex, Section.IndexCount);
 		}
 	}
 
@@ -261,7 +261,7 @@ void FObjViewerApplication::OpenMtl(const char* InFilePath)
 
 void FObjViewerApplication::OnWindowSize(UINT Width, UINT Height)
 {
-	Camera.Projection.Aspect = static_cast<float>(Width) / static_cast<float>(Height);
+	Camera.SetAspectRatio(static_cast<float>(Width) / static_cast<float>(Height));
 }
 
 void FObjViewerApplication::RenderSideBar()

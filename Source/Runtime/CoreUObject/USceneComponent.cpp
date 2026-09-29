@@ -68,9 +68,9 @@ void USceneComponent::Serialize(FArchive& Archive) const
 {
     Super::Serialize(Archive);
 
-    Archive.SetVector("Location", RelativeTransform.Location);
-    Archive.SetVector("Rotation", RelativeTransform.Rotation.GetEulerXYZ());
-    Archive.SetVector("Scale", RelativeTransform.Scale3D);
+    Archive.SetVector("Location", RelativeTransform.GetLocation());
+    Archive.SetVector("Rotation", RelativeTransform.GetRotation().GetEulerXYZ());
+    Archive.SetVector("Scale", RelativeTransform.GetScale3D());
 }
 
 void USceneComponent::Deserialize(const FArchive& Archive)
@@ -78,7 +78,7 @@ void USceneComponent::Deserialize(const FArchive& Archive)
     Super::Deserialize(Archive);
 
     // Location
-    RelativeTransform.Location = Archive.GetVector("Location");
+    RelativeTransform.SetLocation(Archive.GetVector("Location"));
 
     // Rotation
     constexpr float RadToDeg = 180.0f / std::numbers::pi_v<float>;
@@ -87,14 +87,15 @@ void USceneComponent::Deserialize(const FArchive& Archive)
     {
         Rotation[i] *= RadToDeg;
     }
-    RelativeTransform.Rotation = FQuaternion::FromEulerXYZDeg(Rotation);
+    RelativeTransform.SetRotation(FQuaternion::FromEulerXYZDeg(Rotation));
 
     // Scale
-    RelativeTransform.Scale3D = Archive.GetVector("Scale");
+    RelativeTransform.SetScale3D(Archive.GetVector("Scale"));
 }
 
 void USceneComponent::SetRelativeTransform(const FTransform& RelativeTransform)
 {
+    if (this->RelativeTransform == RelativeTransform) { return; }
     this->RelativeTransform = RelativeTransform;
 }
 
@@ -116,10 +117,53 @@ FTransform USceneComponent::GetGlobalTransform() const //나중에 부모 rootco
     {
         // 부모 회전 무시 - 위치와 스케일만 상속
         FTransform Result;
-        Result.Scale3D = RelativeTransform.Scale3D;
-        Result.Rotation = RelativeTransform.Rotation; // 자신의 회전만 사용
-        Result.Location = ParentWorld.Location + RelativeTransform.Location; // 월드 축 기준 오프셋
+        Result.SetScale3D(RelativeTransform.GetScale3D());
+        Result.SetRotation(RelativeTransform.GetRotation()); // 자신의 회전만 사용
+        Result.SetLocation(ParentWorld.GetLocation() + RelativeTransform.GetLocation()); // 월드 축 기준 오프셋
         return Result;
     }
     return ParentWorld * RelativeTransform;
+}
+
+void USceneComponent::SetRelativeLocation(const FVector& RelativeLocation)
+{
+    FTransform NewTransform = GetRelativeTransform();
+    NewTransform.SetLocation(RelativeLocation);
+    SetRelativeTransform(NewTransform);
+}
+
+void USceneComponent::SetRelativeRotation(const FVector& RelativeRotationEulerAngle)
+{
+    FTransform NewTransform = GetRelativeTransform();
+    NewTransform.SetRotation(FQuaternion::FromEulerXYZDeg(RelativeRotationEulerAngle));
+    SetRelativeTransform(NewTransform);
+}
+
+void USceneComponent::SetRelativeRotation(const FQuaternion& RelativeRotation)
+{
+    FTransform NewTransform = GetRelativeTransform();
+    NewTransform.SetRotation(RelativeRotation);
+    SetRelativeTransform(NewTransform);
+}
+
+void USceneComponent::SetRelativeScale(const FVector& RelativeScale)
+{
+    FTransform NewTransform = GetRelativeTransform();
+    NewTransform.SetScale3D(RelativeScale);
+    SetRelativeTransform(NewTransform);
+}
+
+const FVector& USceneComponent::GetRelativeLocation() const
+{
+    return GetRelativeTransform().GetLocation();
+}
+
+const FQuaternion& USceneComponent::GetRelativeRotation() const
+{
+    return GetRelativeTransform().GetRotation();
+}
+
+const FVector& USceneComponent::GetRelativeScale() const
+{
+    return GetRelativeTransform().GetScale3D();
 }

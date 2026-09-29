@@ -23,7 +23,7 @@ void UBillBoardComp::Initialize() {
   SetMesh(Registry.Get<UStaticMesh>("#Rect"));
   SetMaterial(Registry.Get<UMaterial>("Material/Billboard.json"));
 
-  RenderData.Type = ERenderType::Texture;
+  RenderData.Type = ERenderType::Primitive;
 }
 
 void UBillBoardComp::Serialize(FArchive& Archive) const
@@ -75,15 +75,15 @@ FMatrix UBillBoardComp::GetRenderMatrix(const FCamera& Camera) const
     FVector ViewRight = CameraRotation.TransformPointRow(FVector{ 0.0f, 1.0f, 0.0f }, 0.0f); // Y+
     FVector ViewUp = CameraRotation.TransformPointRow(FVector{ 0.0f, 0.0f, 1.0f }, 0.0f); // Z+
 
-    FVector Up = ViewUp * Transform.Scale3D.Z;
-    FVector Right = ViewRight * Transform.Scale3D.Y;
+    FVector Up = ViewUp * Transform.GetScale3D().Z;
+    FVector Right = ViewRight * Transform.GetScale3D().Y;
 
     return FMatrix
     {
         FVector4{ ViewForward, 0.0f },
         FVector4{ Right, 0.0f },
         FVector4{ Up, 0.0f },
-        FVector4{ Transform.Location, 1.0f },
+        FVector4{ Transform.GetLocation(), 1.0f },
     };
 }
 
