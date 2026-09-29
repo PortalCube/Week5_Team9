@@ -56,6 +56,7 @@ private:
 	FString LastFilterStr = "";
 	FString CurrentFilterStr = "";
 	bool bCacheDirty = true;
+	bool bDisplayListDirty = false;
 	bool bUseOptimized = true;
 
 };

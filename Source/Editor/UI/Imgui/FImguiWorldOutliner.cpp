@@ -44,11 +44,16 @@ void FImguiWorldOutliner::Process(FEditor& Editor)
 			UpdateFilter(CurrentFilterStr.c_str());
 			RebuildDisplayList();
 			LastScene = Scene;
+			bDisplayListDirty = false;
 		}
-		else if (bFilterChanged)
+		else if (bFilterChanged || bDisplayListDirty)
 		{
-			UpdateFilter(CurrentFilterStr.c_str());
+			if(bFilterChanged)
+			{
+				UpdateFilter(CurrentFilterStr.c_str());
+			}
 			RebuildDisplayList();
+			bDisplayListDirty = false;
 		}
 
 		ImGuiListClipper Clipper;
@@ -234,33 +239,32 @@ void FImguiWorldOutliner::ShowActorNode_Cached(FEditor& Editor, const FOutlinerI
 			Editor.SelectActor(Actor);
 		}
 
-		if(bNodeOpen != bIsOpen)
+		if (!Components.empty())
 		{
-			if(bNodeOpen)
+			if (bNodeOpen != bIsOpen)
 			{
-				ExpandedActorUUIDs.insert(Item.UUID);
+				if (bNodeOpen)
+				{
+					ExpandedActorUUIDs.insert(Item.UUID);
+				}
+				else
+				{
+					ExpandedActorUUIDs.erase(Item.UUID);
+				}
+				bDisplayListDirty = true;
 			}
-			else
-			{
-				ExpandedActorUUIDs.erase(Item.UUID);
-			}
-			RebuildDisplayList();
-		}
 
-		if (bNodeOpen)
-		{
-			ImGui::TreePop();
+			if (bNodeOpen)
+			{
+				ImGui::TreePop();
+			}
 		}
 	}
 	else
 	{
 		ImGuiTreeNodeFlags CompFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
 		ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(Item.UUID)), CompFlags, "%s", Item.DisplayLabel.c_str());
-	}
-
-	if(Item.Depth > 0)
-	{
-		ImGui::Unindent(Item.Depth * 16.0f);
+		ImGui::Unindent(16.0f);
 	}
 }
 
@@ -281,7 +285,8 @@ bool FImguiWorldOutliner::ShowSearchBar()
 	{
 		CurrentFilterStr = FilterBuffer;
 
-		std::transform(CurrentFilterStr.begin(), CurrentFilterStr.end(), CurrentFilterStr.begin(), ::tolower);
+		std::transform(CurrentFilterStr.begin(), CurrentFilterStr.end(), CurrentFilterStr.begin(),
+			[](unsigned char c) { return static_cast<char>(::tolower(c)); });
 		
 		return true;;
 	}
