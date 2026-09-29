@@ -26,4 +26,5 @@ namespace Globals
 
 	inline bool bSortTest = false;
 	inline bool bEnableBatchTransform = true;
+	inline bool bUseFrameResources = true;
 };

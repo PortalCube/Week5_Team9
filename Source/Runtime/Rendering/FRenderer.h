@@ -26,6 +26,12 @@ struct FDrawCommand;
 
 #include "Runtime/Engine/ShowFlags.h"
 
+struct FFrameResource
+{
+	Microsoft::WRL::ComPtr<ID3D11Buffer> FrameConstantBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> ViewConstantBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> ObjectConstantBuffer;
+};
 
 class FRenderer final {
 public:
@@ -122,9 +128,9 @@ private:
   static constexpr UINT ConstantBufferSize = 256u;
 
   // 상수 버퍼들
-  Microsoft::WRL::ComPtr<ID3D11Buffer> FrameConstantBuffer;
+  /*Microsoft::WRL::ComPtr<ID3D11Buffer> FrameConstantBuffer;
   Microsoft::WRL::ComPtr<ID3D11Buffer> ViewConstantBuffer;
-  Microsoft::WRL::ComPtr<ID3D11Buffer> ObjectConstantBuffer;
+  Microsoft::WRL::ComPtr<ID3D11Buffer> ObjectConstantBuffer;*/
   Microsoft::WRL::ComPtr<ID3D11Buffer> LightConstantBuffer;
 
   Microsoft::WRL::ComPtr<ID3D11RenderTargetView> EditorViewPortRTV;
@@ -164,6 +170,12 @@ private:
   
     uint64 LastRenderStateKey = 0;
 
+	static constexpr uint32 NumFrameResourceCount = 3;
+	FFrameResource FrameResources[NumFrameResourceCount];
+	uint32 CurrentFrameResourceIndex = 0;
+
+    FFrameResource* GetCurrentFrameResource() { return &FrameResources[CurrentFrameResourceIndex]; }
+	FFrameResource* GetNextFrameResource() { return &FrameResources[(CurrentFrameResourceIndex + 1) % NumFrameResourceCount]; }
 public:
   template <typename TConstants>
   void FlushLineBatch(
@@ -256,7 +268,7 @@ public:
 
   // Constant Buffer를 갱신한다.
   // 크기가 맞는지는 컴파일 타임에 검사한다.
-  template <typename TConstants>
+/*  template <typename TConstants>
   void UpdateBuffer(const TConstants &Constants, uint32 Slot) {
     static_assert(sizeof(TConstants) <= ConstantBufferSize);
     static_assert(sizeof(TConstants) % 16 == 0);
@@ -278,5 +290,29 @@ public:
 
     Context->VSSetConstantBuffers(Slot, 1u, ObjectConstantBuffer.GetAddressOf());
     Context->PSSetConstantBuffers(Slot, 1u, ObjectConstantBuffer.GetAddressOf());
+  }*/
+
+  template <typename TConstants>
+  void UpdateBuffer(const TConstants& Constants, uint32 Slot) {
+      static_assert(sizeof(TConstants) <= ConstantBufferSize);
+      static_assert(sizeof(TConstants) % 16 == 0);
+
+      // 언리얼 Clip -> D3D Clip 좌표 변환.
+      // MVP, VP를 가진 상수 타입에만 적용한다(없는 타입은 그대로 통과).
+      TConstants ShaderConstants = Constants;
+      if constexpr (requires { ShaderConstants.MVP; }) {
+          ShaderConstants.MVP = ShaderConstants.MVP.ToD3DMatrix();
+      }
+
+      D3D11_MAPPED_SUBRESOURCE Mapped{};
+      if (FAILED(Context->Map(GetCurrentFrameResource()->ObjectConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD,
+          0, &Mapped))) {
+          return;
+      }
+      std::memcpy(Mapped.pData, &ShaderConstants, sizeof(TConstants));
+      Context->Unmap(GetCurrentFrameResource()->ObjectConstantBuffer.Get(), 0);
+
+      Context->VSSetConstantBuffers(Slot, 1u, GetCurrentFrameResource()->ObjectConstantBuffer.GetAddressOf());
+      Context->PSSetConstantBuffers(Slot, 1u, GetCurrentFrameResource()->ObjectConstantBuffer.GetAddressOf());
   }
 };
