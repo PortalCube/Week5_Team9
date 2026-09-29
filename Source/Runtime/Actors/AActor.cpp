@@ -165,6 +165,17 @@ void AActor::SetRootComponent(USceneComponent* Component)
 	}
 }
 
+void AActor::MarkComponentsTransformDirty()
+{
+	for (USceneComponent* Component : AttachedComp)
+	{
+		if (Component)
+		{
+			Component->OnTransformChanged();
+		}
+	}
+}
+
 void AActor::AddComponent(USceneComponent* Addcomp)
 {
 	if (Addcomp == nullptr)

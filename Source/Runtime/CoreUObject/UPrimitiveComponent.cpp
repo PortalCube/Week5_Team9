@@ -4,6 +4,7 @@
 #include "Runtime/Rendering/ShaderConstants.h"
 #include "Runtime/Engine/UScene.h"
 #include "Runtime/CoreUObject/UClass.h"
+#include "Runtime/Asset/UStaticMesh.h"
 
 IMPLEMENT_UCLASS(UPrimitiveComponent, USceneComponent)
 
@@ -23,6 +24,7 @@ void UPrimitiveComponent::SetMesh(UStaticMesh* Mesh)
 {
     RenderData.Mesh = Mesh;
     LocalBounds = Mesh->Get()->GetLocalBounds();
+    MarkBoundDirty();
 }
 
 void UPrimitiveComponent::SetMaterial(UMaterial* Material, int32 Index)
@@ -51,10 +53,28 @@ void UPrimitiveComponent::SetColor(const FVector4& Color, int32 Index)
     RenderData.Materials[static_cast<size_t>(Index)].Color = Color;
 }
 
+void UPrimitiveComponent::MarkBoundDirty()
+{
+    if (Scene)
+    {
+        Scene->MarkBoundsDirty(this);
+    }
+}
+
+void UPrimitiveComponent::UpdateWorldBounds()
+{
+    WorldBounds = FAxisAlignedBoundingBox(GetLocalBounds(), GetGlobalTransform().GetMatrix());
+}
+
+void UPrimitiveComponent::OnTransformChanged()
+{
+    MarkBoundDirty();
+}
+
 void UPrimitiveComponent::SetRelativeTransform(const FTransform& RelativeTransform)
 {
     Super::SetRelativeTransform(RelativeTransform);
-    WorldBounds = FAxisAlignedBoundingBox(GetLocalBounds(), RelativeTransform.GetMatrix());
+    UpdateWorldBounds();
 }
 
 FAxisAlignedBoundingBox UPrimitiveComponent::GetWorldBounds() const

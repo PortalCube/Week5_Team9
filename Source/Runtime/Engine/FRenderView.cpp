@@ -19,6 +19,8 @@
 #include "Runtime/Core/Globals.h"
 #include <fstream>
 
+#include "Runtime/CoreUObject/FStatsManager.h"
+
 FRenderView::FRenderView(FRenderer &Renderer) : Renderer(Renderer) {}
 
 namespace
@@ -144,10 +146,22 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
             SceneTransforms.ComputeBatchMVP(View.ViewProj, ScratchMVPBuffer, TotalBatchCount);
         }
     }
-    for (auto& PrimitiveComponent : Scene.GetRenderComponents())
+
+    //SCOPE_INDEPENDENT_CYCLE_COUNTER("Test");
+    const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
+
+    //assert(!bCullResultValid || VisibleFlags.size() == Primitives.size());
+
+    //컬링 결과 인덱스를 맞추기 위해 인덱스 for문으로 변경
+    for (size_t i = 0; i < Primitives.size(); i++)
     {
+        UPrimitiveComponent* PrimitiveComponent = Primitives[i];
         if (!PrimitiveComponent) continue;
 
+        //bCullResultValid가 false라면 통과
+        // bCullResultValid가 true라면 컬링 결과 통과시에만 수집
+        if (bCullResultValid && !VisibleFlags[i]) continue;
+        
         // 쇼 플래그 확인
         if ((static_cast<uint64>(View.ShowFlags) & static_cast<uint64>(PrimitiveComponent->GetShowFlag())) == 0)
         {
@@ -214,6 +228,12 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
 
     // 뷰포트 시작
     BeginView(View);
+
+    //컬링 측정
+    {
+        SCOPE_CYCLE_COUNTER("Cull");
+        CullScene(View, Scene);
+    }
 
     // 씬 컴포넌트 수집
     CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
@@ -484,6 +504,128 @@ void FRenderView::FlushQueue(const FCamera& Camera)
     }
 
     RenderQueue.Clear();
+}
+
+FCullingSettings& FRenderView::GetCullingSettings()
+{
+    return CullingSettings;
+}
+
+const FCullingSettings& FRenderView::GetCullingSettings() const
+{
+    return CullingSettings;
+}
+
+void FRenderView::SetCullingEnabled(bool pCullingEnable)
+{
+    CullingSettings.bEnabled = pCullingEnable;
+}
+
+void FRenderView::SetCullingFreeze(bool pCullingFreeze)
+{
+    CullingSettings.bFreeze = pCullingFreeze;
+}
+
+void FRenderView::CullScene(const FSceneView& View, const UScene& Scene)
+{
+    const TArray<FAxisAlignedBoundingBox>& CullDataList = Scene.GetCullDataList();
+    const uint32 Count = static_cast<uint32>(CullDataList.size());
+
+    bCullResultValid = CullingSettings.bEnabled;
+    if (!bCullResultValid)
+    {
+        // 컬링 OFF: 전부 가시로 집계
+        return;
+    }
+
+    // 매 프레임 그 프레임의 Frustum으로 전체 판정 (이전 결과 재사용 없음)
+    const FFrustum Frustum = GetCullFrustum(View);
+    const uint32 VisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
+
+    //Culling 결과를 카운트
+    //...
+}
+
+void FRenderView::InvalidateFrozenFrustums()
+{
+    for (FFrozenView& Frozen : FrozenViews)
+    {
+        Frozen.bValid = false;
+        Frozen.bHasCorners = false;
+    }
+}
+
+FFrustum FRenderView::GetCullFrustum(const FSceneView& View)
+{
+    //// 디버그 기능: 고정 중에도 오브젝트 판정은 매 프레임 수행되고, 평면만 고정된다
+    //if (!CullingSettings.bFreeze || View.ViewIndex >= MaxViewCount)
+    //{
+    //    return FFrustum::FromViewProjection(View.ViewProj);
+    //}
+
+    //FFrozenView& Frozen = FrozenViews[View.ViewIndex];
+    //if (!Frozen.bValid)
+    //{
+    //    Frozen.ViewProj = View.ViewProj;
+    //    Frozen.Frustum = FFrustum::FromViewProjection(View.ViewProj);
+    //    CaptureFrozenCorners(Frozen);
+    //    Frozen.bValid = true;
+    //}
+    //return Frozen.Frustum;
+
+    //ViewProjection 행렬을 통해 Frustum을 가져옵니다.
+    return FFrustum::FromViewProjection(View.ViewProj);
+}
+
+void FRenderView::CaptureFrozenCorners(FFrozenView& Frozen)
+{
+    FMatrix InvVP;
+    Frozen.bHasCorners = Frozen.ViewProj.Inverse(InvVP);
+    if (!Frozen.bHasCorners)
+    {
+        return;
+    }
+
+    // 엔진 클립 순서 (깊이, 가로, 세로) — FRayCastingManager::CreateRayFromScreenPosition과 동일
+    // 인덱스 = Depth*4 + V*2 + H
+    int32 Index = 0;
+    for (const float Depth : { 0.0f, 1.0f })
+    {
+        for (const float V : { -1.0f, 1.0f })
+        {
+            for (const float H : { -1.0f, 1.0f })
+            {
+                Frozen.Corners[Index++] = InvVP.TransformPointRow(FVector{ Depth, H, V });
+            }
+        }
+    }
+}
+
+void FRenderView::DrawFrozenFrustum(const FSceneView& View)
+{
+    /*if (!CullingSettings.bFreeze || View.ViewIndex >= MaxViewCount)
+    {
+        return;
+    }
+
+    const FFrozenView& Frozen = FrozenViews[View.ViewIndex];
+    if (!Frozen.bValid || !Frozen.bHasCorners)
+    {
+        return;
+    }*/
+
+    //static constexpr int32 Edges[12][2] =
+    //{
+    //    { 0, 1 }, { 1, 3 }, { 3, 2 }, { 2, 0 },    // Near
+    //    { 4, 5 }, { 5, 7 }, { 7, 6 }, { 6, 4 },    // Far
+    //    { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 },    // 측면
+    //};
+
+    //const FVector4 Color{ 1.0f, 0.2f, 0.8f, 1.0f };
+    //for (const auto& Edge : Edges)
+    //{
+    //    RenderLine(Frozen.Corners[Edge[0]], Frozen.Corners[Edge[1]], Color);
+    //}
 }
 
 FRenderView::~FRenderView()

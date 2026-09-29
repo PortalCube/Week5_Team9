@@ -180,20 +180,29 @@ void FImguiPropertyWindow::ShowTransform(FEditor& Editor, USceneComponent& Comp,
 	// 서브 컴포넌트 상대 트랜스폼 편집
 	FTransform RelTransform = Comp.GetRelativeTransform();
 	FVector RelLocation = RelTransform.GetLocation();
+	bool bTransformChanged = false;
 	if (ImGui::DragFloat3("Rel Location", &RelLocation.X, 0.01f))
 	{
+		bTransformChanged = true;
 		RelTransform.SetLocation(RelLocation);
 	}
 
 	FVector RelEuler = RelTransform.GetRotation().ToEulerXYZDeg();
 	if (ImGui::DragFloat3("Rel Rotation (deg)", &RelEuler.X, 0.5f))
 	{
+		bTransformChanged = true;
 		RelTransform.SetRotation(FQuaternion::FromEulerXYZDeg(RelEuler));
 	}
 	FVector RelScale = RelTransform.GetScale3D();
 	if (ImGui::DragFloat3("Rel Scale", &RelScale.X, 0.01f))
 	{
+		bTransformChanged = true;
 		RelTransform.SetScale3D(RelScale);
+	}
+
+	if (bTransformChanged)
+	{
+		Comp.MarkActorTransformDirty();
 	}
 
 	Comp.SetRelativeTransform(RelTransform);

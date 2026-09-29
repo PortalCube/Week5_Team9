@@ -6,6 +6,7 @@
 #include "Runtime/Math/FMatrix.h"
 #include "Runtime/Geometry/FAxisAlignedBoundingBox.h"
 #include "USceneComponent.h"
+#include "Runtime/Engine/FCulling.h"
 #include "Runtime/Rendering/FMaterial.h"
 
 class UPrimitiveComponent : public USceneComponent {
@@ -18,6 +19,7 @@ public:
     void Unregister() override;
 
     virtual void SetMesh(UStaticMesh* Mesh);
+
     void SetMaterial(UMaterial* Material, int32 Index = 0);
     void SetTexture(UTexture* Texture, int32 Index = 0);
     void SetRenderType(ERenderType Type) { RenderData.Type = Type; }
@@ -36,6 +38,16 @@ public:
     virtual EEngineShowFlags GetShowFlag() const { return EEngineShowFlags::SF_Primitives; }
     int32 GetBVHIndex() const { return BVHIndex; }
     void SetBVHIndex(int32 i) { BVHIndex = i; }
+
+    void MarkBoundDirty();
+    int32 GetSceneIndex() const { return SceneIndex; }
+    void SetSceneIndex(int32 pIndex) { SceneIndex = pIndex; }
+
+    bool GetBoundDirtyQueued()const { return bBoundDirtyQueued; }
+    void SetBoundDirtyQueued(bool pDirtyQueued) { bBoundDirtyQueued = pDirtyQueued; }
+
+    //월드 AABB 업데이트
+    void UpdateWorldBounds();
 
     const std::vector<FMaterial>& GetCachedMaterials() const { return CachedMaterials; }
     void UpdateMaterialCache();
@@ -59,6 +71,12 @@ protected:
 
     //FSceneBVH 내의 역질의용 index, -1면 BVH에 없음
     int32 BVHIndex = -1;
+
+    void OnTransformChanged() override;
+
+private:
+    int32 SceneIndex = -1;
+    bool bBoundDirtyQueued = false;
 
     TArray<FMaterial> CachedMaterials;
 };
