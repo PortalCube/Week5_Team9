@@ -35,6 +35,7 @@ public:
 	float GetPitch() const { return Pitch; }
 	const FCameraProjection& GetProjection() const { return Projection; }
 	const FVector& GetUpVector() const { return UpVector; }
+	FVector GetForwardVector() const;
 
 	void SetPosition(const FVector& Value);
 	void SetYaw(float Value);

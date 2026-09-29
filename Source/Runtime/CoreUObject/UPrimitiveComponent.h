@@ -7,6 +7,7 @@
 #include "Runtime/Geometry/FAxisAlignedBoundingBox.h"
 #include "USceneComponent.h"
 #include "Runtime/Engine/FCulling.h"
+#include "Runtime/Rendering/FMaterial.h"
 
 class UPrimitiveComponent : public USceneComponent {
   GENERATED_BODY()
@@ -48,6 +49,9 @@ public:
     //월드 AABB 업데이트
     void UpdateWorldBounds();
 
+    const std::vector<FMaterial>& GetCachedMaterials() const { return CachedMaterials; }
+    void UpdateMaterialCache();
+
 protected:
     UPrimitiveComponent() = default;
 
@@ -73,4 +77,6 @@ protected:
 private:
     int32 SceneIndex = -1;
     bool bBoundDirtyQueued = false;
+
+    TArray<FMaterial> CachedMaterials;
 };

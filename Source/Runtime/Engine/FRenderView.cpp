@@ -40,6 +40,7 @@ namespace
         FDrawCommand Command
         {
             .Mesh = Data.Mesh->Get(),
+            .Materials = Component.GetCachedMaterials(),
             .Type = Data.Type,
             .Instances = Data.Instances,
         };
@@ -55,7 +56,7 @@ namespace
             .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
         };
 
-        for (const auto& Item : Data.Materials)
+        /*for (const auto& Item : Data.Materials)
         {
             if (!Item.Pipeline)
             {
@@ -73,7 +74,7 @@ namespace
             Material.SetSamplerDesc(Item.SamplerDesc);
 
             Command.Materials.push_back(Material);
-        }
+        }*/
 
         const FMaterialInstance& PrimaryMaterial = Data.Materials[0];
         
@@ -178,7 +179,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         // 인스턴싱 및 텍스트는 인스턴스 배열을 사용하므로 바로 푸시
         if (DrawCommand.Type == ERenderType::Text || DrawCommand.Type == ERenderType::Instancing)
         {
-            RenderQueue.Push(DrawCommand);
+            RenderQueue.Push(std::move(DrawCommand));
             continue;
         }
 
@@ -424,7 +425,7 @@ void FRenderView::DrawStencilMask(const FCamera& Camera,
     if (OutlineMaterial)
     {
         OutlineMaterial->GetPipeline()->SetStencilRef(1);
-        DrawCommand.Materials = { *OutlineMaterial };
+        DrawCommand.Materials = std::span<const FMaterial>(OutlineMaterial.get(), 1);
         Renderer.Draw(DrawCommand, 2, false);
     }
 }

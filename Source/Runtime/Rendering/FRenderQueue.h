@@ -10,7 +10,8 @@
 struct FDrawCommand
 {
     FMesh* Mesh = nullptr;
-    TArray<FMaterial> Materials;
+    //TArray<FMaterial> Materials;
+	std::span<const FMaterial> Materials;
     FObjectConstants Constants{};
     ERenderType Type = ERenderType::Primitive;
     TArray<FInstanceData> Instances;
