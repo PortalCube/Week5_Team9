@@ -24,4 +24,7 @@ struct FRenderData
 
     ERenderType Type = ERenderType::Primitive;
     TArray<FInstanceData> Instances;
+
+    // 이번에 그릴 LOD. GetRenderData(Camera) 호출 시 카메라 기준으로 갱신된다.
+    uint32 LODIndex = 0;
 };

@@ -1,6 +1,8 @@
 #include "UStaticMeshComponent.h"
 #include "Runtime/Asset/FAssetRegistry.h"
 #include "Runtime/Engine/FArchive.h"
+#include "Runtime/Core/Globals.h"
+#include <numbers>
 
 
 IMPLEMENT_UCLASS(UStaticMeshComponent, UMeshComponent)
@@ -8,7 +10,51 @@ IMPLEMENT_UCLASS(UStaticMeshComponent, UMeshComponent)
 const FRenderData& UStaticMeshComponent::GetRenderData(const FCamera& Camera) const
 {
 	RenderData.ModelMatrix = GetRenderMatrix(Camera);
+	RenderData.LODIndex = SelectLOD(Camera);
 	return RenderData;
+}
+
+float UStaticMeshComponent::ComputeScreenSize(const FCamera& Camera) const
+{
+	return std::sqrt(ComputeScreenSizeSquared(Camera));
+}
+
+float UStaticMeshComponent::ComputeScreenSizeSquared(const FCamera& Camera) const
+{
+	const FAxisAlignedBoundingBox Bounds = GetWorldBounds();
+	if (!Bounds.IsValid()) { return 1.0f; }
+
+	// 바운딩 박스를 감싸는 구로 근사한다.
+	const FVector Center = (Bounds.Min + Bounds.Max) * 0.5f;
+	const FVector HalfExtent = (Bounds.Max - Bounds.Min) * 0.5f;
+	const float RadiusSq = HalfExtent.X * HalfExtent.X + HalfExtent.Y * HalfExtent.Y + HalfExtent.Z * HalfExtent.Z;
+
+	const FCameraProjection& Projection = Camera.GetProjection();
+	if (Projection.GetProjectionType() == EProjectionType::Orthographic)
+	{
+		const float Height = std::max(Projection.GetOrthographicHeight(), 1e-4f);
+		return 4.0f * RadiusSq / (Height * Height);
+	}
+
+	// 언리얼의 ComputeBoundsScreenSize와 같은 방식. 구의 지름이 화면 높이의 몇 배인지의 제곱을 반환한다.
+	// 배율(1/tan(FOV/2))은 투영이 바뀔 때 FCameraProjection에서 한 번만 계산해 둔다.
+	const FVector Offset = Center - Camera.GetPosition();
+	const float DistanceSq = std::max(Offset.X * Offset.X + Offset.Y * Offset.Y + Offset.Z * Offset.Z, 1e-8f);
+	const float Multiple = Projection.GetScreenSizeMultiple();
+	return Multiple * Multiple * RadiusSq / DistanceSq;
+}
+
+uint32 UStaticMeshComponent::SelectLOD(const FCamera& Camera) const
+{
+	const UStaticMesh* Mesh = RenderData.Mesh;
+	if (!Mesh || Mesh->GetLODCount() <= 1 || !Globals::bEnableLOD) { return 0; }
+
+	if (Globals::ForcedLOD >= 0)
+	{
+		return std::min(static_cast<uint32>(Globals::ForcedLOD), Mesh->GetLODCount() - 1);
+	}
+
+	return Mesh->SelectLODSquared(ComputeScreenSizeSquared(Camera));
 }
 
 FAxisAlignedBoundingBox UStaticMeshComponent::GetLocalBounds() const

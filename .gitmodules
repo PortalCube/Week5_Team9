@@ -1,3 +1,6 @@
 [submodule "Source/ThirdParty/DirectXTK"]
 	path = Source/ThirdParty/DirectXTK
 	url = https://github.com/microsoft/DirectXTK.git
+[submodule "Source/ThirdParty/meshoptimizer"]
+	path = Source/ThirdParty/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git

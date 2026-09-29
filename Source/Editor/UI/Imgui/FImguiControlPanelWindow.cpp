@@ -49,6 +49,9 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     ImGui::Separator();
 	SIMDDebugSetting(Editor);
 
+    ImGui::Separator();
+    LODSetting(Editor);
+
     ImGui::End();
 }
 
@@ -144,6 +147,21 @@ void FImguiControlPanelWindow::SIMDDebugSetting(FEditor& Editor)
 {
     ImGui::Text("SIMD Debug");
     ImGui::Checkbox("배치 변환 최적화", &Globals::bEnableBatchTransform);
+}
+
+void FImguiControlPanelWindow::LODSetting(FEditor& Editor)
+{
+    ImGui::Text("LOD");
+    ImGui::Checkbox("LOD 활성화", &Globals::bEnableLOD);
+
+    // -1은 자동 선택. 메시의 LOD 개수를 넘으면 가장 거친 LOD로 고정된다.
+    ImGui::SetNextItemWidth(180.0f);
+    ImGui::SliderInt("LOD 고정 (-1: 자동)", &Globals::ForcedLOD, -1, 3);
+
+    ImGui::Checkbox("LOD 색상 표시 (흰/빨/초/파)", &Globals::bShowLODColor);
+    ImGui::Text("LOD0 %u | LOD1 %u | LOD2 %u | LOD3 %u",
+        Globals::LODDrawCounts[0], Globals::LODDrawCounts[1],
+        Globals::LODDrawCounts[2], Globals::LODDrawCounts[3]);
 }
 
 void FImguiControlPanelWindow::ActorSpawnSetting(FEditor& Editor)

@@ -100,4 +100,7 @@ struct FMeshDesc
 	TArray<FMeshSection> Sections;
 
 	bool bIsLine = false;
+
+	// 피킹용 삼각형 배열과 BVH를 만들지 여부. 피킹에 쓰지 않는 LOD 메시는 끈다.
+	bool bBuildBVH = true;
 };

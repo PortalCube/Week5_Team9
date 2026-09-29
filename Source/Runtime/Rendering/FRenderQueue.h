@@ -17,6 +17,7 @@ struct FDrawCommand
     float Depth = 0.0f;
     int32 DepthBucket = 0;
     uint64 RenderStateKey = 0;
+    uint32 LODIndex = 0;
 };
 
 // 한 프레임의 드로우 요청을 수집하는 큐

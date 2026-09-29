@@ -111,11 +111,11 @@ struct FStatId
 inline double GetMsPerCount()
 {
     static const double MsPerCount = []
-        {
-            LARGE_INTEGER Freq;
-            QueryPerformanceFrequency(&Freq);
-            return 1000.0 / static_cast<double>(Freq.QuadPart);
-        }();
+    {
+        LARGE_INTEGER Freq;
+        QueryPerformanceFrequency(&Freq);
+        return 1000.0 / static_cast<double>(Freq.QuadPart);
+    }();
     return MsPerCount;
 }
 

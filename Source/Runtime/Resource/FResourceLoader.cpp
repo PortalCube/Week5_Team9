@@ -11,6 +11,7 @@
 #include "Runtime/Asset/UTexture.h"
 #include "Runtime/Parser/FObjParser.h"
 #include "Runtime/Mesh/MeshUtil.h"
+#include "Runtime/Mesh/MeshLODBuilder.h"
 #include "Runtime/Rendering/FRenderer.h"
 #include "Runtime/Rendering/FRenderResourceLibrary.h"
 #include "ThirdParty/Json/json.hpp"
@@ -546,6 +547,49 @@ void FResourceLoader::LoadStaticMeshAsset(const FArchive& Archive, const FName& 
 
 	ResourceLibrary.RegisterMesh(ID, Mesh);
 	StaticMeshDesc.Mesh = Mesh.get();
+
+	// LOD 생성. 이전 LOD보다 충분히 줄지 않으면 더 이상 만들지 않는다.
+	uint32 PrevIndexCount = static_cast<uint32>(Indices.size());
+	for (const MeshLODBuilder::FLODSetting& Setting : MeshLODBuilder::GetDefaultSettings())
+	{
+		MeshLODBuilder::FLODMeshData LODData;
+		MeshLODBuilder::BuildLOD(Vertices, Indices, Sections, Setting, LODData);
+
+		if (LODData.Indices.empty() || LODData.Indices.size() > PrevIndexCount * 0.9f)
+		{
+			break;
+		}
+
+		FMeshDesc LODDesc
+		{
+			.VertexData = LODData.Vertices.data(),
+			.VertexDataSize = static_cast<uint32>(sizeof(FVertexData) * LODData.Vertices.size()),
+			.VertexStride = static_cast<uint32>(sizeof(FVertexData)),
+			.VertexCount = static_cast<uint32>(LODData.Vertices.size()),
+			.IndexData = LODData.Indices.data(),
+			.IndexDataSize = static_cast<uint32>(sizeof(uint32) * LODData.Indices.size()),
+			.IndexCount = static_cast<uint32>(LODData.Indices.size()),
+			.Sections = LODData.Sections,
+			.bBuildBVH = false,
+		};
+
+		TSharedPtr<FMesh> LODMesh = Renderer->CreateMesh(LODDesc);
+		if (LODMesh == nullptr)
+		{
+			break;
+		}
+
+		const uint32 LODIndex = static_cast<uint32>(StaticMeshDesc.AdditionalLODs.size()) + 1;
+		ResourceLibrary.RegisterMesh(FName(std::format("{}#LOD{}", ID.ToString(), LODIndex)), LODMesh);
+		StaticMeshDesc.AdditionalLODs.push_back({ .Mesh = LODMesh.get(), .ScreenSize = Setting.ScreenSize });
+		INC_MEMORY_STAT_BY("StaticMeshMemory", LODMesh->GetBufferSize());
+
+		UE_LOG("[LOD] %s LOD%u: 삼각형 %u -> %u",
+			ID.ToString().c_str(), LODIndex,
+			static_cast<uint32>(Indices.size() / 3), static_cast<uint32>(LODData.Indices.size() / 3));
+
+		PrevIndexCount = static_cast<uint32>(LODData.Indices.size());
+	}
 
 	StaticMesh->Load(StaticMeshDesc);
 	Registry.Register(ID, StaticMesh);
