@@ -98,7 +98,6 @@ void FEditorApplication::Render() {
               .ViewMode = EditorViewport.ViewMode,
               .ShowFlags = EditorViewport.ShowFlags,
               .LightConstants = Editor.GlobalLight
-              //나중에 ViewIndex를 추가할 날이?
           };
 
           // 에디터 렌더링 컨텍스트 구성

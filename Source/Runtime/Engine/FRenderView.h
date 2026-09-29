@@ -108,8 +108,6 @@ private:
 	};
 
 	FFrustum GetCullFrustum(const FSceneView& View);
-	static void CaptureFrozenCorners(FFrozenView& Frozen);
-	void DrawFrozenFrustum(const FSceneView& View);
 
 	FFlatFrustumCuller FlatCuller;
 	IPrimitiveCuller* Culler = &FlatCuller;     // 추후 BVH/SIMD 컬러로 교체하는 지점

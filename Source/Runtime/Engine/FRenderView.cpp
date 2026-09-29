@@ -556,75 +556,7 @@ void FRenderView::InvalidateFrozenFrustums()
 
 FFrustum FRenderView::GetCullFrustum(const FSceneView& View)
 {
-    //// 디버그 기능: 고정 중에도 오브젝트 판정은 매 프레임 수행되고, 평면만 고정된다
-    //if (!CullingSettings.bFreeze || View.ViewIndex >= MaxViewCount)
-    //{
-    //    return FFrustum::FromViewProjection(View.ViewProj);
-    //}
-
-    //FFrozenView& Frozen = FrozenViews[View.ViewIndex];
-    //if (!Frozen.bValid)
-    //{
-    //    Frozen.ViewProj = View.ViewProj;
-    //    Frozen.Frustum = FFrustum::FromViewProjection(View.ViewProj);
-    //    CaptureFrozenCorners(Frozen);
-    //    Frozen.bValid = true;
-    //}
-    //return Frozen.Frustum;
-
-    //ViewProjection 행렬을 통해 Frustum을 가져옵니다.
     return FFrustum::FromViewProjection(View.ViewProj);
-}
-
-void FRenderView::CaptureFrozenCorners(FFrozenView& Frozen)
-{
-    FMatrix InvVP;
-    Frozen.bHasCorners = Frozen.ViewProj.Inverse(InvVP);
-    if (!Frozen.bHasCorners)
-    {
-        return;
-    }
-
-    // 엔진 클립 순서 (깊이, 가로, 세로) — FRayCastingManager::CreateRayFromScreenPosition과 동일
-    // 인덱스 = Depth*4 + V*2 + H
-    int32 Index = 0;
-    for (const float Depth : { 0.0f, 1.0f })
-    {
-        for (const float V : { -1.0f, 1.0f })
-        {
-            for (const float H : { -1.0f, 1.0f })
-            {
-                Frozen.Corners[Index++] = InvVP.TransformPointRow(FVector{ Depth, H, V });
-            }
-        }
-    }
-}
-
-void FRenderView::DrawFrozenFrustum(const FSceneView& View)
-{
-    /*if (!CullingSettings.bFreeze || View.ViewIndex >= MaxViewCount)
-    {
-        return;
-    }
-
-    const FFrozenView& Frozen = FrozenViews[View.ViewIndex];
-    if (!Frozen.bValid || !Frozen.bHasCorners)
-    {
-        return;
-    }*/
-
-    //static constexpr int32 Edges[12][2] =
-    //{
-    //    { 0, 1 }, { 1, 3 }, { 3, 2 }, { 2, 0 },    // Near
-    //    { 4, 5 }, { 5, 7 }, { 7, 6 }, { 6, 4 },    // Far
-    //    { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 },    // 측면
-    //};
-
-    //const FVector4 Color{ 1.0f, 0.2f, 0.8f, 1.0f };
-    //for (const auto& Edge : Edges)
-    //{
-    //    RenderLine(Frozen.Corners[Edge[0]], Frozen.Corners[Edge[1]], Color);
-    //}
 }
 
 FRenderView::~FRenderView()

@@ -22,7 +22,6 @@ struct FSceneView
 	EViewModeIndex ViewMode = EViewModeIndex::VMI_Lit;
 	uint64 ShowFlags = static_cast<uint64>(EEngineShowFlags::SF_Primitives);
 	FLightConstants LightConstants{};
-	//uint32 ViewIndex = 0;   // 뷰포트별 Frustum 고정용 (FEditor::Leaf의 ViewportIndex)
 };
 
 // 에디터 렌더링 컨텍스트
