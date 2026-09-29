@@ -143,8 +143,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
             SceneTransforms.ComputeBatchMVP(View.ViewProj, ScratchMVPBuffer, TotalBatchCount);
         }
     }
-
-    SCOPE_INDEPENDENT_CYCLE_COUNTER("Test");
     for (auto& PrimitiveComponent : Scene.GetRenderComponents())
     {
         if (!PrimitiveComponent) continue;

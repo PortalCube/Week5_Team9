@@ -233,6 +233,8 @@ TSharedPtr<FMesh> FRenderer::CreateMesh(const FMeshDesc &Desc) {
     Mesh->Indices.assign(indices, indices + Desc.IndexCount);
   }
 
+  Mesh->BuildTriangleVertices();
+
   Mesh->Topology = Desc.bIsLine ? D3D11_PRIMITIVE_TOPOLOGY_LINELIST
                                 : D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 

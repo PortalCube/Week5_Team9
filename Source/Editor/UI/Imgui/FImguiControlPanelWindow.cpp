@@ -7,6 +7,7 @@
 #include "Runtime/Core/Globals.h"
 #include "Runtime/Core/FString.h"
 #include "Runtime/Engine/ShowFlags.h"
+#include "Runtime/Engine/FRayCastingManager.h"
 #include "Runtime/Math/Random.h"
 #include "Editor/Core/EditorConstant.h"
 #include <Windows.h>
@@ -123,6 +124,24 @@ void FImguiControlPanelWindow::BVHDebugSetting(FEditor& Editor)
     if (ImGui::IsItemHovered())
     {
         ImGui::SetTooltip("체크 해제 시 기존 선형 RayIntersectsMeshes 사용");
+    }
+
+    if (ImGui::Checkbox("Use Flattened Triangles", &FRayCastingManager::bUseFlattenedTriangles))
+    {
+        Editor.ResetPickingStats();
+    }
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("체크 해제 시 기존 인덱스 방식(Positions[Indices[i]])으로 삼각형 검사");
+    }
+
+    if (ImGui::Checkbox("Use Mesh BVH", &FRayCastingManager::bUseMeshBVH))
+    {
+        Editor.ResetPickingStats();
+    }
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("체크 해제 시 메시의 모든 삼각형을 선형으로 검사 (위 Flattened 옵션을 따름)");
     }
 
     ImGui::SameLine();
