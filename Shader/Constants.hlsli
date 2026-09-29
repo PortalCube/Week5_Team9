@@ -7,7 +7,8 @@ cbuffer FrameConstants : register(b0)
 
 cbuffer ViewConstants : register(b1)
 {
-    row_major float4x4 VP;
+    row_major float4x4 View;
+    row_major float4x4 Projection;
     float2 ViewportSize;
     float2 ViewPadding;
 }

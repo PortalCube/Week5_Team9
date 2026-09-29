@@ -20,7 +20,7 @@ PS_INPUT MainVS(VS_INPUT Input)
 {
     PS_INPUT Output;
 
-    Output.Position = mul(float4(Input.Position, 1.0f), mul(World, VP));
+    Output.Position = mul(float4(Input.Position, 1.0f), mul(World, mul(View, Projection)));
     Output.Color = Input.Color;
     Output.UV = Input.UV * UVScale + UVOffset;
     Output.UV.x += Time * 0.33f;

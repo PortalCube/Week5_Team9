@@ -100,11 +100,20 @@ namespace
                 MeshId;
             
             // AABB의 Min X 값을 Depth로 지정
-            Command.Depth = Component.GetViewBounds(Camera).Min.X;
+            FAxisAlignedBoundingBox AABB = Component.GetWorldBounds();
+
+            FVector CameraForward = Camera.GetForwardVector();
+            FVector CameraPosition = Camera.GetPosition();
+            float ProjectedExtent =
+                std::abs(CameraForward.X) * AABB.Extent.X +
+                std::abs(CameraForward.Y) * AABB.Extent.Y +
+                std::abs(CameraForward.Z) * AABB.Extent.Z;
+
+            Command.Depth = (AABB.Center - CameraPosition).Dot(CameraForward) - ProjectedExtent;
             float Near = Camera.GetProjection().GetNearPlane();
             float Far = Camera.GetProjection().GetFarPlane();
             
-            Command.DepthBucket = static_cast<int32>((Command.Depth - Near) * 16 / (Far - Near));
+            Command.DepthBucket = static_cast<int32>((Command.Depth - Near) * 32 / (Far - Near));
         }
 
         return Command;
@@ -138,7 +147,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         // 인스턴싱 및 텍스트는 인스턴스 배열을 사용하므로 바로 푸시
         if (DrawCommand.Type == ERenderType::Text || DrawCommand.Type == ERenderType::Instancing)
         {
-            RenderQueue.Push(DrawCommand);
+            RenderQueue.Push(std::move(DrawCommand));
             continue;
         }
 
@@ -164,7 +173,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         {
             DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.5f };
         }
-        RenderQueue.Push(DrawCommand);
+        RenderQueue.Push(std::move(DrawCommand));
     }
 }
 
@@ -243,7 +252,8 @@ void FRenderView::BeginView(const FSceneView& View)
     // ViewConstants 갱신
     FViewConstants ViewConstants
     {
-        .VP = View.ViewProj,
+        .View = View.Camera.GetViewMatrix(),
+        .Projection = View.Camera.GetProjectionMatrix(),
         .ViewportSize = FVector2
         {
             View.LengthUV.X * Renderer.GetWidth(),

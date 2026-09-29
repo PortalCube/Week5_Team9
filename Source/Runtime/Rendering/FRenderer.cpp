@@ -904,7 +904,8 @@ void FRenderer::UpdateFrameConstants(const FFrameConstants &Constants) {
 
 void FRenderer::UpdateViewConstants(const FViewConstants &Constants) {
   FViewConstants ShaderConstants = Constants;
-  ShaderConstants.VP = ShaderConstants.VP.ToD3DMatrix();
+  ShaderConstants.View = ShaderConstants.View;
+  ShaderConstants.Projection = ShaderConstants.Projection.ToD3DMatrix();
 
   Context->UpdateSubresource(ViewConstantBuffer.Get(), 0, nullptr,
                              &ShaderConstants, 0, 0);

@@ -67,11 +67,11 @@ void FObjViewerApplication::Render()
 
 	if (CurrentMesh)
 	{
-		FMatrix ViewProj = Camera.GetViewProjectionMatrix();
 		FMatrix World = FMatrix::GetIdentity();
 		FViewConstants ViewConstants
 		{
-			.VP = ViewProj,
+			.View = Camera.GetViewMatrix(),
+			.Projection = Camera.GetProjectionMatrix(),
 			.ViewportSize = FVector2
 			{
 				static_cast<float>(Renderer->GetWidth()),
