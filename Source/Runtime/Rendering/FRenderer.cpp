@@ -153,7 +153,17 @@ void FRenderer::ClearDepth() {
       DepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 }
 
+void FRenderer::FlushDrawStats() {
+  if (PendingDrawCount != 0u) {
+    INC_DWORD_STAT_BY("Draws", PendingDrawCount);
+    INC_DWORD_STAT_BY("Prims", PendingPrimCount);
+  }
+  PendingDrawCount = 0u;
+  PendingPrimCount = 0u;
+}
+
 void FRenderer::SwapBuffer() {
+  FlushDrawStats();
   EndGPUTimer();
   ResolveGPUTimer();
 
@@ -240,7 +250,9 @@ TSharedPtr<FMesh> FRenderer::CreateMesh(const FMeshDesc &Desc) {
     Mesh->Indices.assign(indices, indices + Desc.IndexCount);
   }
 
-  Mesh->BuildTriangleVertices();
+  if (Desc.bBuildBVH) {
+    Mesh->BuildTriangleVertices();
+  }
 
   Mesh->Topology = Desc.bIsLine ? D3D11_PRIMITIVE_TOPOLOGY_LINELIST
                                 : D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;

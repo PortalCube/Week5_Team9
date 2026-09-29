@@ -42,6 +42,7 @@ public:
   void SetViewportUV(FVector2 TopLeftUV, FVector2 LengthUV);
   void ClearDepth();
   void SwapBuffer();
+  void FlushDrawStats();
   void OnWindowSize(UINT Width, UINT Height);
 
   EViewModeIndex GetRenderMode() const { return CurrentRenderMode; }
@@ -170,6 +171,11 @@ private:
   
     uint64 LastRenderStateKey = 0;
 
+  // Draw/DrawSection이 드로우마다 통계 매크로를 부르지 않도록 여기에 모았다가
+  // FlushDrawStats에서 한 번에 반영한다.
+  uint32 PendingDrawCount = 0u;
+  uint32 PendingPrimCount = 0u;
+
 	static constexpr uint32 NumFrameResourceCount = 3;
 	FFrameResource FrameResources[NumFrameResourceCount];
 	uint32 CurrentFrameResourceIndex = 0;
@@ -218,12 +224,12 @@ public:
 
     if (Mesh.HasIndices()) {
       Context->DrawIndexed(Mesh.IndexCount, 0, 0);
-      INC_DWORD_STAT_BY("Prims", Mesh.IndexCount / 3u);
+      PendingPrimCount += Mesh.IndexCount / 3u;
     } else {
       Context->Draw(Mesh.VertexCount, 0);
-      INC_DWORD_STAT_BY("Prims", Mesh.VertexCount / 3u);
+      PendingPrimCount += Mesh.VertexCount / 3u;
     }
-    INC_DWORD_STAT("Draws");
+    ++PendingDrawCount;
   }
 
   template <typename TConstants>
@@ -257,13 +263,13 @@ public:
 
       if (Mesh.HasIndices()) {
           Context->DrawIndexed(IndexCount, StartIndex, 0);
-          INC_DWORD_STAT_BY("Prims", IndexCount / 3u);
+          PendingPrimCount += IndexCount / 3u;
       }
       else {
           Context->Draw(Mesh.VertexCount, 0);
-          INC_DWORD_STAT_BY("Prims", Mesh.VertexCount / 3u);
+          PendingPrimCount += Mesh.VertexCount / 3u;
       }
-      INC_DWORD_STAT("Draws");
+      ++PendingDrawCount;
   }
 
   // Constant Buffer를 갱신한다.

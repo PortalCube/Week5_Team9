@@ -19,6 +19,8 @@ void FCameraProjection::UpdateProjectionMatrix()
 		ProjectionMatrix.M[2][2] = C;
 		ProjectionMatrix.M[0][3] = 1.0f;
 		ProjectionMatrix.M[3][0] = -NearZ * FarZ / (FarZ - NearZ);
+
+		ScreenSizeMultiple = std::max(C, C / std::max(Aspect, 1e-4f));
 	}
 	else if (ProjectionType == EProjectionType::Orthographic)
 	{

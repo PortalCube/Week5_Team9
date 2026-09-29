@@ -50,7 +50,14 @@ project "OiiaiiEngine"
     removefiles {
         "Source/ThirdParty/DirectXTK/**",
         "Source/ThirdParty/Catch2/**",
-        "Tests/**"
+        "Tests/**",
+
+        -- meshoptimizer는 src/만 빌드한다 (데모, 툴, glTF 변환기 제외)
+        "Source/ThirdParty/meshoptimizer/demo/**",
+        "Source/ThirdParty/meshoptimizer/extern/**",
+        "Source/ThirdParty/meshoptimizer/gltf/**",
+        "Source/ThirdParty/meshoptimizer/js/**",
+        "Source/ThirdParty/meshoptimizer/tools/**",
     }
 
     includedirs {
@@ -59,6 +66,7 @@ project "OiiaiiEngine"
         "Source/ThirdParty/DirectXTK",
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/DirectXTK/Src",
+        "Source/ThirdParty/meshoptimizer/src",
     }
     
     defines { "NOMINMAX", "_CONSOLE" }
@@ -141,6 +149,11 @@ project "OiiaiiEngine"
         enablepch "Off"
         removeforceincludes { "pch.h" }
 
+    filter "files:Source/ThirdParty/meshoptimizer/src/**.cpp"
+        warnings "Off"
+        enablepch "Off"
+        removeforceincludes { "pch.h" }
+
     filter "files:**VS.hlsl"
         shadertype "Vertex"
         shadermodel "5.0"
@@ -183,12 +196,15 @@ project "OiiaiiEngine.Tests"
         "Source/Runtime/Engine/FArchive.cpp",
         "Source/Editor/Core/FConfigArchive.cpp",
         "Source/Editor/Core/FEditorState.cpp",
+        "Source/Runtime/Mesh/MeshLODBuilder.cpp",
+        "Source/ThirdParty/meshoptimizer/src/*.cpp",
     }
 
     includedirs {
         ".",
         "Source",
-        "Source/ThirdParty/Catch2"
+        "Source/ThirdParty/Catch2",
+        "Source/ThirdParty/meshoptimizer/src",
     }
 
     defines {
@@ -228,5 +244,8 @@ project "OiiaiiEngine.Tests"
     filter "files:Source/ThirdParty/Catch2/**.cpp"
         enablepch "Off"
         removeforceincludes { "pch.h" }
+
+    filter "files:Source/ThirdParty/meshoptimizer/src/**.cpp"
+        warnings "Off"
 
     filter {}

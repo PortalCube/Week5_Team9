@@ -36,10 +36,11 @@ namespace
 
         FDrawCommand Command
         {
-            .Mesh = Data.Mesh->Get(),
+            .Mesh = Data.Mesh->Get(Data.LODIndex),
             .Materials = Component.GetCachedMaterials(),
             .Type = Data.Type,
 			.Instances = std::span<const FInstanceData>(Data.Instances.data(), Data.Instances.size()),
+            .LODIndex = Data.LODIndex,
         };
 
 
@@ -48,7 +49,7 @@ namespace
             .Color = Data.Materials[0].Color,
             .UVScale = Data.Materials[0].UVScale,
             .UVOffset = Data.Materials[0].UVOffset,
-            .World = Data.ModelMatrix,
+            .World = FMatrix::Identity,
             .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
         };
 
@@ -60,7 +61,8 @@ namespace
             uint64 PipelineId = 0;
             uint64 MaterialId = 0;
             uint64 TextureId = 0;
-            uint64 MeshId = static_cast<uint64>(Data.Mesh->GetID().GetHash());
+            // 같은 애셋이라도 LOD마다 버퍼가 다르므로 LOD 인덱스를 섞는다.
+            uint64 MeshId = static_cast<uint64>(Data.Mesh->GetID().GetHash()) + Data.LODIndex;
             
             if (PrimaryMaterial.Pipeline)
             {
@@ -120,6 +122,8 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
     const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
 
+    std::fill(std::begin(Globals::LODDrawCounts), std::end(Globals::LODDrawCounts), 0u);
+
     //assert(!bCullResultValid || VisibleFlags.size() == Primitives.size());
 
     //컬링 결과 인덱스를 맞추기 위해 인덱스 for문으로 변경
@@ -166,6 +170,25 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         }
         DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.0f };
         DrawCommand.Constants.DisableShading = View.ViewMode == EViewModeIndex::VMI_Unlit ? 1.0f : 0.0f;
+
+        if (DrawCommand.Mesh)
+        {
+            const uint32 DebugLOD = std::min(DrawCommand.LODIndex, Globals::MaxDebugLODCount - 1);
+            ++Globals::LODDrawCounts[DebugLOD];
+
+            if (Globals::bShowLODColor)
+            {
+                // 언리얼의 LOD Coloration과 같은 순서: 흰색, 빨강, 초록, 파랑
+                static const FVector4 LODColors[Globals::MaxDebugLODCount]
+                {
+                    { 1.0f, 1.0f, 1.0f, 0.8f },
+                    { 1.0f, 0.2f, 0.2f, 0.8f },
+                    { 0.2f, 1.0f, 0.2f, 0.8f },
+                    { 0.2f, 0.4f, 1.0f, 0.8f },
+                };
+                DrawCommand.Constants.Color = LODColors[DebugLOD];
+            }
+        }
 
         if (bSelected && DrawCommand.Constants.Color.W > 0.0f)
         {
