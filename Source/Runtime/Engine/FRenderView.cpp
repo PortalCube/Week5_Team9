@@ -39,7 +39,8 @@ namespace
             .Mesh = Data.Mesh->Get(),
             .Materials = Component.GetCachedMaterials(),
             .Type = Data.Type,
-            .Instances = Data.Instances,
+            //.Instances = Data.Instances,
+			.Instances = std::span<const FInstanceData>(Data.Instances.data(), Data.Instances.size()),
         };
 
 
