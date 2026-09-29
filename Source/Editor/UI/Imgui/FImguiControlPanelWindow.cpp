@@ -47,6 +47,11 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     ImGui::Text("Live UObjects : %llu, UObject Memory: %llu bytes (%.2f KiB)", static_cast<unsigned long long>(Count), static_cast<unsigned long long>(Bytes), static_cast<double>(Bytes) / 1024.0);
     ImGui::Separator();
 
+    if (ImGui::Button("대회 씬 바로 불러오기"))
+    {
+        Editor.LoadScene("DefaultScene/Default.scene");
+    }
+
     //액터 스폰
     ActorSpawnSetting(Editor);
     // 그리드 설정
