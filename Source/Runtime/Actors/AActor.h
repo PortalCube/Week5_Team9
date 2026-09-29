@@ -39,6 +39,9 @@ public:
 	FTransform GetTransform() const { return RootComponent ? RootComponent->GetRelativeTransform() : FTransform{}; }
 	void SetTransform(const FTransform& NewTransform) { if (RootComponent) RootComponent->SetRelativeTransform(NewTransform); }
 
+	//하위 컴포넌트 월드 Tranform도 바뀐다.
+	void MarkComponentsTransformDirty();
+
 	void AddComponent(USceneComponent* Addcomp);
 	virtual void Register(UScene& Scene);
 	virtual void BeginPlay();

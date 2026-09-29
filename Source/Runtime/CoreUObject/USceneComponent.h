@@ -43,11 +43,17 @@ protected:
 
 	FTransform RelativeTransform;
 
+    //파생 클래스에서 Transfrom 변경에 따라 반응.
+    virtual void OnTransformChanged() {}
+
 public:
 	const FTransform& GetRelativeTransform() const { return RelativeTransform; }
 	virtual void SetRelativeTransform(const FTransform& RelativeTransform);
 	FTransform GetGlobalTransform() const;
 	//void SetRelativeTransformFromGlobal(const FTransform& GlobalTransform);
+
+    //Transform이 바뀔 때 알림. 액터 전체 컴포넌트에 전파
+    void MarkActorTransformDirty();
 
     virtual void SetRelativeLocation(const FVector& RelativeLocation);
     virtual void SetRelativeRotation(const FVector& RelativeRotation);

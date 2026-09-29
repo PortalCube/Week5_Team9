@@ -34,5 +34,6 @@ public:
   FVector2 GetUVScale() const;
   FVector2 GetUVOffset() const;
 
+
 };
 
