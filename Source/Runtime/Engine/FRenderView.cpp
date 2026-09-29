@@ -49,7 +49,7 @@ namespace
             .Color = Data.Materials[0].Color,
             .UVScale = Data.Materials[0].UVScale,
             .UVOffset = Data.Materials[0].UVOffset,
-            .World = Data.ModelMatrix,
+            .World = FMatrix::Identity,
             .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
         };
 

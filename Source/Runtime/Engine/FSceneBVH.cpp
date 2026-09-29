@@ -286,33 +286,6 @@ void FSceneBVH::TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBounding
     }
 }
 
-bool FSceneBVH::Validate() const
-{
-    for (uint32 n = 0; n < Nodes.size(); ++n)
-    {
-        const FSceneBVHNode& N = Nodes[n];
-
-        if (N.ObjCount > 0) // 리프: 구간의 모든 박스를 품어야 함
-        {
-            for (uint32 i = N.ObjStart; i < N.ObjStart + N.ObjCount; ++i)
-            {
-                for (int a = 0; a < 3; ++a)
-                {
-                    if (ObjectBounds[i].Min[a] < N.Bounds.Min[a]) { return false; }
-                    if (ObjectBounds[i].Max[a] > N.Bounds.Max[a]) { return false; }
-                }
-            }
-        }
-        else  // 내부: 자식 둘의 합집합과 같아야 함
-        {
-            const FAxisAlignedBoundingBox M = FAxisAlignedBoundingBox::Union(Nodes[N.Left].Bounds, Nodes[N.Left + 1].Bounds);
-            if (!(M == N.Bounds)) { return false; }
-            if (Nodes[N.Left].Parent != n || Nodes[N.Left + 1].Parent != n) { return false; }
-        }
-    }
-    return true;
-}
-
 void FSceneBVH::AddObject(UPrimitiveComponent* C)
 {
     if (!C) { return; }

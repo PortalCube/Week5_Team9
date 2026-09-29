@@ -77,7 +77,7 @@ void UPrimitiveComponent::SetRelativeTransform(const FTransform& RelativeTransfo
     UpdateWorldBounds();
 }
 
-FAxisAlignedBoundingBox UPrimitiveComponent::GetWorldBounds() const
+const FAxisAlignedBoundingBox &UPrimitiveComponent::GetWorldBounds() const
 {
     return WorldBounds;
 }

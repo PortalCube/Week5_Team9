@@ -31,7 +31,7 @@ public:
     virtual FMatrix GetRenderMatrix(const FCamera& Camera) const { return GetGlobalTransformMatrix(); }
 
     virtual FAxisAlignedBoundingBox GetLocalBounds() const { return LocalBounds; }
-    virtual FAxisAlignedBoundingBox GetWorldBounds() const;
+    virtual const FAxisAlignedBoundingBox& GetWorldBounds() const;
     virtual FAxisAlignedBoundingBox GetViewBounds(const FCamera& Camera) const;
     const UStaticMesh* GetMeshAsset() const { return RenderData.Mesh; }
 

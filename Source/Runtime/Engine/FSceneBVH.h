@@ -54,12 +54,8 @@ public:
     bool QueryRay(const FRay& Ray, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
 
     //BVH Edit
-    bool Validate() const;
     void AddObject(UPrimitiveComponent* C);
     void RemoveObject(UPrimitiveComponent* C);
-
-    //TEMP
-    const FSceneBVHNode& GetNode(int i) const { return Nodes[i]; }
 
 private:
     void BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint32 ParentIdx);
