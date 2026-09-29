@@ -6,6 +6,7 @@
 #include "FRenderPipeline.h"
 #include "Runtime/Core/Log.h"
 #include "Runtime/Core/PointerTypes.h"
+#include "Runtime/Core/Globals.h"
 #include "Runtime/CoreUObject/FStatsManager.h"
 #include "Runtime/Engine/FCamera.h"
 #include "Runtime/Rendering/FRenderQueue.h"
@@ -77,7 +78,14 @@ void FRenderer::Shutdown() {
 }
 
 void FRenderer::BeginFrame() {
-  CurrentFrameResourceIndex = (CurrentFrameResourceIndex + 1) % NumFrameResourceCount;
+  if (Globals::bUseFrameResources) {
+        CurrentFrameResourceIndex = (CurrentFrameResourceIndex + 1) % NumFrameResourceCount;
+  }
+  else
+  {
+	  CurrentFrameResourceIndex = 0;
+  }
+  //CurrentFrameResourceIndex = (CurrentFrameResourceIndex + 1) % NumFrameResourceCount;
   BeginGPUTimer();
 
   Context->RSSetViewports(1, &Viewport);
