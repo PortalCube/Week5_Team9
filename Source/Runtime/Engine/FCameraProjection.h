@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Runtime/Core/IntTypes.h"
 #include "Runtime/Math/FMatrix.h"
@@ -9,8 +9,10 @@ enum class EProjectionType : uint8
 	Orthographic,
 };
 
-struct FCameraProjection
+class FCameraProjection
 {
+
+private:
 	EProjectionType ProjectionType = EProjectionType::Perspective;
 	float FOV = 60.0f; // Perspective 전용, Vertical
 	float Aspect = 1.0f; // Perspective 전용. Width / Height
@@ -18,36 +20,24 @@ struct FCameraProjection
 	float NearZ = 0.1f;
 	float FarZ = 100.0f;
 	
-	// TODO: 캐시 가능
-	[[nodiscard]] FMatrix CreateProjectionMatrix() const;
+	FMatrix ProjectionMatrix;
+	void UpdateProjectionMatrix();
+
+public:
+	FCameraProjection();
+
+	EProjectionType GetProjectionType() const { return ProjectionType; }
+	float GetFOV() const { return FOV; }
+	float GetAspectRatio() const { return Aspect; }
+	float GetOrthographicHeight() const { return Height; }
+	float GetNearPlane() const { return NearZ; }
+	float GetFarPlane() const { return FarZ; }
+	const FMatrix& GetProjectionMatrix() const { return ProjectionMatrix; }
+
+	void SetProjectionType(EProjectionType Value);
+	void SetFOV(float Value);
+	void SetAspectRatio(float Value);
+	void SetOrthographicHeight(float Value);
+	void SetNearPlane(float Value);
+	void SetFarPlane(float Value);
 };
-
-inline FMatrix FCameraProjection::CreateProjectionMatrix() const
-{
-	FMatrix Matrix{ 0.0f };
-	switch (ProjectionType)
-	{
-	case EProjectionType::Perspective:
-	{
-		const float Phi = FOV * std::numbers::pi_v<float> / 180.0f;
-		const float C = 1.0f / std::tan(Phi * 0.5f);
-		Matrix.M[0][0] = FarZ / (FarZ - NearZ);
-		Matrix.M[1][1] = C / Aspect;
-		Matrix.M[2][2] = C;
-		Matrix.M[0][3] = 1.0f;
-		Matrix.M[3][0] = -NearZ * FarZ / (FarZ - NearZ);
-		break;
-	}
-
-	case EProjectionType::Orthographic:
-		const float OrthoWidth = Height * Aspect;
-		Matrix.M[0][0] = 1.0f / (FarZ - NearZ);
-		Matrix.M[1][1] = 2.0f / OrthoWidth;
-		Matrix.M[2][2] = 2.0f / Height;
-		Matrix.M[3][0] = -NearZ / (FarZ - NearZ);
-		Matrix.M[3][3] = 1.0f;
-		break;
-	}
-
-	return Matrix;
-}

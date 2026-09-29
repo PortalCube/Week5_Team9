@@ -22,6 +22,7 @@ void UPrimitiveComponent::Initialize()
 void UPrimitiveComponent::SetMesh(UStaticMesh* Mesh)
 {
     RenderData.Mesh = Mesh;
+    LocalBounds = Mesh->Get()->GetLocalBounds();
     MarkBoundDirty();
 }
 
@@ -101,14 +102,27 @@ void UPrimitiveComponent::OnTransformChanged()
 {
     MarkBoundDirty();
 }
+void UPrimitiveComponent::SetRelativeTransform(const FTransform& RelativeTransform)
+{
+    Super::SetRelativeTransform(RelativeTransform);
+    WorldBounds = FAxisAlignedBoundingBox(GetLocalBounds(), RelativeTransform.GetMatrix());
+}
+
+FAxisAlignedBoundingBox UPrimitiveComponent::GetWorldBounds() const
+{
+    return WorldBounds;
+}
+
+FAxisAlignedBoundingBox UPrimitiveComponent::GetViewBounds(const FCamera& Camera) const
+{
+    return FAxisAlignedBoundingBox(GetWorldBounds(), Camera.GetViewMatrix());
+}
 
 void UPrimitiveComponent::Register(UScene& InScene)
 {
     if (RenderData.Type == ERenderType::None)
     {
-        RenderData.Type = (RenderData.Materials.size() > 0 && RenderData.Materials[0].Texture)
-            ? ERenderType::Texture
-            : ERenderType::Primitive;
+        RenderData.Type = ERenderType::Primitive;
     }
 
     Super::Register(InScene);

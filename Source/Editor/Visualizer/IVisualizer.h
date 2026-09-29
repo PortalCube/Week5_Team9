@@ -3,7 +3,7 @@
 
 class UPrimitiveComponent;
 class FRenderView;
-struct FCamera;
+class FCamera;
 
 /// <summary>
 /// 컴포넌트의 시각화를 담당하는 Visualizer 입니다.

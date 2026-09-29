@@ -160,32 +160,52 @@ void FImguiPropertyWindow::ShowTransform(FEditor& Editor, USceneComponent& Comp,
 	if (bIsRoot)
 	{
 		// 루트 컴포넌트 트랜스폼은 에디터 기즈모와 동기화
-		ImGui::DragFloat3("Translation", &Editor.SelectedTransform.Location.X, 0.01f);
+		FVector Location = Editor.SelectedTransform.GetLocation();
+		if (ImGui::DragFloat3("Translation", &Location.X, 0.01f))
+		{
+			Editor.SelectedTransform.SetLocation(Location);
+		}
 		if (ImGui::DragFloat3("Rotation (deg)", &Editor.SelectedEulerDegDisplay.X, 0.5f))
 		{
-			Editor.SelectedTransform.Rotation = FQuaternion::FromEulerXYZDeg(Editor.SelectedEulerDegDisplay);
+			Editor.SelectedTransform.SetRotation(FQuaternion::FromEulerXYZDeg(Editor.SelectedEulerDegDisplay));
 		}
-		ImGui::DragFloat3("Scale", &Editor.SelectedTransform.Scale3D.X, 0.01f);
+		FVector Scale = Editor.SelectedTransform.GetScale3D();
+		if (ImGui::DragFloat3("Scale", &Scale.X, 0.01f))
+		{
+			Editor.SelectedTransform.SetScale3D(Scale);
+		}
 		return;
 	}
 
 	// 서브 컴포넌트 상대 트랜스폼 편집
-	FTransform& RelTransform = Comp.GetRelativeTransform();
+	FTransform RelTransform = Comp.GetRelativeTransform();
+	FVector RelLocation = RelTransform.GetLocation();
 	bool bTransformChanged = false;
-	bTransformChanged |= ImGui::DragFloat3("Rel Location", &RelTransform.Location.X, 0.01f);
+	if (ImGui::DragFloat3("Rel Location", &RelLocation.X, 0.01f))
+	{
+		bTransformChanged = true;
+		RelTransform.SetLocation(RelLocation);
+	}
 
-	FVector RelEuler = RelTransform.Rotation.ToEulerXYZDeg();
+	FVector RelEuler = RelTransform.GetRotation().ToEulerXYZDeg();
 	if (ImGui::DragFloat3("Rel Rotation (deg)", &RelEuler.X, 0.5f))
 	{
-		RelTransform.Rotation = FQuaternion::FromEulerXYZDeg(RelEuler);
 		bTransformChanged = true;
+		RelTransform.SetRotation(FQuaternion::FromEulerXYZDeg(RelEuler));
 	}
-	bTransformChanged |= ImGui::DragFloat3("Rel Scale", &RelTransform.Scale3D.X, 0.01f);
+	FVector RelScale = RelTransform.GetScale3D();
+	if (ImGui::DragFloat3("Rel Scale", &RelScale.X, 0.01f))
+	{
+		bTransformChanged = true;
+		RelTransform.SetScale3D(RelScale);
+	}
 
 	if (bTransformChanged)
 	{
 		Comp.MarkActorTransformDirty();
 	}
+
+	Comp.SetRelativeTransform(RelTransform);
 }
 
 void FImguiPropertyWindow::ShowTextSettings(UTextInstanceComponent& TextComp) const

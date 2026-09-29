@@ -7,8 +7,6 @@
 #include <cmath>
 #include <algorithm>
 
-#pragma comment(lib, "Psapi.lib")
-
 void FStatsManager::Initialize(ID3D11Device* Device)
 {
     if (!Device)

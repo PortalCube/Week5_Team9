@@ -42,6 +42,9 @@ void FEditorApplication::Initialize_Runtime(USceneManager *SceneManager,
   Editor.InitMultiViewport(FEditorViewportClient{});
   Editor.LoadState();
   Editor.SetViewLayout(Editor.State.GetSplitMode());
+
+  // TEMP: 당분간 기본값으로 활성화
+  EditorViewportWindow.Toggle(FImguiStatsWindow::EStatsWindow::Unit);
 }
 
 void FEditorApplication::Shutdown() { Editor.Shutdown(); }
@@ -89,7 +92,7 @@ void FEditorApplication::Render() {
           // 뷰포트 렌더링 명세 구성
           FSceneView sceneview{
               .Camera = EditorViewport.ViewportCamera,
-              .ViewProj = EditorViewport.ViewportCamera.CreateViewProjectionMatrix(),
+              .ViewProj = EditorViewport.ViewportCamera.GetViewProjectionMatrix(),
               .TopLeftUV = EditorViewport.TopLeftUV,
               .LengthUV = EditorViewport.LengthUV,
               .ViewMode = EditorViewport.ViewMode,
@@ -130,7 +133,7 @@ void FEditorApplication::Render() {
 
           FSceneView SceneView{
     .Camera = Viewport.ViewportCamera,
-    .ViewProj = Viewport.ViewportCamera.CreateViewProjectionMatrix(),
+    .ViewProj = Viewport.ViewportCamera.GetViewProjectionMatrix(),
     .TopLeftUV = Viewport.TopLeftUV,
     .LengthUV = Viewport.LengthUV,
     .ViewMode = Viewport.ViewMode,
@@ -162,7 +165,7 @@ void FEditorApplication::OnWindowSize(UINT Width, UINT Height) {
         FVector2{static_cast<float>(Width), static_cast<float>(Height)};
 
     auto &Camera = Viewport.ViewportCamera;
-    Camera.Projection.Aspect = SizePixels.X / SizePixels.Y;
+    Camera.SetAspectRatio(SizePixels.X / SizePixels.Y);
   }
 }
 

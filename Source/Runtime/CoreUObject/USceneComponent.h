@@ -47,7 +47,6 @@ protected:
     virtual void OnTransformChanged() {}
 
 public:
-	FTransform& GetRelativeTransform() { return RelativeTransform; }
 	const FTransform& GetRelativeTransform() const { return RelativeTransform; }
 	virtual void SetRelativeTransform(const FTransform& RelativeTransform);
 	FTransform GetGlobalTransform() const;
@@ -55,6 +54,15 @@ public:
 
     //Transform이 바뀔 때 알림. 액터 전체 컴포넌트에 전파
     void MarkActorTransformDirty();
+
+    virtual void SetRelativeLocation(const FVector& RelativeLocation);
+    virtual void SetRelativeRotation(const FVector& RelativeRotation);
+    virtual void SetRelativeRotation(const FQuaternion& RelativeRotation);
+    virtual void SetRelativeScale(const FVector& RelativeScale);
+
+    virtual const FVector& GetRelativeLocation() const;
+    virtual const FQuaternion& GetRelativeRotation() const;
+    virtual const FVector& GetRelativeScale() const;
 
 protected:
     AActor* ActorOwner = nullptr;

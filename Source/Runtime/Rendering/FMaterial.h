@@ -24,8 +24,6 @@ public:
 	void SetSamplerDesc(FTextureSamplerDesc InSamplerDesc) { SamplerDesc = InSamplerDesc; }
 	FTextureSamplerDesc GetSamplerDesc() const { return SamplerDesc; }
 
-	FName MaterialId{ "None" };
-
 	void BindResources(ID3D11DeviceContext& Context) const;
 
 private:

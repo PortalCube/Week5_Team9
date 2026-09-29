@@ -675,6 +675,11 @@ TSharedPtr<FRenderPipeline> FRenderer::GetPipeline(const FName &Id) const {
   return FRenderResourceLibrary::Get().GetPipeline(Id);
 }
 
+void FRenderer::ClearLastRenderStateKey()
+{
+    LastRenderStateKey = 0;
+}
+
 bool FRenderer::InitializeDeviceAndSwapChain(HWND Window) {
   constexpr D3D_FEATURE_LEVEL FeatureLevels[] = {D3D_FEATURE_LEVEL_11_0};
 
@@ -911,12 +916,12 @@ void FRenderer::Draw(const FDrawCommand &Command, uint32 Slot,
 
           const FMaterial& Mat = (i < Command.Materials.size()) ? Command.Materials[i] : Command.Materials[0];         
 
-          DrawSection(*Command.Mesh, Mat, Command.Constants, Section.StartIndex, Section.IndexCount, Slot, bApplyViewMode);
+          DrawSection(*Command.Mesh, Mat, Command.Constants, Command.RenderStateKey, Section.StartIndex, Section.IndexCount, Slot, bApplyViewMode);
       }
   }
   else
   {
-      Draw(*Command.Mesh, Command.Materials[0], Command.Constants, Slot, bApplyViewMode);
+      Draw(*Command.Mesh, Command.Materials[0], Command.Constants, Command.RenderStateKey, Slot, bApplyViewMode);
   }
 
 }
@@ -939,7 +944,7 @@ void FRenderer::DrawInstances(const FCamera &Camera) {
   auto &ResLib = FRenderResourceLibrary::Get();
 
   FObjectConstants SC{};
-  SC.MVP = Camera.CreateViewProjectionMatrix();
+  SC.MVP = Camera.GetViewProjectionMatrix();
 
   // 배치 키(MaterialID, MeshID) 순회
   for (const auto &[BatchKey, InstanceData] : ResLib.AllInstancingArrayMap) {

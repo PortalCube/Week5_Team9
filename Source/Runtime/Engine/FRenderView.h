@@ -10,7 +10,7 @@
 #include "Runtime/Geometry/FFrustum.h"
 #include "Runtime/Engine/FCulling.h"
 
-struct FCamera;
+class FCamera;
 class FGizmo;
 class FGrid;
 class AActor;

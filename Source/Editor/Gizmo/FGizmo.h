@@ -8,7 +8,7 @@
 #include "Runtime/Rendering/FMaterial.h"
 
 struct FVector2;
-struct FCamera;
+class FCamera;
 class FRenderer;
 class FEditor;
 
