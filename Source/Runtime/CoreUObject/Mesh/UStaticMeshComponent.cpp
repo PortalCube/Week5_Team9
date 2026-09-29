@@ -9,7 +9,7 @@ IMPLEMENT_UCLASS(UStaticMeshComponent, UMeshComponent)
 
 const FRenderData& UStaticMeshComponent::GetRenderData(const FCamera& Camera) const
 {
-	RenderData.ModelMatrix = GetRenderMatrix(Camera);
+	//RenderData.ModelMatrix = GetRenderMatrix(Camera);
 	RenderData.LODIndex = SelectLOD(Camera);
 	return RenderData;
 }
