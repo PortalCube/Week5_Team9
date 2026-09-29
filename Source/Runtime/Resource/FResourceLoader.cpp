@@ -707,7 +707,10 @@ void FResourceLoader::LoadMtlMaterial(const std::filesystem::path& MtlFilePath, 
 
 			FArchive MaterialArchive;
 			MaterialArchive.SetString("Name", MaterialAssetPath.generic_string());
-			MaterialArchive.SetString("UPipelineID", "Pipeline/Textured.json");
+			  
+			// TODO: TEMP: 다음에 바꿀것
+			//MaterialArchive.SetString("UPipelineID", "Pipeline/Textured.json");
+			MaterialArchive.SetString("UPipelineID", "Pipeline/Optimize.json");
 
 			MaterialArchive.SetString("UTextureID", TextureId.ToString());			
 			MaterialArchive.SetArchive("TextureSampler", SamplerArchive);
