@@ -28,7 +28,7 @@ public:
     virtual void SetRelativeTransform(const FTransform& RelativeTransform) override;
 
     virtual const FRenderData& GetRenderData(const FCamera& Camera) const { return RenderData; }
-    virtual FMatrix GetRenderMatrix(const FCamera& Camera) const { return GetGlobalTransform().GetMatrix(); }
+    virtual FMatrix GetRenderMatrix(const FCamera& Camera) const { return GetGlobalTransformMatrix(); }
 
     virtual FAxisAlignedBoundingBox GetLocalBounds() const { return LocalBounds; }
     virtual FAxisAlignedBoundingBox GetWorldBounds() const;

@@ -63,7 +63,7 @@ void UPrimitiveComponent::MarkBoundDirty()
 
 void UPrimitiveComponent::UpdateWorldBounds()
 {
-    WorldBounds = FAxisAlignedBoundingBox(GetLocalBounds(), GetGlobalTransform().GetMatrix());
+    WorldBounds = FAxisAlignedBoundingBox(GetLocalBounds(), GetGlobalTransformMatrix());
 }
 
 void UPrimitiveComponent::OnTransformChanged()

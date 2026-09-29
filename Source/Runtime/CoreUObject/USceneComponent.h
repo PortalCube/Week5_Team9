@@ -37,7 +37,7 @@ public:
 	virtual void Serialize(FArchive& Archive) const override;
 	virtual void Deserialize(const FArchive& Archive) override;
     
-    void SetInheritRotation(bool bInherit) { bInheritRotation = bInherit; }
+    void SetInheritRotation(bool bInherit) { bInheritRotation = bInherit; bGlobalDirty = true; }
 protected:
 	USceneComponent() = default;
 
@@ -49,7 +49,8 @@ protected:
 public:
 	const FTransform& GetRelativeTransform() const { return RelativeTransform; }
 	virtual void SetRelativeTransform(const FTransform& RelativeTransform);
-	FTransform GetGlobalTransform() const;
+	const FTransform& GetGlobalTransform() const;
+	const FMatrix& GetGlobalTransformMatrix() const { return GetGlobalTransform().GetMatrix(); }
 	//void SetRelativeTransformFromGlobal(const FTransform& GlobalTransform);
 
     //Transform이 바뀔 때 알림. 액터 전체 컴포넌트에 전파
@@ -75,4 +76,14 @@ protected:
     bool bInheritRotation = true;
 
     int32 BatchIndex = -1;
+
+private:
+    USceneComponent* GetTransformParent() const;
+
+    // 월드 Transform 캐시. 부모의 GlobalVersion이 바뀌면 자식도 자동으로 재계산된다.
+    mutable FTransform CachedGlobal;
+    mutable const USceneComponent* CachedParent = nullptr;
+    mutable uint32 CachedParentVersion = 0;
+    mutable uint32 GlobalVersion = 0;
+    mutable bool bGlobalDirty = true;
 };
