@@ -3,10 +3,10 @@
 #include "Runtime/Core/IntTypes.h"
 #include <cassert>
 #include <cmath>
-
+#include "MathSSE.h"
 #include "FVector.h"
 
-struct FVector4
+struct alignas(16) FVector4
 {
 	float X;
 	float Y;
@@ -97,57 +97,134 @@ inline FVector::FVector(const FVector4& V)
 	: X(V.X), Y(V.Y), Z(V.Z)
 {}
 
-inline FVector4 FVector4::operator+(const FVector4& V) const
+/*inline FVector4 FVector4::operator+(const FVector4& V) const
 {
 	return FVector4(X + V.X, Y + V.Y, Z + V.Z, W + V.W);
+}*/
+
+inline FVector4 FVector4::operator+(const FVector4& V) const
+{
+	FVector4 Result;
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorAdd(FMathSSE::VectorLoadAligned(&X), FMathSSE::VectorLoadAligned(&V.X)), &Result.X);
+
+	return Result;
 }
+
+/*template <typename ScalarType>
+	requires std::is_arithmetic_v<ScalarType>
+FVector4 FVector4::operator+(ScalarType Scale) const
+{
+	return FVector4(X + Scale, Y + Scale, Z + Scale, W + Scale);
+}*/
 
 template <typename ScalarType>
 	requires std::is_arithmetic_v<ScalarType>
 FVector4 FVector4::operator+(ScalarType Scale) const
 {
-	return FVector4(X + Scale, Y + Scale, Z + Scale, W + Scale);
+	FVector4 Result;
+	FMathSSE::VectorRegister4Float ScaleVec = FMathSSE::VectorSetFloat1(static_cast<float>(Scale));
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorAdd(FMathSSE::VectorLoadAligned(&X), ScaleVec), &Result.X);
+	return Result;
 }
+
+/*inline FVector4 FVector4::operator-(const FVector4& V) const
+{
+	return FVector4(X - V.X, Y - V.Y, Z - V.Z, W - V.W);
+}*/
 
 inline FVector4 FVector4::operator-(const FVector4& V) const
 {
-	return FVector4(X - V.X, Y - V.Y, Z - V.Z, W - V.W);
+	FVector4 Result;
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorSub(FMathSSE::VectorLoadAligned(&X), FMathSSE::VectorLoadAligned(&V.X)), &Result.X);
+
+	return Result;
 }
+
+/*template <typename ScalarType>
+	requires std::is_arithmetic_v<ScalarType>
+FVector4 FVector4::operator-(ScalarType Scale) const
+{
+	return FVector4(X - Scale, Y - Scale, Z - Scale, W - Scale);
+}*/
 
 template <typename ScalarType>
 	requires std::is_arithmetic_v<ScalarType>
 FVector4 FVector4::operator-(ScalarType Scale) const
 {
-	return FVector4(X - Scale, Y - Scale, Z - Scale, W - Scale);
+	FVector4 Result;
+	FMathSSE::VectorRegister4Float ScaleVec = FMathSSE::VectorSetFloat1(static_cast<float>(Scale));
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorSub(FMathSSE::VectorLoadAligned(&X), ScaleVec), &Result.X);
+	return Result;
 }
+
+/*inline FVector4 FVector4::operator*(const FVector4& V) const
+{
+	return FVector4(X * V.X, Y * V.Y, Z * V.Z, W * V.W);
+}*/
 
 inline FVector4 FVector4::operator*(const FVector4& V) const
 {
-	return FVector4(X * V.X, Y * V.Y, Z * V.Z, W * V.W);
+	FVector4 Result;
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorMul(FMathSSE::VectorLoadAligned(&X), FMathSSE::VectorLoadAligned(&V.X)), &Result.X);
+
+	return Result;
 }
+
+/*template <typename ScalarType>
+	requires std::is_arithmetic_v<ScalarType>
+FVector4 FVector4::operator*(ScalarType Scale) const
+{
+	return FVector4(X * Scale, Y * Scale, Z * Scale, W * Scale);
+}*/
 
 template <typename ScalarType>
 	requires std::is_arithmetic_v<ScalarType>
 FVector4 FVector4::operator*(ScalarType Scale) const
 {
-	return FVector4(X * Scale, Y * Scale, Z * Scale, W * Scale);
+	FVector4 Result;
+	FMathSSE::VectorRegister4Float ScaleVec = FMathSSE::VectorSetFloat1(static_cast<float>(Scale));
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorMul(FMathSSE::VectorLoadAligned(&X), ScaleVec), &Result.X);
+	return Result;
 }
+
+/*inline FVector4 FVector4::operator/(const FVector4& V) const
+{
+	return FVector4(X / V.X, Y / V.Y, Z / V.Z, W / V.W);
+}*/
 
 inline FVector4 FVector4::operator/(const FVector4& V) const
 {
-	return FVector4(X / V.X, Y / V.Y, Z / V.Z, W / V.W);
+	FVector4 Result;
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorDiv(FMathSSE::VectorLoadAligned(&X), FMathSSE::VectorLoadAligned(&V.X)), &Result.X);
+
+	return Result;
 }
+
+/*template <typename ScalarType>
+	requires std::is_arithmetic_v<ScalarType>
+FVector4 FVector4::operator/(ScalarType Scale) const
+{
+	return FVector4(X / Scale, Y / Scale, Z / Scale, W / Scale);
+}*/
 
 template <typename ScalarType>
 	requires std::is_arithmetic_v<ScalarType>
 FVector4 FVector4::operator/(ScalarType Scale) const
 {
-	return FVector4(X / Scale, Y / Scale, Z / Scale, W / Scale);
+	FVector4 Result;
+	FMathSSE::VectorRegister4Float ScaleVec = FMathSSE::VectorSetFloat1(static_cast<float>(Scale));
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorDiv(FMathSSE::VectorLoadAligned(&X), ScaleVec), &Result.X);
+	return Result;
 }
+
+/*inline bool FVector4::operator==(const FVector4& V) const
+{
+	return X == V.X && Y == V.Y && Z == V.Z && W == V.W;
+}*/
 
 inline bool FVector4::operator==(const FVector4& V) const
 {
-	return X == V.X && Y == V.Y && Z == V.Z && W == V.W;
+	return FMathSSE::VectorMaskBits(FMathSSE::VectorCompareEQ(FMathSSE::VectorLoadAligned(&X), FMathSSE::VectorLoadAligned(&V.X))) == 0xF;
 }
 
 inline bool FVector4::operator!=(const FVector4& V) const
@@ -160,55 +237,113 @@ inline FVector4 FVector4::operator-() const
 	return FVector4(-X, -Y, -Z, -W);
 }
 
-inline FVector4& FVector4::operator+=(const FVector4& V)
+/*inline FVector4& FVector4::operator+=(const FVector4& V)
 {
 	X += V.X; Y += V.Y; Z += V.Z; W += V.W;
 	return *this;
+}*/
+
+inline FVector4& FVector4::operator+=(const FVector4& V)
+{
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorAdd(FMathSSE::VectorLoadAligned(&X), FMathSSE::VectorLoadAligned(&V.X)), &X);
+	return *this;
 }
 
-template <typename ScalarType> requires std::is_arithmetic_v<ScalarType>
+/*template <typename ScalarType> requires std::is_arithmetic_v<ScalarType>
 FVector4& FVector4::operator+=(ScalarType Scale)
 {
 	X += Scale; Y += Scale; Z += Scale; W += Scale;
 	return *this;
-}
+}*/
 
-inline FVector4& FVector4::operator-=(const FVector4& V)
+template <typename ScalarType> requires std::is_arithmetic_v<ScalarType>
+FVector4& FVector4::operator+=(ScalarType Scale)
 {
-	X -= V.X; Y -= V.Y; Z -= V.Z; W -= V.W;
+	FMathSSE::VectorRegister4Float ScaleVec = FMathSSE::VectorSetFloat1(static_cast<float>(Scale));
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorAdd(FMathSSE::VectorLoadAligned(&X), ScaleVec), &X);
 	return *this;
 }
 
-template <typename ScalarType> requires std::is_arithmetic_v<ScalarType>
+/*inline FVector4& FVector4::operator-=(const FVector4& V)
+{
+	X -= V.X; Y -= V.Y; Z -= V.Z; W -= V.W;
+	return *this;
+}*/
+
+inline FVector4& FVector4::operator-=(const FVector4& V)
+{
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorSub(FMathSSE::VectorLoadAligned(&X), FMathSSE::VectorLoadAligned(&V.X)), &X);
+	return *this;
+}
+
+/*template <typename ScalarType> requires std::is_arithmetic_v<ScalarType>
 FVector4& FVector4::operator-=(ScalarType Scale)
 {
 	X -= Scale; Y -= Scale; Z -= Scale; W -= Scale;
 	return *this;
-}
+}*/
 
-inline FVector4& FVector4::operator*=(const FVector4& V)
+template <typename ScalarType> requires std::is_arithmetic_v<ScalarType>
+FVector4& FVector4::operator-=(ScalarType Scale)
 {
-	X *= V.X; Y *= V.Y; Z *= V.Z; W *= V.W;
+	FMathSSE::VectorRegister4Float ScaleVec = FMathSSE::VectorSetFloat1(static_cast<float>(Scale));
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorSub(FMathSSE::VectorLoadAligned(&X), ScaleVec), &X);
 	return *this;
 }
 
-template <typename ScalarType> requires std::is_arithmetic_v<ScalarType>
+/*inline FVector4& FVector4::operator*=(const FVector4& V)
+{
+	X *= V.X; Y *= V.Y; Z *= V.Z; W *= V.W;
+	return *this;
+}*/
+
+inline FVector4& FVector4::operator*=(const FVector4& V)
+{
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorMul(FMathSSE::VectorLoadAligned(&X), FMathSSE::VectorLoadAligned(&V.X)), &X);
+	return *this;
+}
+
+/*template <typename ScalarType> requires std::is_arithmetic_v<ScalarType>
 FVector4& FVector4::operator*=(ScalarType Scale)
 {
 	X *= Scale; Y *= Scale; Z *= Scale; W *= Scale;
 	return *this;
+}*/
+
+template <typename ScalarType> requires std::is_arithmetic_v<ScalarType>
+FVector4& FVector4::operator*=(ScalarType Scale)
+{
+	FMathSSE::VectorRegister4Float ScaleVec = FMathSSE::VectorSetFloat1(static_cast<float>(Scale));
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorMul(FMathSSE::VectorLoadAligned(&X), ScaleVec), &X);
+	return *this;
 }
 
-inline FVector4& FVector4::operator/=(const FVector4& V)
+/*inline FVector4& FVector4::operator/=(const FVector4& V)
 {
 	X /= V.X; Y /= V.Y; Z /= V.Z; W /= V.W;
 	return *this;
+}*/
+
+inline FVector4& FVector4::operator/=(const FVector4& V)
+{
+	FMathSSE::VectorRegister4Float Vec1 = FMathSSE::VectorLoadAligned(&X);
+	FMathSSE::VectorRegister4Float Vec2 = FMathSSE::VectorLoadAligned(&V.X);
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorDiv(Vec1, Vec2), &X);
+	return *this;
 }
+
+/*template <typename ScalarType> requires std::is_arithmetic_v<ScalarType>
+FVector4& FVector4::operator/=(ScalarType Scale)
+{
+	X /= Scale; Y /= Scale; Z /= Scale; W /= Scale;
+	return *this;
+}*/
 
 template <typename ScalarType> requires std::is_arithmetic_v<ScalarType>
 FVector4& FVector4::operator/=(ScalarType Scale)
 {
-	X /= Scale; Y /= Scale; Z /= Scale; W /= Scale;
+	FMathSSE::VectorRegister4Float ScaleVec = FMathSSE::VectorSetFloat1(static_cast<float>(Scale));
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorDiv(FMathSSE::VectorLoadAligned(&X), ScaleVec), &X);
 	return *this;
 }
 
@@ -224,9 +359,19 @@ inline const float& FVector4::operator[](int32 Index) const
 	return Index == 0 ? X : (Index == 1 ? Y : (Index == 2 ? Z : W));
 }
 
-inline float FVector4::Dot(const FVector4& V) const
+/*inline float FVector4::Dot(const FVector4& V) const
 {
 	return X * V.X + Y * V.Y + Z * V.Z + W * V.W;
+}*/
+
+inline float FVector4::Dot(const FVector4& V) const
+{
+	FMathSSE::VectorRegister4Float Vec1 = FMathSSE::VectorLoadAligned(&X);
+	FMathSSE::VectorRegister4Float Vec2 = FMathSSE::VectorLoadAligned(&V.X);
+	FVector4 Result;
+
+	FMathSSE::VectorStoreAligned(FMathSSE::VectorDot4(Vec1, Vec2), &Result.X);
+	return Result.X;
 }
 
 inline float FVector4::Size() const

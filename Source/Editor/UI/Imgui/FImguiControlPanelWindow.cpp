@@ -66,6 +66,9 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     ImGui::Separator();
     RenderStateSort(Editor);
 
+    ImGui::Separator();
+	SIMDDebugSetting(Editor);
+
     ImGui::End();
 }
 
@@ -137,6 +140,12 @@ void FImguiControlPanelWindow::RenderStateSort(FEditor& Editor)
             Editor.SpawnActorToCurrentScene(EditorConstant::SpawnableActors[Index]);
         }
     }
+}
+
+void FImguiControlPanelWindow::SIMDDebugSetting(FEditor& Editor)
+{
+    ImGui::Text("SIMD Debug");
+    ImGui::Checkbox("배치 변환 최적화", &Globals::bEnableBatchTransform);
 }
 
 void FImguiControlPanelWindow::ActorSpawnSetting(FEditor& Editor)

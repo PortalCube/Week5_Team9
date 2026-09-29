@@ -1,11 +1,13 @@
 #pragma once
 
 #include "FVector.h"
+#include "MathSSE.h"
+#include <DirectXMath.h>
 #include <numbers>
 #include <cmath>
 
 // TODO: 스타일 정리 필요
-struct FMatrix
+struct alignas(16) FMatrix
 {
 	float M[4][4];
 
@@ -26,7 +28,7 @@ struct FMatrix
 		return t;
 	}
 
-	inline FMatrix Transpose() const
+	/*inline FMatrix Transpose() const
 	{
 		FMatrix result;
 
@@ -35,9 +37,26 @@ struct FMatrix
 				result.M[i][j] = M[j][i];
 
 		return result;
+	}*/
+
+	inline FMatrix Transpose() const
+	{
+		FMathSSE::VectorRegister4Float Row0 = FMathSSE::VectorLoadAligned(&M[0][0]);
+		FMathSSE::VectorRegister4Float Row1 = FMathSSE::VectorLoadAligned(&M[1][0]);
+		FMathSSE::VectorRegister4Float Row2 = FMathSSE::VectorLoadAligned(&M[2][0]);
+		FMathSSE::VectorRegister4Float Row3 = FMathSSE::VectorLoadAligned(&M[3][0]);
+
+		Row0 = FMathSSE::VectorTranspose4x4(Row0, Row1, Row2, Row3);
+
+		FMatrix result;
+		FMathSSE::VectorStoreAligned(Row0, &result.M[0][0]);
+		FMathSSE::VectorStoreAligned(Row1, &result.M[1][0]);
+		FMathSSE::VectorStoreAligned(Row2, &result.M[2][0]);
+		FMathSSE::VectorStoreAligned(Row3, &result.M[3][0]);
+		return result;
 	}
 
-	inline bool Inverse(FMatrix& Dst) const
+	/*inline bool Inverse(FMatrix& Dst) const
 	{
 		const float Det = Determinant();
 		if (fabsf(Det) < 1e-8f)
@@ -51,6 +70,24 @@ struct FMatrix
 				Result.M[r][c] = Cofactor(r, c);
 
 		Dst = Result.Transpose() * rDet;
+		return true;
+	}*/
+
+	inline bool Inverse(FMatrix& Dst) const
+	{
+		using namespace DirectX;
+
+		XMMATRIX mat = XMLoadFloat4x4(reinterpret_cast<const XMFLOAT4X4*>(&M[0][0]));
+
+		XMVECTOR det;
+
+		XMMATRIX InvMat = XMMatrixInverse(&det, mat);
+
+		const float detValue = XMVectorGetX(det);
+		if (fabsf(detValue) < 1e-8f)
+			return false;
+
+		XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4*>(&Dst.M[0][0]), InvMat);
 		return true;
 	}
 
@@ -144,7 +181,7 @@ struct FMatrix
 		return R;
 	}
 
-	inline FMatrix operator*(const FMatrix& Other) const
+	/*inline FMatrix operator*(const FMatrix& Other) const
 	{
 		FMatrix R;
 		for (int i = 0; i < 4; ++i)
@@ -154,14 +191,66 @@ struct FMatrix
 				+ M[i][2] * Other.M[2][j]
 				+ M[i][3] * Other.M[3][j];
 		return R;
+	}*/
+
+	inline FMatrix operator*(const FMatrix& Other) const
+	{
+		// 1. Other(B 행렬)의 행 4개를 레지스터에 로드
+		FMathSSE::VectorRegister4Float B_Row0 = FMathSSE::VectorLoadAligned(&Other.M[0][0]);
+		FMathSSE::VectorRegister4Float B_Row1 = FMathSSE::VectorLoadAligned(&Other.M[1][0]);
+		FMathSSE::VectorRegister4Float B_Row2 = FMathSSE::VectorLoadAligned(&Other.M[2][0]);
+		FMathSSE::VectorRegister4Float B_Row3 = FMathSSE::VectorLoadAligned(&Other.M[3][0]);
+
+		// 2. 결과 행렬 객체 준비
+		FMatrix result;
+
+#define MULTIPLY_ROW(Index) \
+    { \
+        FMathSSE::VectorRegister4Float A_Row = FMathSSE::VectorLoadAligned(&M[Index][0]); \
+        FMathSSE::VectorRegister4Float Res = FMathSSE::VectorMul(FMathSSE::VectorReplicate<0>(A_Row), B_Row0); \
+        Res = FMathSSE::VectorMulAdd(FMathSSE::VectorReplicate<1>(A_Row), B_Row1, Res); \
+        Res = FMathSSE::VectorMulAdd(FMathSSE::VectorReplicate<2>(A_Row), B_Row2, Res); \
+        Res = FMathSSE::VectorMulAdd(FMathSSE::VectorReplicate<3>(A_Row), B_Row3, Res); \
+        FMathSSE::VectorStoreAligned(Res, &result.M[Index][0]); \
+    }
+
+		MULTIPLY_ROW(0);
+		MULTIPLY_ROW(1);
+		MULTIPLY_ROW(2);
+		MULTIPLY_ROW(3);
+
+#undef MULTIPLY_ROW
+		return result;
 	}
 
-	inline FMatrix operator*(float Scalar) const
+	/*inline FMatrix operator*(float Scalar) const
 	{
 		FMatrix Result;
 		for (int i = 0; i < 4; ++i)
 			for (int j = 0; j < 4; ++j)
 				Result.M[i][j] = M[i][j] * Scalar;
+		return Result;
+	}*/
+
+	inline FMatrix operator*(float Scalar) const
+	{
+		FMathSSE::VectorRegister4Float Row0 = FMathSSE::VectorLoadAligned(&M[0][0]);
+		FMathSSE::VectorRegister4Float Row1 = FMathSSE::VectorLoadAligned(&M[1][0]);
+		FMathSSE::VectorRegister4Float Row2 = FMathSSE::VectorLoadAligned(&M[2][0]);
+		FMathSSE::VectorRegister4Float Row3 = FMathSSE::VectorLoadAligned(&M[3][0]);
+
+		const FMathSSE::VectorRegister4Float ScalarVec = FMathSSE::VectorSetFloat1(Scalar);
+
+		Row0 = FMathSSE::VectorMul(Row0, ScalarVec);
+		Row1 = FMathSSE::VectorMul(Row1, ScalarVec);
+		Row2 = FMathSSE::VectorMul(Row2, ScalarVec);
+		Row3 = FMathSSE::VectorMul(Row3, ScalarVec);
+
+		FMatrix Result;
+		FMathSSE::VectorStoreAligned(Row0, &Result.M[0][0]);
+		FMathSSE::VectorStoreAligned(Row1, &Result.M[1][0]);
+		FMathSSE::VectorStoreAligned(Row2, &Result.M[2][0]);
+		FMathSSE::VectorStoreAligned(Row3, &Result.M[3][0]);
 		return Result;
 	}
 
@@ -263,7 +352,7 @@ inline FMatrix FMatrix::MakeRotationZYX(const FVector& Deg)
 }
 
 
-inline FVector FMatrix::TransformPointRow (const FVector& p, float w) const
+/*inline FVector FMatrix::TransformPointRow(const FVector& p, float w) const
 {
 	float x = p.X * M[0][0] + p.Y * M[1][0] + p.Z * M[2][0] + w * M[3][0];
 	float y = p.X * M[0][1] + p.Y * M[1][1] + p.Z * M[2][1] + w * M[3][1];
@@ -271,4 +360,32 @@ inline FVector FMatrix::TransformPointRow (const FVector& p, float w) const
 	float ww = p.X * M[0][3] + p.Y * M[1][3] + p.Z * M[2][3] + w * M[3][3];
 	if (ww != 0.0f && ww != 1.0f) { x /= ww; y /= ww; z /= ww; }
 	return FVector(x, y, z);
+}*/
+
+inline FVector FMatrix::TransformPointRow(const FVector& p, float w) const
+{
+	FMathSSE::VectorRegister4Float Row0 = FMathSSE::VectorLoadAligned(&M[0][0]);
+	FMathSSE::VectorRegister4Float Row1 = FMathSSE::VectorLoadAligned(&M[1][0]);
+	FMathSSE::VectorRegister4Float Row2 = FMathSSE::VectorLoadAligned(&M[2][0]);
+	FMathSSE::VectorRegister4Float Row3 = FMathSSE::VectorLoadAligned(&M[3][0]);
+
+	FMathSSE::VectorRegister4Float X = FMathSSE::VectorSetFloat1(p.X);
+	FMathSSE::VectorRegister4Float Y = FMathSSE::VectorSetFloat1(p.Y);
+	FMathSSE::VectorRegister4Float Z = FMathSSE::VectorSetFloat1(p.Z);
+	FMathSSE::VectorRegister4Float W = FMathSSE::VectorSetFloat1(w);
+
+	FMathSSE::VectorRegister4Float Res = FMathSSE::VectorMul(X, Row0);
+	Res = FMathSSE::VectorMulAdd(Y, Row1, Res);
+	Res = FMathSSE::VectorMulAdd(Z, Row2, Res);
+	Res = FMathSSE::VectorMulAdd(W, Row3, Res);
+
+	alignas(16) float Out[4];
+	FMathSSE::VectorStoreAligned(Res, Out);
+
+	if (Out[3] != 0.0f && Out[3] != 1.0f)
+	{
+		const float InvW = 1.0f / Out[3];
+		return FVector(Out[0] * InvW, Out[1] * InvW, Out[2] * InvW);
+	}
+	return FVector(Out[0], Out[1], Out[2]);
 }
