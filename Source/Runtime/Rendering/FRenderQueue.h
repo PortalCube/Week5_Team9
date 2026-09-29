@@ -24,21 +24,21 @@ class FRenderQueue
 {
 public:
     // 아이템 추가
-    void Push(const FDrawCommand& Data)
+    void Push(FDrawCommand&& Data)
     {
         switch (Data.Type)
         {
         case ERenderType::Primitive:
-            primRenderQ.push_back(Data);
+            primRenderQ.push_back(std::move(Data));
             break;
         case ERenderType::Text:
-            TextRenderQ.push_back(Data);
+            TextRenderQ.push_back(std::move(Data));
             break;
         case ERenderType::Instancing:
-            InstancingRenderQ.push_back(Data);
+            InstancingRenderQ.push_back(std::move(Data));
             break;
         case ERenderType::Spotlight:
-            SpotlightRenderQ.push_back(Data);
+            SpotlightRenderQ.push_back(std::move(Data));
             break;
         default:
             break;
