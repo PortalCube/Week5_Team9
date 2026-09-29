@@ -29,4 +29,11 @@ public:
 	// 부모 트랜스폼과 자식 트랜스폼 합성 연산자
 	FTransform operator*(const FTransform& Child) const;
 
+	bool operator==(const FTransform& Other) const
+	{
+		return Location == Other.Location
+			&& Scale3D == Other.Scale3D
+			&& Rotation.X == Other.Rotation.X && Rotation.Y == Other.Rotation.Y
+			&& Rotation.Z == Other.Rotation.Z && Rotation.W == Other.Rotation.W;
+	}
 };

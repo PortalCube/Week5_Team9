@@ -30,8 +30,11 @@ public:
     virtual FAxisAlignedBoundingBox GetLocalBounds() const { return LocalBounds; }
     virtual FAxisAlignedBoundingBox GetWorldBounds() const;
     virtual FAxisAlignedBoundingBox GetViewBounds(const FCamera& Camera) const;
+    const UStaticMesh* GetMeshAsset() const { return RenderData.Mesh; }
 
     virtual EEngineShowFlags GetShowFlag() const { return EEngineShowFlags::SF_Primitives; }
+    int32 GetBVHIndex() const { return BVHIndex; }
+    void SetBVHIndex(int32 i) { BVHIndex = i; }
 
 protected:
     UPrimitiveComponent() = default;
@@ -49,4 +52,7 @@ protected:
 
     FVector Color{1.0f, 1.0f, 1.0f};
     float ColorAmount = 0.0f;
+
+    //FSceneBVH 내의 역질의용 index, -1면 BVH에 없음
+    int32 BVHIndex = -1;
 };

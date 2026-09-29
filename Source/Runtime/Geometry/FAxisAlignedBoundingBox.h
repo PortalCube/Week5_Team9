@@ -31,4 +31,16 @@ struct FAxisAlignedBoundingBox
 	FAxisAlignedBoundingBox(const FAxisAlignedBoundingBox& InBounds, const FMatrix& TransformationMatrix);
 	FAxisAlignedBoundingBox(const FMesh& Mesh);
 	FAxisAlignedBoundingBox(const FMesh& Mesh, const FMatrix& ModelMatrix);
+
+	bool IsValid() const
+	{
+		return Min.X <= Max.X && Min.Y <= Max.Y && Min.Z <= Max.Z;
+	}
+
+	static FAxisAlignedBoundingBox Union(const FAxisAlignedBoundingBox& A, const FAxisAlignedBoundingBox& B);
+
+	bool operator==(const FAxisAlignedBoundingBox& Other) const
+	{
+		return Center == Other.Center && Extent == Other.Extent;
+	}
 };

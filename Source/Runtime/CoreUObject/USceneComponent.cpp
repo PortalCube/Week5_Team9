@@ -95,6 +95,7 @@ void USceneComponent::Deserialize(const FArchive& Archive)
 
 void USceneComponent::SetRelativeTransform(const FTransform& RelativeTransform)
 {
+    if (this->RelativeTransform == RelativeTransform) { return; }
     this->RelativeTransform = RelativeTransform;
 }
 

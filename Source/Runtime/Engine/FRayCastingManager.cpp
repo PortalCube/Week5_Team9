@@ -82,7 +82,7 @@ bool FRayCastingManager::RayIntersectsMeshes(
 	return ClosestComponent != nullptr;
 }
 
-bool FRayCastingManager::RayIntersectsAABB(const FRay& Ray, const FAxisAlignedBoundingBox& AABB)
+bool FRayCastingManager::RayIntersectsAABB(const FRay& Ray, const FAxisAlignedBoundingBox& AABB, float& OutTNear)
 {
 	// AABB 판별
 	// Source: https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes//ray-box-intersection.html
@@ -121,6 +121,7 @@ bool FRayCastingManager::RayIntersectsAABB(const FRay& Ray, const FAxisAlignedBo
 		TFar = std::min(TFar, std::max(TMin[i], TMax[i]));
 	}
 
+	OutTNear = TNear;
 	return TNear <= TFar;
 }
 
@@ -145,8 +146,9 @@ bool FRayCastingManager::RayIntersectsMesh(const FRay& Ray, const FMesh& Mesh, c
 	const FVector ObjectDirection = InvM.TransformPointRow(Ray.Direction, 0.0f); // 1.0은 점을 나타내므로 0.0으로 하여 벡터로 유지
 	const FRay ObjectRay{ ObjectOrigin, ObjectDirection };
 
+	float DummyNear;
 	FAxisAlignedBoundingBox AABB = Mesh.GetLocalBounds();
-	if (!RayIntersectsAABB(ObjectRay, AABB))
+	if (!RayIntersectsAABB(ObjectRay, AABB, DummyNear))
 	{
 		return false;
 	}
