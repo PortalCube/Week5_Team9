@@ -39,7 +39,7 @@ namespace
             .Mesh = Data.Mesh->Get(),
             .Materials = Component.GetCachedMaterials(),
             .Type = Data.Type,
-            .Instances = Data.Instances,
+			.Instances = std::span<const FInstanceData>(Data.Instances.data(), Data.Instances.size()),
         };
 
 
@@ -51,26 +51,6 @@ namespace
             .World = Data.ModelMatrix,
             .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
         };
-
-        /*for (const auto& Item : Data.Materials)
-        {
-            if (!Item.Pipeline)
-            {
-                continue;
-            }
-
-            FMaterial Material{};
-            Material.SetPipeLine(Item.Pipeline->Get());
-
-            if (Item.Texture)
-            {
-                Material.SetTexture(Item.Texture->Get());
-            }
-
-            Material.SetSamplerDesc(Item.SamplerDesc);
-
-            Command.Materials.push_back(Material);
-        }*/
 
         const FMaterialInstance& PrimaryMaterial = Data.Materials[0];
         
