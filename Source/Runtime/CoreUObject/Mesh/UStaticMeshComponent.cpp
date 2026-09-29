@@ -23,19 +23,19 @@ void UStaticMeshComponent::SetMesh(UStaticMesh* Mesh)
 
 	const TArray<FMeshSection>& Sections = Mesh->Get()->GetSections();
 	FAssetRegistry& Registry = FAssetRegistry::GetInstance();
+	UMaterial* FallbackMaterial = Registry.Get<UMaterial>("Material/Simple.json");
 
 	RenderData.Materials.clear();
-	RenderData.Materials.reserve(Sections.size());
 	for (size_t i = 0; i < Sections.size(); i++)
 	{
 		UMaterial* Mat = Registry.Get<UMaterial>(FName(Sections[i].SectionName));
-		SetMaterial(Mat, static_cast<int32>(i));
+		SetMaterial(Mat ? Mat : FallbackMaterial, static_cast<int32>(i));
 	}
 
 	// 메시에서 유효한 Material 정보를 하나도 찾지 못하면 기본 Material을 사용한다.
 	if (RenderData.Materials.empty())
 	{
-		SetMaterial(Registry.Get<UMaterial>("Material/Simple.json"), 0);
+		SetMaterial(FallbackMaterial, 0);
 	}
 }
 
@@ -151,7 +151,7 @@ void UStaticMeshComponent::Deserialize(const FArchive& Archive)
 {
 	Super::Deserialize(Archive);
 
-	if (Archive.IsNull("MeshAsset") || Archive.IsNull("Materials"))
+	if (Archive.IsNull("MeshAsset"))
 	{
 		return;
 	}
@@ -167,6 +167,11 @@ void UStaticMeshComponent::Deserialize(const FArchive& Archive)
 	}
 
 	SetMesh(Mesh);
+
+	if (Archive.IsNull("Materials"))
+	{
+		return;
+	}
 
 	TArray<FArchive> MaterialArchives = Archive.GetArchiveArray("Materials");
 

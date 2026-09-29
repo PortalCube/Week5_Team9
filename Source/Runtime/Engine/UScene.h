@@ -8,6 +8,7 @@
 #include "Runtime/CoreUObject/USceneComponent.h"
 #include "Runtime/Rendering/FRenderResourceLibrary.h"
 #include "Runtime/Engine/FSceneBVH.h"
+#include "Runtime/Engine/FSceneTransforms.h"
 #include <concepts>
 #include <type_traits>
 
@@ -99,6 +100,9 @@ public:
     FSceneBVH& GetSceneBVH() { return SceneBVH; }
     const FSceneBVH& GetSceneBVH() const { return SceneBVH; }
 
+    FSceneTransforms& GetSceneTransforms() { return SceneTransforms; }
+    const FSceneTransforms& GetSceneTransforms() const { return SceneTransforms; }
+
 private:
   TArray<AActor*> Actors;                        // 액터 목록 (Update용)
   TArray<UPrimitiveComponent*> RenderComponents; // 렌더링큐 (Draw용)
@@ -110,4 +114,6 @@ private:
   bool bHasBegunPlay = false;
 
   FSceneBVH SceneBVH;
+
+  FSceneTransforms SceneTransforms;
 };
