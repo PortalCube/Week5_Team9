@@ -21,5 +21,5 @@ private:
 	void DirectionLightSetting(FEditor& Editor);
 	void BVHDebugSetting(FEditor& Editor);
 	void RenderStateSort(FEditor& Editor);
-
+	void SIMDDebugSetting(FEditor& Editor);
 };

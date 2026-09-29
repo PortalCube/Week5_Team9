@@ -149,9 +149,13 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     const int32 TotalBatchCount = static_cast<int32>(Scene.GetActors().size());
 
     ReserveScratchMVPBuffer(TotalBatchCount);
-    if (TotalBatchCount > 0)
+    if (Globals::bEnableBatchTransform)
     {
-		SceneTransforms.ComputeBatchMVP(View.ViewProj, ScratchMVPBuffer, TotalBatchCount);
+        ReserveScratchMVPBuffer(TotalBatchCount);
+        if (TotalBatchCount > 0)
+        {
+            SceneTransforms.ComputeBatchMVP(View.ViewProj, ScratchMVPBuffer, TotalBatchCount);
+        }
     }
 
     SCOPE_INDEPENDENT_CYCLE_COUNTER("Test");
@@ -185,7 +189,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         //const FMatrix World = PrimitiveComponent->GetRenderMatrix(View.Camera);
         //DrawCommand.Constants.MVP = World * View.ViewProj;
         //DrawCommand.Constants.World = World;
-        if (Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
+        if (Globals::bEnableBatchTransform && Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
         {
             DrawCommand.Constants.World = SceneTransforms.WorldMatrices[Index];
             DrawCommand.Constants.MVP = ScratchMVPBuffer[Index];
