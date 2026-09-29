@@ -128,14 +128,14 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     const auto& SceneTransforms = Scene.GetSceneTransforms();
     const int32 TotalBatchCount = static_cast<int32>(Scene.GetRenderComponents().size());
 
-    if (Globals::bEnableBatchTransform)
-    {
-        ReserveScratchMVPBuffer(TotalBatchCount);
-        if (TotalBatchCount > 0)
-        {
-            SceneTransforms.ComputeBatchMVP(View.ViewProj, ScratchMVPBuffer, TotalBatchCount);
-        }
-    }
+    //if (Globals::bEnableBatchTransform)
+    //{
+    //    ReserveScratchMVPBuffer(TotalBatchCount);
+    //    if (TotalBatchCount > 0)
+    //    {
+    //        SceneTransforms.ComputeBatchMVP(View.ViewProj, ScratchMVPBuffer, TotalBatchCount);
+    //    }
+    //}
 
     const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
 
@@ -613,14 +613,4 @@ void FRenderView::DrawFrozenFrustum(const FSceneView& View)
     //{
     //    RenderLine(Frozen.Corners[Edge[0]], Frozen.Corners[Edge[1]], Color);
     //}
-}
-
-FRenderView::~FRenderView()
-{
-	if (ScratchMVPBuffer)
-	{
-		_aligned_free(ScratchMVPBuffer);
-		ScratchMVPBuffer = nullptr;
-	}
-	ScratchMVPAllocated = 0;
 }
