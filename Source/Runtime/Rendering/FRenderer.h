@@ -283,4 +283,14 @@ public:
     Context->VSSetConstantBuffers(Slot, 1u, ObjectConstantBuffer.GetAddressOf());
     Context->PSSetConstantBuffers(Slot, 1u, ObjectConstantBuffer.GetAddressOf());
   }
+public:
+  //현재 깊이 버퍼 기준으로 각 명령이 실제로 보이는 픽셀 수를 GPU에 묻는다.
+  //GPU가 끝날 때까지 기다리므로 느리다. 디버깅에서 쓰는 한 프레임 측정 전용
+  void QueryVisibility(const TArray<const FDrawCommand*>& Commands, TArray<uint64>& OutSamples);
+
+private:
+    // 오클루전 오라클 (측정 도구)
+    Microsoft::WRL::ComPtr<ID3D11DepthStencilState> OracleDepthState;
+    Microsoft::WRL::ComPtr<ID3D11BlendState> OracleBlendState;
+    TArray<Microsoft::WRL::ComPtr<ID3D11Query>> OracleQueries;
 };

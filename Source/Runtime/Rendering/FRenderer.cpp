@@ -834,6 +834,103 @@ bool FRenderer::InitializeEditorViewportRenderTarget() {
   return true;
 }
 
+void FRenderer::QueryVisibility(const TArray<const FDrawCommand*>& Commands, TArray<uint64>& OutSamples)
+{
+    OutSamples.assign(Commands.size(), 0);
+
+    if (OutSamples.empty()) return;
+
+    //측정용 리소스 생성
+    if (!OracleDepthState)
+    {
+        D3D11_DEPTH_STENCIL_DESC DepthDesc{};
+        DepthDesc.DepthEnable = TRUE;
+        // 측정이 깊이 버퍼를 바꾸면 안 된다
+        DepthDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+        // 자기 자신과 같은 깊이는 통과 → 그려진 오브젝트는 "보임"
+        DepthDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+        DepthDesc.StencilEnable = FALSE;
+        HRESULT hr = Device->CreateDepthStencilState(&DepthDesc, &OracleDepthState);
+        if (FAILED(hr))
+        {
+            UE_LOG_ERROR("[Oracle] 오클루전 DepthStencilState 생성 실패");
+            return;
+        }
+
+        D3D11_BLEND_DESC BlendDesc{};
+        // 화면 색은 건드리지 않는다
+        BlendDesc.RenderTarget[0].RenderTargetWriteMask = 0;
+        hr = Device->CreateBlendState(&BlendDesc, &OracleBlendState);
+        if (FAILED(hr))
+        {
+            UE_LOG_ERROR("[Oracle] 오클루전 DepthStencilState 생성 실패");
+            return;
+        }
+    }
+
+    //쿼리 객체 준비
+    const D3D11_QUERY_DESC QueryDesc{ D3D11_QUERY_OCCLUSION, 0 };
+    while (OracleQueries.size() < Commands.size())
+    {
+        Microsoft::WRL::ComPtr<ID3D11Query> Query;
+        if (FAILED(Device->CreateQuery(&QueryDesc, &Query)))
+        {
+            UE_LOG_ERROR("[Oracle] 오클루전 쿼리 생성 실패");
+            return;
+        }
+        OracleQueries.push_back(Query);
+    }
+
+    //명령마다: 원래와 같은 파이프라인(같은 정점 셰이더, 같은 깊이)으로 그리되
+    //깊이/블렌드 상태만 측정용으로 덮어쓴다
+    for (size_t i = 0; i < Commands.size(); ++i)
+    {
+        const FDrawCommand& Command = *Commands[i];
+        if (!Command.Mesh || Command.Materials.empty()) { continue; }
+
+        //오브젝트 constant buffer 업데이트
+        UpdateBuffer(Command.Constants, 2);
+
+        const FMaterial& Material = Command.Materials[0];
+        if (FRenderPipeline* Pipeline = Material.GetPipeline())
+        {
+            Pipeline->Bind(*Context.Get());
+        }
+        Material.BindResources(*Context.Get());
+        Command.Mesh->BindResources(*Context.Get());
+
+        Context->OMSetDepthStencilState(OracleDepthState.Get(), 0);
+        Context->OMSetBlendState(OracleBlendState.Get(), nullptr, 0xFFFFFFFF);
+
+        Context->Begin(OracleQueries[i].Get());
+        if (Command.Mesh->HasIndices())
+        {
+            Context->DrawIndexed(Command.Mesh->IndexCount, 0, 0);
+        }
+        else
+        {
+            Context->Draw(Command.Mesh->VertexCount, 0);
+        }
+        Context->End(OracleQueries[i].Get());
+    }
+
+    //결과 회수: GPU가 끝날 때까지 기다린다 (측정 전용이라 멈춤을 허용)
+    for (size_t i = 0; i < Commands.size(); ++i)
+    {
+        UINT64 Samples = 0;
+        HRESULT Result = S_FALSE;
+        do
+        {
+            Result = Context->GetData(OracleQueries[i].Get(), &Samples, sizeof(Samples), 0);
+        } while (Result == S_FALSE);
+
+        OutSamples[i] = SUCCEEDED(Result) ? Samples : 0;
+    }
+
+    // 상태를 직접 바인딩했으므로 렌더 상태 캐시를 무효화
+    ClearLastRenderStateKey();
+}
+
 bool FRenderer::InitializeConstantBuffers() {
   // b2를 쓰는 Object/Grid 상수 타입이 공유하는 버퍼.
   // 가장 큰 구조체보다 크게 잡아두고, 초과 여부는 UpdateBuffer의
