@@ -9,7 +9,6 @@
 #include "Runtime/Rendering/FRenderResourceLibrary.h"
 #include "Runtime/Engine/FSceneBVH.h"
 #include "Runtime/Engine/FCulling.h"
-#include "Runtime/Engine/FSceneTransforms.h"
 #include <concepts>
 #include <type_traits>
 
@@ -108,8 +107,6 @@ public:
 
     // dirty 컴포넌트만 월드 AABB 재계산. 렌더 전에 프레임당 1회
     void UpdateDirtyBounds();
-    FSceneTransforms& GetSceneTransforms() { return SceneTransforms; }
-    const FSceneTransforms& GetSceneTransforms() const { return SceneTransforms; }
 
 private:
   TArray<AActor*> Actors;                        // 액터 목록 (Update용)
@@ -127,5 +124,4 @@ private:
   TArray<FAxisAlignedBoundingBox> CullDataList;
   // 이번 프레임 재계산 대상
   TArray<UPrimitiveComponent*> DirtyBoundsList;
-  FSceneTransforms SceneTransforms;
 };
