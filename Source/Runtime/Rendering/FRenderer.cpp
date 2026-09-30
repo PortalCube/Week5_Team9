@@ -50,8 +50,11 @@ void FRenderer::Shutdown() {
   BlendStateMap.clear();
   SamplerStateMap.clear();
 
+  ObjectConstantUploadBuffer.Reset();
   ObjectConstantBuffer.Reset();
+  FrameConstantBuffer.Reset();
   ViewConstantBuffer.Reset();
+  LightConstantBuffer.Reset();
 
   BackBufferRTV.Reset();
   DepthStencilView.Reset();
@@ -66,6 +69,7 @@ void FRenderer::Shutdown() {
   }
 
   SwapChain.Reset();
+  Context1.Reset();
   Context.Reset();
   Device.Reset();
 }
@@ -97,49 +101,6 @@ void FRenderer::SetViewportUV(FVector2 TopLeftUV, FVector2 LengthUV) {
   RenderViewport.Height = LengthUV.Y * Viewport.Height;
   Context->RSSetViewports(1, &RenderViewport);
 };
-
-// void FRenderer::Draw(const FMesh &Mesh, const FMaterial &Material,
-//                      const FObjectConstants &ObjectConstants) {
-//   UpdateObjectConstants(ObjectConstants);
-//
-//   TSharedPtr<FRenderPipeline> Pipeline = Material.Pipeline;
-//   if (CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {
-//     Pipeline = GetPipeline(EBuiltinPipeline::Simple_Wireframe);
-//   }
-//
-//   if (Pipeline) {
-//     Pipeline->Bind(*Context.GetInstance());
-//   }
-//
-//   Material.BindResources(*Context.GetInstance());
-//   Mesh.BindResources(*Context.GetInstance());
-//
-//   Context->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
-//
-//   if (Mesh.HasIndices()) {
-//     Context->DrawIndexed(Mesh.IndexCount, 0, 0);
-//   } else {
-//     Context->Draw(Mesh.VertexCount, 0);
-//   }
-// }
-//
-// void FRenderer::DrawGrid(const FMesh &Mesh, const FMaterial &Material,
-//                          const FGridConstants &GridConstants) {
-//   UpdateGridConstants(GridConstants);
-//   const auto &Pipeline = Material.Pipeline;
-//
-//   Pipeline->Bind(*Context.GetInstance());
-//   Material.BindResources(*Context.GetInstance());
-//   Mesh.BindResources(*Context.GetInstance());
-//
-//   Context->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
-//
-//   if (Mesh.HasIndices()) {
-//     Context->DrawIndexed(Mesh.IndexCount, 0, 0);
-//   } else {
-//     Context->Draw(Mesh.VertexCount, 0);
-//   }
-// }
 
 void FRenderer::ClearDepth() {
   Context->ClearDepthStencilView(
@@ -728,6 +689,14 @@ bool FRenderer::InitializeDeviceAndSwapChain(HWND Window) {
     return false;
   }
 
+  Result = Context.As(&Context1);
+
+  if (FAILED(Result))
+  {
+      Context1.Reset();
+      return false;
+  }
+
   RECT ClientRect{};
   GetClientRect(Window, &ClientRect);
 
@@ -847,6 +816,31 @@ bool FRenderer::InitializeEditorViewportRenderTarget() {
 }
 
 bool FRenderer::InitializeConstantBuffers() {
+    // Dynamic Constant Buffer
+    // 여러개의 Constant Buffer를 하나로 묶어서 사용
+    // Map, Copy, Unmap 횟수 줄이기.
+
+    D3D11_BUFFER_DESC Desc{};
+    Desc.ByteWidth = ObjectConstantUploadBufferSize;
+    Desc.Usage = D3D11_USAGE_DYNAMIC;
+    Desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    Desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    Desc.MiscFlags = 0;
+    Desc.StructureByteStride = 0;
+
+    HRESULT Result = Device->CreateBuffer(
+        &Desc,
+        nullptr,
+        &ObjectConstantUploadBuffer
+    );
+
+    if (FAILED(Result))
+    {
+        return false;
+    }
+
+
+
   // b2를 쓰는 Object/Grid 상수 타입이 공유하는 버퍼.
   // 가장 큰 구조체보다 크게 잡아두고, 초과 여부는 UpdateBuffer의
   // static_assert가 잡는다.
@@ -857,7 +851,7 @@ bool FRenderer::InitializeConstantBuffers() {
       .CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
   };
 
-  HRESULT Result = Device->CreateBuffer(&ObjectConstantBufferDesc, nullptr, &ObjectConstantBuffer);
+  Result = Device->CreateBuffer(&ObjectConstantBufferDesc, nullptr, &ObjectConstantBuffer);
   if (FAILED(Result)) {
     return false;
   }
@@ -951,14 +945,247 @@ void FRenderer::Draw(const FDrawCommand &Command, uint32 Slot,
 
 }
 
+void FRenderer::DrawPrimitiveBatch(std::span<const FDrawCommand> Commands)
+{
+    size_t Begin = 0;
+
+    while (Begin < Commands.size())
+    {
+        const size_t Remaining = Commands.size() - Begin;
+
+        const size_t ChunkCount = std::min(Remaining, static_cast<size_t>(MaxObjectDrawCount));
+
+        std::span<const FDrawCommand> Chunk =
+            Commands.subspan(
+                Begin,
+                ChunkCount
+            );
+
+        if (!UploadObjectConstants(Chunk))
+        {
+            throw EngineUtil::CreateError("ObjectConstantUploadBuffer Map에 실패했습니다.");
+        }
+
+        for (size_t LocalIndex = 0;
+            LocalIndex < Chunk.size();
+            ++LocalIndex)
+        {
+            const uint32 ByteOffset =
+                static_cast<uint32>(LocalIndex)
+                * ObjectConstantStride;
+
+            BindObjectConstantRange(
+                2,
+                ByteOffset
+            );
+
+            DrawUploadedCommand(
+                Chunk[LocalIndex],
+                true
+            );
+        }
+
+        Begin += ChunkCount;
+    }
+}
+
+bool FRenderer::UploadObjectConstants(std::span<const FDrawCommand> Commands)
+{
+    if (Commands.empty())
+    {
+        return true;
+    }
+
+    if (Commands.size() > MaxObjectDrawCount)
+    {
+        return false;
+    }
+
+    D3D11_MAPPED_SUBRESOURCE Mapped{};
+
+    HRESULT Result = Context->Map(
+        ObjectConstantUploadBuffer.Get(),
+        0,
+        D3D11_MAP_WRITE_DISCARD,
+        0,
+        &Mapped
+    );
+
+    if (FAILED(Result))
+    {
+        return false;
+    }
+
+    std::byte* Destination = static_cast<std::byte*>(Mapped.pData);
+
+    for (size_t Index = 0; Index < Commands.size(); ++Index)
+    {
+        const uint32 ByteOffset = static_cast<uint32>(Index) * ObjectConstantStride;
+
+        const FObjectConstants& ShaderConstants = Commands[Index].Constants;
+
+        std::memcpy(
+            Destination + ByteOffset,
+            &ShaderConstants,
+            sizeof(FObjectConstants)
+        );
+    }
+
+    Context->Unmap(ObjectConstantUploadBuffer.Get(), 0);
+
+    return true;
+}
+
+void FRenderer::BindObjectConstantRange(uint32 Slot, uint32 ByteOffset)
+{
+    assert(Context1);
+    assert(ByteOffset % 256u == 0);
+
+    ID3D11Buffer* Buffer = ObjectConstantUploadBuffer.Get();
+
+    // SetConstantBuffers1의 단위는 16바이트 shader constant.
+    UINT FirstConstant = ByteOffset / 16u;
+
+    UINT NumConstants = ObjectConstantStride / 16u;
+
+    Context1->VSSetConstantBuffers1(
+        Slot,
+        1,
+        &Buffer,
+        &FirstConstant,
+        &NumConstants
+    );
+
+    Context1->PSSetConstantBuffers1(
+        Slot,
+        1,
+        &Buffer,
+        &FirstConstant,
+        &NumConstants
+    );
+}
+
+void FRenderer::BindDrawResources(const FMesh& Mesh, const FMaterial& Material, uint64 RenderStateKey, bool bApplyViewMode)
+{
+    // RenderStateKey가 0이면 캐싱하지 않고 항상 바인딩합니다.
+    if (RenderStateKey != 0 &&
+        LastRenderStateKey == RenderStateKey)
+    {
+        return;
+    }
+
+    LastRenderStateKey = RenderStateKey;
+
+    FRenderPipeline* Pipeline = Material.Pipeline;
+
+    if (bApplyViewMode &&
+        CurrentRenderMode == EViewModeIndex::VMI_Wireframe)
+    {
+        const TSharedPtr<FRenderPipeline> WireframePipeline =
+            GetPipeline(FName("#Simple_Wireframe"));
+
+        Pipeline = WireframePipeline.get();
+    }
+
+    if (Pipeline)
+    {
+        Pipeline->Bind(*Context.Get());
+    }
+
+    Material.BindResources(*Context.Get());
+    Mesh.BindResources(*Context.Get());
+}
+
+void FRenderer::DrawUploadedCommand(const FDrawCommand& Command, bool bApplyViewMode)
+{
+    if (!Command.Mesh || Command.Materials.empty())
+    {
+        return;
+    }
+
+    const FMesh& Mesh = *Command.Mesh;
+
+    if (!Mesh.Sections.empty())
+    {
+        size_t SectionSize = Mesh.Sections.size();
+        for (size_t SectionIndex = 0; SectionIndex < SectionSize; ++SectionIndex)
+        {
+            const FMeshSection& Section = Mesh.Sections[SectionIndex];
+
+            const FMaterial& Material =
+                SectionIndex < Command.Materials.size()
+                ? Command.Materials[SectionIndex]
+                : Command.Materials[0];
+
+            BindDrawResources(
+                Mesh,
+                Material,
+                Command.RenderStateKey,
+                bApplyViewMode
+            );
+
+            Context->DrawIndexed(
+                Section.IndexCount,
+                Section.StartIndex,
+                0
+            );
+
+            INC_DWORD_STAT_BY(
+                "Prims",
+                Section.IndexCount / 3u
+            );
+            INC_DWORD_STAT("Draws");
+        }
+    }
+    else
+    {
+        const FMaterial& Material = Command.Materials[0];
+
+        BindDrawResources(
+            Mesh,
+            Material,
+            Command.RenderStateKey,
+            bApplyViewMode
+        );
+
+        if (Mesh.HasIndices())
+        {
+            Context->DrawIndexed(
+                Mesh.IndexCount,
+                0,
+                0
+            );
+
+            INC_DWORD_STAT_BY(
+                "Prims",
+                Mesh.IndexCount / 3u
+            );
+        }
+        else
+        {
+            Context->Draw(
+                Mesh.VertexCount,
+                0
+            );
+
+            INC_DWORD_STAT_BY(
+                "Prims",
+                Mesh.VertexCount / 3u
+            );
+        }
+        INC_DWORD_STAT("Draws");
+    }
+}
+
+
 void FRenderer::AddTextInstanceArray(const FDrawCommand &Command) {
   // 빈 데이터 전달 시 조기 반환
   if (!Command.Mesh || Command.Materials.empty() || Command.Instances.empty()) {
     return;
   }
-  auto &ResLib = FRenderResourceLibrary::Get();
+  auto& ResLib = FRenderResourceLibrary::Get();
 
-  auto &TargetArray =
+  auto& TargetArray =
       ResLib.GetInstancingArray(Command.Mesh, &Command.Materials[0]);
   TargetArray.reserve(TargetArray.size() + Command.Instances.size());
   TargetArray.insert(TargetArray.end(), Command.Instances.begin(),
@@ -1055,7 +1282,7 @@ void FRenderer::DrawTextInstances(const FDrawCommand &Command) {
 
   UpdateBuffer(Command.Constants, 2);
 
-  TArray<FInstanceData> InstanceData =
+  const TArray<FInstanceData>& InstanceData =
       ResLib.GetInstancingArray(Command.Mesh, &Command.Materials[0]);
 
   if (InstanceData.empty())

@@ -56,7 +56,7 @@ namespace
         const FMaterialInstance& PrimaryMaterial = Data.Materials[0];
         
 
-        if (Globals::bSortTest)
+        if (Globals::bEnableRenderSort)
         {
             uint64 PipelineId = 0;
             uint64 MaterialId = 0;
@@ -229,7 +229,7 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
     // 씬 컴포넌트 수집
     CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
 
-    if (Globals::bSortTest)
+    if (Globals::bEnableRenderSort)
     {
         RenderQueue.Sort();
     }
@@ -454,10 +454,9 @@ void FRenderView::FlushQueue(const FCamera& Camera)
     auto& ResLib = FRenderResourceLibrary::Get();
     
     // Primitive 큐 처리
-    for (const FDrawCommand& Data : RenderQueue.GetPrimRenderQ())
-    {
-        Renderer.Draw(Data);
-    }
+    Renderer.DrawPrimitiveBatch(
+        RenderQueue.GetPrimRenderQ()
+    );
 
     // Instancing 큐
     if (!RenderQueue.IsInstancingRQEmpty())

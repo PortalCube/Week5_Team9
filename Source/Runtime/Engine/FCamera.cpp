@@ -173,12 +173,12 @@ void FCamera::UpdateViewProjectionMatrixIfDirty() const
 	bViewProjectionMatrixDirty = false;
 }
 
-FVector FCamera::GetForwardVector() const
-{
-	const FMatrix& Rot = GetRotationMatrix();
-
-	// 엔진의 FMatrix 멤버 변수 형태(M[0][0] 또는 m[0][0] 등)에 맞춰 작성합니다.
-	FVector Forward(Rot.M[0][0], Rot.M[0][1], Rot.M[0][2]);
-	Forward.Normalize();
-	return Forward;
-}
+//FVector FCamera::GetForwardVector() const
+//{
+//	const FMatrix& Rot = GetRotationMatrix();
+//
+//	// 엔진의 FMatrix 멤버 변수 형태(M[0][0] 또는 m[0][0] 등)에 맞춰 작성합니다.
+//	FVector Forward(Rot.M[0][0], Rot.M[0][1], Rot.M[0][2]);
+//	Forward.Normalize();
+//	return Forward;
+//}
