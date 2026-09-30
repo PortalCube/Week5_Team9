@@ -53,6 +53,9 @@ public:
     void UpdateMaterialCache();
     void UpdateSortKey();
 
+    //오클루전 대상인지
+    virtual bool IsOcclusionTarget()const;
+
 protected:
     UPrimitiveComponent() = default;
 

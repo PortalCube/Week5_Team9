@@ -31,6 +31,8 @@ public:
 	void Serialize(FArchive& Archive) const override;
 	void Deserialize(const FArchive& Archive) override;
 
+	virtual bool IsOcclusionTarget() const override { return false; }
+
 private:
 	// 조명 기본 속성
 	float SpotAngle = 30.0f;

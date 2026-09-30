@@ -110,12 +110,25 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     //컬링 결과 인덱스를 맞추기 위해 인덱스 for문으로 변경
     for (size_t i = 0; i < Primitives.size(); i++)
     {
+        //컬링을 사용중인데 컬링 되어 버렸다면
+        const bool bCulled = bCullResultValid && !VisibleFlags[i];
+        const bool bOccluded = i < OccludedFlags.size() && OccludedFlags[i];
+
+        // 오라클 프레임: 오클루전으로 지운 것은 검증을 위해 명령만 만들고 그리지 않는다
+        //bOracleRequested가 true여야 한다.
+        const bool bCollectForOracleOnly = bCulled && bOccluded && bOracleRequested;
+
+        //컬링 되었는데 오라클을 사용하지 않는다면 조기 종료. 오라클을 사용한다면 진행한다.
+        if (bCulled && !bCollectForOracleOnly) continue;
+
+
         UPrimitiveComponent* PrimitiveComponent = Primitives[i];
         if (!PrimitiveComponent) continue;
 
+
         //bCullResultValid가 false라면 통과
         // bCullResultValid가 true라면 컬링 결과 통과시에만 수집
-        if (bCullResultValid && !VisibleFlags[i]) continue;
+        //if (bCullResultValid && !VisibleFlags[i]) continue;
         
         // 쇼 플래그 확인
         if ((static_cast<uint64>(View.ShowFlags) & static_cast<uint64>(PrimitiveComponent->GetShowFlag())) == 0)
@@ -134,6 +147,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         // 인스턴싱 및 텍스트는 인스턴스 배열을 사용하므로 바로 푸시
         if (DrawCommand.Type == ERenderType::Text || DrawCommand.Type == ERenderType::Instancing)
         {
+            if (bCollectForOracleOnly) continue;
             RenderQueue.Push(std::move(DrawCommand));
             continue;
         }
@@ -178,9 +192,22 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         else if (bSelected)
         {
             DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.5f };
-        }
-        RenderQueue.Push(std::move(DrawCommand));
-    }
+		}
+
+		if (bCollectForOracleOnly)
+		{
+			//지운 것
+			OracleOccludedCommands.push_back(DrawCommand);
+			continue;
+		}
+		if (bOracleRequested && DrawCommand.Type == ERenderType::Primitive)
+		{
+			//그린것
+			OracleDrawnCommands.push_back(DrawCommand);
+		}
+
+		RenderQueue.Push(std::move(DrawCommand));
+	}
 }
 
 void FRenderView::PrepareRender()
@@ -201,7 +228,6 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
 
     //컬링 측정
     {
-        SCOPE_CYCLE_COUNTER("Cull");
         CullScene(View, Scene);
     }
 
@@ -218,6 +244,13 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
 
     // 기본 씬 오브젝트 패스
     FlushBasePass(View.Camera);
+
+    //BasePass 이후에 깊이 버퍼 기준으로 가시성 질의
+    if (bOracleRequested)
+    {
+        RunOcclusionOracle();
+        bOracleRequested = false;
+    }
 
     Renderer.ClearLastRenderState();
 
@@ -490,120 +523,121 @@ const FCullingSettings& FRenderView::GetCullingSettings() const
 
 void FRenderView::SetCullingEnabled(bool pCullingEnable)
 {
-    CullingSettings.bEnabled = pCullingEnable;
-}
-
-void FRenderView::SetCullingFreeze(bool pCullingFreeze)
-{
-    CullingSettings.bFreeze = pCullingFreeze;
+    Globals::bEnableFrustumCulling = pCullingEnable;
 }
 
 void FRenderView::CullScene(const FSceneView& View, const UScene& Scene)
 {
     const TArray<FAxisAlignedBoundingBox>& CullDataList = Scene.GetCullDataList();
-    const uint32 Count = static_cast<uint32>(CullDataList.size());
+    
+    const bool bUseFrustum = Globals::bEnableFrustumCulling;
 
-    bCullResultValid = CullingSettings.bEnabled;
+    //와이어 프레임일때는 뒤가 비쳐 보이니 오클루전을 쓰지 않도록 한다.    
+    const bool bUseOcclusion = Globals::bEnableOcclusionCulling
+        && View.ViewMode != EViewModeIndex::VMI_Wireframe;
+
+    if (Globals::bRequestOcclusionOracle)
+    {
+        bOracleRequested = true;
+        Globals::bRequestOcclusionOracle = false;   // 다음에 렌더되는 뷰 하나만
+    }
+
+    OccludedFlags.clear();
+    Globals::OccludedCount = 0;
+    bCullResultValid = bUseFrustum || bUseOcclusion;
+
+    //컬링하지 않는다면 종료
     if (!bCullResultValid)
     {
-        // 컬링 OFF: 전부 가시로 집계
+        Globals::FrustumVisibleCount = static_cast<uint32>(CullDataList.size());
         return;
     }
-    VisibleFlags.resize(Count);
-    // 매 프레임 그 프레임의 Frustum으로 전체 판정 (이전 결과 재사용 없음)
-    const FFrustum Frustum = GetCullFrustum(View);
 
-    if(Globals::bUseSIMDCulling)
+    if (bUseFrustum)
     {
-        const uint32 VisibleCount = FlatCuller.Cull_SIMD(Frustum, CullDataList.data(), Count, VisibleFlags.data());
+        SCOPE_CYCLE_COUNTER("Frustum");
+		// 매 프레임 그 프레임의 Frustum으로 전체 판정 (이전 결과 재사용 없음)
+		const FFrustum Frustum = GetCullFrustum(View);
+        Globals::FrustumVisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
     }
     else
     {
-        const uint32 VisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
+        //Frustum 없이 오클루전만
+        VisibleFlags.assign(CullDataList.size(), 1);
+        Globals::FrustumVisibleCount = static_cast<uint32>(CullDataList.size());
     }
 
-    //Culling 결과를 카운트
-    //...
-}
-
-void FRenderView::InvalidateFrozenFrustums()
-{
-    for (FFrozenView& Frozen : FrozenViews)
+    if (bUseOcclusion)
     {
-        Frozen.bValid = false;
-        Frozen.bHasCorners = false;
+        // ImGui 값을 컬러에 반영
+        OcclusionCuller.OccluderBudget = static_cast<uint32>(std::max(0, Globals::OccluderBudget));
+        OcclusionCuller.BufferWidth = std::max(16, Globals::OcclusionBufferWidth);
+        OcclusionCuller.bIncludeOccluderCull = Globals::bIncludeOccluderCull;
+        if (Globals::bRequestOcclusionDump)
+        {
+            OcclusionCuller.bDumpNextFrame = true;
+            Globals::bRequestOcclusionDump = false;
+        }
+
+        SCOPE_CYCLE_COUNTER("Occlusion");
+        Globals::OccludedCount = OcclusionCuller.Cull(View, Scene, VisibleFlags, OccludedFlags);
     }
 }
 
 FFrustum FRenderView::GetCullFrustum(const FSceneView& View)
 {
-    //// 디버그 기능: 고정 중에도 오브젝트 판정은 매 프레임 수행되고, 평면만 고정된다
-    //if (!CullingSettings.bFreeze || View.ViewIndex >= MaxViewCount)
-    //{
-    //    return FFrustum::FromViewProjection(View.ViewProj);
-    //}
-
-    //FFrozenView& Frozen = FrozenViews[View.ViewIndex];
-    //if (!Frozen.bValid)
-    //{
-    //    Frozen.ViewProj = View.ViewProj;
-    //    Frozen.Frustum = FFrustum::FromViewProjection(View.ViewProj);
-    //    CaptureFrozenCorners(Frozen);
-    //    Frozen.bValid = true;
-    //}
-    //return Frozen.Frustum;
-
-    //ViewProjection 행렬을 통해 Frustum을 가져옵니다.
     return FFrustum::FromViewProjection(View.ViewProj);
 }
 
-void FRenderView::CaptureFrozenCorners(FFrozenView& Frozen)
+void FRenderView::RunOcclusionOracle()
 {
-    FMatrix InvVP;
-    Frozen.bHasCorners = Frozen.ViewProj.Inverse(InvVP);
-    if (!Frozen.bHasCorners)
-    {
-        return;
+    TArray<const FDrawCommand*> Commands;
+    Commands.reserve(OracleDrawnCommands.size() + OracleOccludedCommands.size());
+    for (const FDrawCommand& Command : OracleDrawnCommands) 
+    { 
+        Commands.push_back(&Command); 
+    }
+    for (const FDrawCommand& Command : OracleOccludedCommands) 
+    { 
+        Commands.push_back(&Command); 
     }
 
-    // 엔진 클립 순서 (깊이, 가로, 세로) — FRayCastingManager::CreateRayFromScreenPosition과 동일
-    // 인덱스 = Depth*4 + V*2 + H
-    int32 Index = 0;
-    for (const float Depth : { 0.0f, 1.0f })
+    TArray<uint64> Samples;
+    Renderer.QueryVisibility(Commands, Samples);
+
+    const size_t DrawnCount = OracleDrawnCommands.size();
+    const size_t OccludedCount = OracleOccludedCommands.size();
+
+    uint32 DrawnVisible = 0;   // 그렸고 실제로 보임
+    uint32 Violations = 0;     // 오클루전으로 지웠는데 실제로는 보임 (버그)
+    for (size_t i = 0; i < Samples.size(); ++i)
     {
-        for (const float V : { -1.0f, 1.0f })
-        {
-            for (const float H : { -1.0f, 1.0f })
-            {
-                Frozen.Corners[Index++] = InvVP.TransformPointRow(FVector{ Depth, H, V });
-            }
+        const bool bVisible = Samples[i] > 0;
+        if (i < DrawnCount) 
+        { 
+            DrawnVisible += bVisible ? 1 : 0; 
+        }
+        else 
+        { 
+            Violations += bVisible ? 1 : 0; 
         }
     }
-}
 
-void FRenderView::DrawFrozenFrustum(const FSceneView& View)
-{
-    /*if (!CullingSettings.bFreeze || View.ViewIndex >= MaxViewCount)
+    const uint32 Total = static_cast<uint32>(DrawnCount + OccludedCount);     // Frustum 통과 메시 수
+    const uint32 DrawnButHidden = static_cast<uint32>(DrawnCount) - DrawnVisible;
+    const uint32 TrulyHidden = DrawnButHidden + (static_cast<uint32>(OccludedCount) - Violations);
+    const float MaxRatio = Total ? 100.0f * TrulyHidden / Total : 0.0f;
+    const float Achieved = TrulyHidden ? 100.0f * (OccludedCount - Violations) / TrulyHidden : 0.0f;
+
+    UE_LOG("[Oracle] 대상 %u | 그림 %zu (실제 보임 %u, 가려졌는데 그림 %u) | 오클루전 컬링 %zu (위반 %u)",
+           Total, DrawnCount, DrawnVisible, DrawnButHidden, OccludedCount, Violations);
+    UE_LOG("[Oracle] 이론적 최대 컬링 %u개 (%.1f%%) | 현재 달성률 %.1f%%",
+           TrulyHidden, MaxRatio, Achieved);
+    if (Violations > 0)
     {
-        return;
+        UE_LOG_ERROR("[Oracle] 보이는 오브젝트 %u개를 지웠습니다. 보수성 버그", Violations);
     }
 
-    const FFrozenView& Frozen = FrozenViews[View.ViewIndex];
-    if (!Frozen.bValid || !Frozen.bHasCorners)
-    {
-        return;
-    }*/
-
-    //static constexpr int32 Edges[12][2] =
-    //{
-    //    { 0, 1 }, { 1, 3 }, { 3, 2 }, { 2, 0 },    // Near
-    //    { 4, 5 }, { 5, 7 }, { 7, 6 }, { 6, 4 },    // Far
-    //    { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 },    // 측면
-    //};
-
-    //const FVector4 Color{ 1.0f, 0.2f, 0.8f, 1.0f };
-    //for (const auto& Edge : Edges)
-    //{
-    //    RenderLine(Frozen.Corners[Edge[0]], Frozen.Corners[Edge[1]], Color);
-    //}
+    OracleDrawnCommands.clear();
+    OracleOccludedCommands.clear();
 }

@@ -472,6 +472,31 @@ void FImguiStatsWindow::DrawUnits()
 
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
         "Prims", "%.0f", GetStat(FName("Prims")), Color, TransColor);
+
+    /*DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+            "Frustum", "%.2f ms", GetStat(FName("Frustum")), Color, TransColor);
+
+    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+            "Occlusion", "%.2f ms", GetStat(FName("Occlusion")) + GetStat(FName("OcclusionSelect"))
+            + GetStat(FName("OcclusionRaster")) + GetStat(FName("OcclusionTest")), Color, TransColor);
+
+    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+            "OccSelect", "%.2f ms", GetStat(FName("OcclusionSelect")), Color, TransColor);
+
+    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+            "OccRaster", "%.2f ms", GetStat(FName("OcclusionRaster")), Color, TransColor);
+
+    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+            "OccTest", "%.2f ms", GetStat(FName("OcclusionTest")), Color, TransColor);
+
+    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+            "Occluders", "%.0f", GetStat(FName("Occluders")), Color, TransColor);
+
+    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+            "Occluded", "%.0f", GetStat(FName("Occluded")), Color, TransColor);
+
+    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+            "OccSkip", "%.0f", GetStat(FName("OcclusionSkipped")), Color, TransColor);*/
 }
 
 void FImguiStatsWindow::DrawRow(ImDrawList* DrawList,

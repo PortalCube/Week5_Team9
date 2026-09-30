@@ -24,6 +24,8 @@ public:
     void ClearInstances();
     int32 GetInstanceCount() const { return static_cast<int32>(InstanceTransforms.size()); }
 
+    virtual bool IsOcclusionTarget() const override { return false; }
+
 private:
     struct FInstanceEntry { FVector Position; FVector4 Color; };
     TArray<FInstanceEntry> InstanceTransforms;

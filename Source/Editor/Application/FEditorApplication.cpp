@@ -25,6 +25,7 @@
 #include "Editor/Core/FEditor.h"
 #include <Editor/UI/Imgui/FImguiStatsWindow.h>
 #include <Runtime/CoreUObject/FStatsManager.h>
+#include "Runtime/Core/Globals.h"
 
 
 void FEditorApplication::Initialize_ImguiWin32DX11(
@@ -99,7 +100,6 @@ void FEditorApplication::Render() {
               .ViewMode = EditorViewport.ViewMode,
               .ShowFlags = EditorViewport.ShowFlags,
               .LightConstants = Editor.GlobalLight
-              //나중에 ViewIndex를 추가할 날이?
           };
 
           // 에디터 렌더링 컨텍스트 구성
@@ -174,6 +174,8 @@ void FEditorApplication::ExecuteCommand(const char* Command) {
     if (!Command) return;
 
     FString lowerCmd = Command;
+    unsigned int NumberArg = 0;
+
     std::transform(lowerCmd.begin(), lowerCmd.end(), lowerCmd.begin(), ::tolower);
 
     if (lowerCmd.compare("stat memory") == 0) {
@@ -205,31 +207,9 @@ void FEditorApplication::ExecuteCommand(const char* Command) {
     else if (lowerCmd.compare("cull") == 0)
     {
         //컬링 토글
-        RenderView->SetCullingEnabled(!RenderView->GetCullingSettings().bEnabled);
-        UE_LOG("Culling : %s", RenderView->GetCullingSettings().bEnabled ? "ON" : "OFF");
-    }
-
-    else if (lowerCmd.compare("cull on") == 0)
-    {
-        //컬링 On
-        RenderView->SetCullingEnabled(true);
-        UE_LOG("Culling : %s", RenderView->GetCullingSettings().bEnabled ? "ON" : "OFF");
-    }
-
-    else if (lowerCmd.compare("cull off") == 0)
-    {
-        //컬링 Off
-        RenderView->SetCullingEnabled(false);
-        UE_LOG("Culling : %s", RenderView->GetCullingSettings().bEnabled ? "ON" : "OFF");
-    }
-
-    else if (lowerCmd.compare("cull freeze") == 0)
-    {
-        //컬링 freeze 토글
-        RenderView->SetCullingFreeze(!RenderView->GetCullingSettings().bFreeze);
-        RenderView->InvalidateFrozenFrustums();
-        UE_LOG("Frustum Freeze : %s", RenderView->GetCullingSettings().bFreeze ? "ON" : "OFF");
-    }
+        Globals::bEnableFrustumCulling = !Globals::bEnableFrustumCulling;
+        UE_LOG("Culling : %s", Globals::bEnableFrustumCulling ? "ON" : "OFF");
+    }    
 
     else {
         UE_LOG("Unknown command: '%s'\n", Command);

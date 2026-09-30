@@ -134,6 +134,11 @@ void UPrimitiveComponent::UpdateMaterialCache()
 	}
 }
 
+bool UPrimitiveComponent::IsOcclusionTarget() const
+{
+    return RenderData.Mesh != nullptr && RenderData.Mesh->Get() != nullptr;
+}
+
 void UPrimitiveComponent::UpdateSortKey()
 {
     RenderData.SortKey = 0;

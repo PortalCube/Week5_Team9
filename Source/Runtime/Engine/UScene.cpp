@@ -44,6 +44,7 @@ void UScene::Release() {
   RenderComponents.clear();
   CullDataList.clear();
   DirtyBoundsList.clear();
+  OcclusionTargetFlags.clear();
   RenderResourceLibrary = nullptr;
   bInitialized = false;
 
@@ -195,6 +196,8 @@ void UScene::AddRenderComponent(UPrimitiveComponent *prim) {
 
     //처음엔 일단 그리자
     CullDataList.push_back(MakeAlwaysVisibleCullData());
+    //오클루전 대상에도 추가
+    OcclusionTargetFlags.push_back(0);
     MarkBoundsDirty(prim);
   }
 }
@@ -209,6 +212,9 @@ void UScene::RemoveRenderComponent(UPrimitiveComponent *prim) {
 
   const size_t Index = static_cast<size_t>(prim->GetSceneIndex());
   CullDataList.erase(CullDataList.begin() + Index);
+
+  //오클루전 대상에서 제거
+  OcclusionTargetFlags.erase(OcclusionTargetFlags.begin() + Index);
 
   // 당겨진 원소들의 인덱스 멤버 갱신
   for (size_t i = Index; i < RenderComponents.size(); ++i)
@@ -268,7 +274,9 @@ void UScene::UpdateDirtyBounds()
     {
         Prim->SetBoundDirtyQueued(false);
         Prim->UpdateWorldBounds();
-        CullDataList[static_cast<size_t>(Prim->GetSceneIndex())] = Prim->GetWorldBounds();
+        int32 Index = static_cast<size_t>(Prim->GetSceneIndex());
+        CullDataList[Index] = Prim->GetWorldBounds();
+        OcclusionTargetFlags[Index] = Prim->IsOcclusionTarget() ? 1 : 0;
     }
     DirtyBoundsList.clear();
 }

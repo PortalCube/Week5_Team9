@@ -37,4 +37,16 @@ namespace Globals
 	constexpr uint32 MaxDebugLODCount = 4;
 	inline bool bShowLODColor = false;
 	inline uint32 LODDrawCounts[MaxDebugLODCount] = {};	// 마지막으로 그린 뷰의 LOD별 컴포넌트 수
+
+	// 컬링 설정
+	inline bool bEnableFrustumCulling = true;
+	inline uint32 FrustumVisibleCount = 0;   // 마지막으로 그린 뷰에서 Frustum을 통과한 수 (표시용)
+
+	inline bool bEnableOcclusionCulling = false;
+	inline int32 OccluderBudget = 1024;        // Occluder로 쓸 가까운 오브젝트 수
+	inline int32 OcclusionBufferWidth = 512;   // CPU 깊이 버퍼 가로 해상도
+	inline bool bIncludeOccluderCull = false;  // Occluder 자신도 판정 대상에 포함
+	inline bool bRequestOcclusionOracle = false; // 버튼: 다음 뷰에서 오라클 1회 (한 프레임 멈춤)
+	inline bool bRequestOcclusionDump = false;   // 버튼: 다음 프레임 깊이 버퍼 BMP 저장
+	inline uint32 OccludedCount = 0;             // 표시용
 };
