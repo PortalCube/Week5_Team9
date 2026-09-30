@@ -418,6 +418,11 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
     const FRay PickRay = FRayCastingManager::CreateRayFromScreenPosition(
         Viewport.ViewportCamera, LocalMousePixels, ViewportSizePixels);
 
+    // 구간 분석용 작업량/시간 초기화, 벤치마크용 광선 저장 (측정 구간 밖)
+    FRayCastingManager::PickProfile.Reset();
+    FRayCastingManager::LastPickRay = PickRay;
+    FRayCastingManager::bHasLastPickRay = true;
+
     // 3) 퍼포먼스 측정용 카운터 시작
     FScopeCycleCounter PickCounter;
 
@@ -439,6 +444,14 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
     // 6) 퍼포먼스 측정 종료 및 시간 누적
     Editor.LastPickingMs = PickCounter.Finish();
     Editor.AccumulatedPickingMs += Editor.LastPickingMs;
+
+    // 구간 분석: 씬 순회 시간 = 전체 - 메시 검사 시간
+    {
+        const FRayCastingManager::FPickProfile& P = FRayCastingManager::PickProfile;
+        UE_LOG("[PickProfile] Total %.4f ms | Mesh %.4f ms | Scene %.4f ms | SceneNodes %u | ObjBox %u | MeshTests %u | MeshNodes %u | Tris %u",
+            Editor.LastPickingMs, P.MeshMs, Editor.LastPickingMs - P.MeshMs,
+            P.SceneNodes, P.ObjectBoxTests, P.MeshTests, P.MeshNodes, P.Triangles);
+    }
 
     // 필요 시 'isHit' 결과를 활용해 추가 로직 처리
     // 피킹은 액터 단위로 선택한다. 소유 액터가 없으면 선택할 수 없다.

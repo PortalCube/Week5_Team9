@@ -21,13 +21,14 @@ float UStaticMeshComponent::ComputeScreenSize(const FCamera& Camera) const
 
 float UStaticMeshComponent::ComputeScreenSizeSquared(const FCamera& Camera) const
 {
-	const FAxisAlignedBoundingBox Bounds = GetWorldBounds();
+	// 매 프레임 오브젝트마다 도는 코드라, 복사와 FVector 연산자 호출 없이 float로만 계산한다.
+	// 월드 바운드의 Center/Extent는 바운드가 갱신될 때 이미 계산되어 있다.
+	const FAxisAlignedBoundingBox& Bounds = GetWorldBounds();
 	if (!Bounds.IsValid()) { return 1.0f; }
 
-	// 바운딩 박스를 감싸는 구로 근사한다.
-	const FVector Center = (Bounds.Min + Bounds.Max) * 0.5f;
-	const FVector HalfExtent = (Bounds.Max - Bounds.Min) * 0.5f;
-	const float RadiusSq = HalfExtent.X * HalfExtent.X + HalfExtent.Y * HalfExtent.Y + HalfExtent.Z * HalfExtent.Z;
+	// 바운딩 박스를 감싸는 구로 근사한다. 반지름 = Extent의 길이.
+	const float EX = Bounds.Extent.X, EY = Bounds.Extent.Y, EZ = Bounds.Extent.Z;
+	const float RadiusSq = EX * EX + EY * EY + EZ * EZ;
 
 	const FCameraProjection& Projection = Camera.GetProjection();
 	if (Projection.GetProjectionType() == EProjectionType::Orthographic)
@@ -38,16 +39,21 @@ float UStaticMeshComponent::ComputeScreenSizeSquared(const FCamera& Camera) cons
 
 	// 언리얼의 ComputeBoundsScreenSize와 같은 방식. 구의 지름이 화면 높이의 몇 배인지의 제곱을 반환한다.
 	// 배율(1/tan(FOV/2))은 투영이 바뀔 때 FCameraProjection에서 한 번만 계산해 둔다.
-	const FVector Offset = Center - Camera.GetPosition();
-	const float DistanceSq = std::max(Offset.X * Offset.X + Offset.Y * Offset.Y + Offset.Z * Offset.Z, 1e-8f);
+	const FVector& CameraPosition = Camera.GetPosition();
+	const float DX = Bounds.Center.X - CameraPosition.X;
+	const float DY = Bounds.Center.Y - CameraPosition.Y;
+	const float DZ = Bounds.Center.Z - CameraPosition.Z;
+	const float DistanceSq = std::max(DX * DX + DY * DY + DZ * DZ, 1e-8f);
 	const float Multiple = Projection.GetScreenSizeMultiple();
 	return Multiple * Multiple * RadiusSq / DistanceSq;
 }
 
 uint32 UStaticMeshComponent::SelectLOD(const FCamera& Camera) const
 {
+	if (!Globals::bEnableLOD) { return 0; }
+
 	const UStaticMesh* Mesh = RenderData.Mesh;
-	if (!Mesh || Mesh->GetLODCount() <= 1 || !Globals::bEnableLOD) { return 0; }
+	if (!Mesh || Mesh->GetLODCount() <= 1) { return 0; }
 
 	if (Globals::ForcedLOD >= 0)
 	{
