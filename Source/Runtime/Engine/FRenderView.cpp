@@ -34,23 +34,23 @@ namespace
             return {};
         }
 
+        const FMaterialInstance& Material = Data.Materials[0];
+
         FDrawCommand Command
         {
             .Mesh = Data.Mesh->Get(Data.LODIndex),
             .Materials = Component.GetCachedMaterials(),
+            .Constants =
+            {
+                Material.Color,
+                Material.UVScale,
+                Material.UVOffset,
+                FMatrix::Identity,
+                Material.bDisableShading ? 1.0f : 0.0f,
+            },
             .Type = Data.Type,
 			.Instances = std::span<const FInstanceData>(Data.Instances.data(), Data.Instances.size()),
             .LODIndex = Data.LODIndex,
-        };
-
-
-        Command.Constants =
-        {
-            .Color = Data.Materials[0].Color,
-            .UVScale = Data.Materials[0].UVScale,
-            .UVOffset = Data.Materials[0].UVOffset,
-            .World = FMatrix::Identity,
-            .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
         };
 
         const FMaterialInstance& PrimaryMaterial = Data.Materials[0];
@@ -85,21 +85,28 @@ namespace
                 ((TextureId & 0xFFFFull) << 16) |
                 ((MeshId & 0xFFFFull));
             
+            // ============================= Depth 정렬 비활성화 =============================
+
             // AABB의 Min X 값을 Depth로 지정
-            FAxisAlignedBoundingBox AABB = Component.GetWorldBounds();
+            //FAxisAlignedBoundingBox AABB = Component.GetWorldBounds();
 
-            FVector CameraForward = Camera.GetForwardVector();
-            FVector CameraPosition = Camera.GetPosition();
-            float ProjectedExtent =
-                std::abs(CameraForward.X) * AABB.Extent.X +
-                std::abs(CameraForward.Y) * AABB.Extent.Y +
-                std::abs(CameraForward.Z) * AABB.Extent.Z;
+            //FVector CameraForward = Camera.GetForwardVector();
+            //FVector CameraPosition = Camera.GetPosition();
+            //float ProjectedExtent =
+            //    std::abs(CameraForward.X) * AABB.Extent.X +
+            //    std::abs(CameraForward.Y) * AABB.Extent.Y +
+            //    std::abs(CameraForward.Z) * AABB.Extent.Z;
 
-            Command.Depth = (AABB.Center - CameraPosition).Dot(CameraForward) - ProjectedExtent;
-            float Near = Camera.GetProjection().GetNearPlane();
-            float Far = Camera.GetProjection().GetFarPlane();
-            
-            Command.DepthBucket = static_cast<int32>((Command.Depth - Near) * 32 / (Far - Near));
+            //Command.Depth = (AABB.Center - CameraPosition).Dot(CameraForward) - ProjectedExtent;
+            //float Near = Camera.GetProjection().GetNearPlane();
+            //float Far = Camera.GetProjection().GetFarPlane();
+            //
+            //Command.DepthBucket = static_cast<int32>((Command.Depth - Near) * 32 / (Far - Near));
+
+            // =================================================================================
+
+            Command.Depth = 0.0f;
+            Command.DepthBucket = 0;
         }
 
         return Command;
