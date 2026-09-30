@@ -1,4 +1,5 @@
 #include "FSceneTransforms.h"
+#include "Runtime/Engine/UScene.h"
 #include <malloc.h>
 
 void FSceneTransforms::Initialize(size_t InCapacity)
@@ -111,91 +112,49 @@ void FSceneTransforms::SetTransform(int32 Index, const FTransform& Transform)
 	ScaleZ[Index] = Scale.Z;
 }
 
-void FSceneTransforms::UpdateWorldMatrices(int32 Count)
+void FSceneTransforms::UpdateWorldMatrices(const UScene& Scene)
 {
-	for (int32 i = 0; i < Count; i += 4)
+	const auto& DirtyIndices = Scene.GetDirtyTransformIndices();
+	const auto& Components = Scene.GetRenderComponents();
+
+	for (int32 Index : DirtyIndices)
 	{
-		FMathSSE::VectorRegister4Float ScaleXVec = FMathSSE::VectorLoadAligned(&ScaleX[i]);
-		FMathSSE::VectorRegister4Float ScaleYVec = FMathSSE::VectorLoadAligned(&ScaleY[i]);
-		FMathSSE::VectorRegister4Float ScaleZVec = FMathSSE::VectorLoadAligned(&ScaleZ[i]);
+		if (Index >= 0 && Index < static_cast<int32>(Components.size()) && Components[Index])
+		{
+			const float qx = RotX[Index], qy = RotY[Index], qz = RotZ[Index], qw = RotW[Index];
+			const float sx = ScaleX[Index], sy = ScaleY[Index], sz = ScaleZ[Index];
+			const float px = PosX[Index], py = PosY[Index], pz = PosZ[Index];
 
-		FMathSSE::VectorRegister4Float RotXVec = FMathSSE::VectorLoadAligned(&RotX[i]);
-		FMathSSE::VectorRegister4Float RotYVec = FMathSSE::VectorLoadAligned(&RotY[i]);
-		FMathSSE::VectorRegister4Float RotZVec = FMathSSE::VectorLoadAligned(&RotZ[i]);
-		FMathSSE::VectorRegister4Float RotWVec = FMathSSE::VectorLoadAligned(&RotW[i]);
+			const float x2 = qx + qx, y2 = qy + qy, z2 = qz + qz;
+			const float xx = qx * x2, yy = qy * y2, zz = qz * z2;
+			const float xy = qx * y2, xz = qx * z2, yz = qy * z2;
+			const float wx = qw * x2, wy = qw * y2, wz = qw * z2;
 
-		FMathSSE::VectorRegister4Float PosXVec = FMathSSE::VectorLoadAligned(&PosX[i]);
-		FMathSSE::VectorRegister4Float PosYVec = FMathSSE::VectorLoadAligned(&PosY[i]);
-		FMathSSE::VectorRegister4Float PosZVec = FMathSSE::VectorLoadAligned(&PosZ[i]);
+			float* M = reinterpret_cast<float*>(&WorldMatrices[Index]);
 
-		FMathSSE::VectorRegister4Float X2 = FMathSSE::VectorAdd(RotXVec, RotXVec);
-		FMathSSE::VectorRegister4Float Y2 = FMathSSE::VectorAdd(RotYVec, RotYVec);
-		FMathSSE::VectorRegister4Float Z2 = FMathSSE::VectorAdd(RotZVec, RotZVec);
+			M[0] = sx * (1.0f - (yy + zz));
+			M[1] = sx * (xy + wz);
+			M[2] = sx * (xz - wy);
+			M[3] = 0.0f;
 
-		FMathSSE::VectorRegister4Float XX = FMathSSE::VectorMul(RotXVec, X2);
-		FMathSSE::VectorRegister4Float YY = FMathSSE::VectorMul(RotYVec, Y2);
-		FMathSSE::VectorRegister4Float ZZ = FMathSSE::VectorMul(RotZVec, Z2);
+			M[4] = sy * (xy - wz);
+			M[5] = sy * (1.0f - (xx + zz));
+			M[6] = sy * (yz + wx);
+			M[7] = 0.0f;
 
-		FMathSSE::VectorRegister4Float XY = FMathSSE::VectorMul(RotXVec, Y2);
-		FMathSSE::VectorRegister4Float XZ = FMathSSE::VectorMul(RotXVec, Z2);
-		FMathSSE::VectorRegister4Float YZ = FMathSSE::VectorMul(RotYVec, Z2);
+			M[8] = sz * (xz + wy);
+			M[9] = sz * (yz - wx);
+			M[10] = sz * (1.0f - (xx + yy));
+			M[11] = 0.0f;
 
-		FMathSSE::VectorRegister4Float WX = FMathSSE::VectorMul(RotWVec, X2);
-		FMathSSE::VectorRegister4Float WY = FMathSSE::VectorMul(RotWVec, Y2);
-		FMathSSE::VectorRegister4Float WZ = FMathSSE::VectorMul(RotWVec, Z2);
-
-		const auto One = FMathSSE::VectorSetFloat1(1.0f);
-		const auto Zero = FMathSSE::VectorSetFloat1(0.0f);
-
-		FMathSSE::VectorRegister4Float M00 = FMathSSE::VectorMul(ScaleXVec, FMathSSE::VectorSub(One, FMathSSE::VectorAdd(YY, ZZ)));
-		FMathSSE::VectorRegister4Float M01 = FMathSSE::VectorMul(ScaleXVec, FMathSSE::VectorAdd(XY, WZ));
-		FMathSSE::VectorRegister4Float M02 = FMathSSE::VectorMul(ScaleXVec, FMathSSE::VectorSub(XZ, WY));
-		FMathSSE::VectorRegister4Float M03 = Zero;
-
-		FMathSSE::VectorRegister4Float M10 = FMathSSE::VectorMul(ScaleYVec, FMathSSE::VectorSub(XY, WZ));
-		FMathSSE::VectorRegister4Float M11 = FMathSSE::VectorMul(ScaleYVec, FMathSSE::VectorSub(One, FMathSSE::VectorAdd(XX, ZZ)));
-		FMathSSE::VectorRegister4Float M12 = FMathSSE::VectorMul(ScaleYVec, FMathSSE::VectorAdd(YZ, WX));
-		FMathSSE::VectorRegister4Float M13 = Zero;
-
-		FMathSSE::VectorRegister4Float M20 = FMathSSE::VectorMul(ScaleZVec, FMathSSE::VectorAdd(XZ, WY));
-		FMathSSE::VectorRegister4Float M21 = FMathSSE::VectorMul(ScaleZVec, FMathSSE::VectorSub(YZ, WX));
-		FMathSSE::VectorRegister4Float M22 = FMathSSE::VectorMul(ScaleZVec, FMathSSE::VectorSub(One, FMathSSE::VectorAdd(XX, YY)));
-		FMathSSE::VectorRegister4Float M23 = Zero;
-
-		FMathSSE::VectorRegister4Float M30 = PosXVec;
-		FMathSSE::VectorRegister4Float M31 = PosYVec;
-		FMathSSE::VectorRegister4Float M32 = PosZVec;
-		FMathSSE::VectorRegister4Float M33 = One;
-
-		_MM_TRANSPOSE4_PS(M00, M01, M02, M03);
-		_MM_TRANSPOSE4_PS(M10, M11, M12, M13);
-		_MM_TRANSPOSE4_PS(M20, M21, M22, M23);
-		_MM_TRANSPOSE4_PS(M30, M31, M32, M33);
-
-		float* Dst0 = reinterpret_cast<float*>(&WorldMatrices[i]);
-		FMathSSE::VectorStoreAligned(M00, Dst0);
-		FMathSSE::VectorStoreAligned(M10, Dst0 + 4);
-		FMathSSE::VectorStoreAligned(M20, Dst0 + 8);
-		FMathSSE::VectorStoreAligned(M30, Dst0 + 12);
-
-		float* Dst1 = reinterpret_cast<float*>(&WorldMatrices[i + 1]);
-		FMathSSE::VectorStoreAligned(M01, Dst1);
-		FMathSSE::VectorStoreAligned(M11, Dst1 + 4);
-		FMathSSE::VectorStoreAligned(M21, Dst1 + 8);
-		FMathSSE::VectorStoreAligned(M31, Dst1 + 12);
-
-		float* Dst2 = reinterpret_cast<float*>(&WorldMatrices[i + 2]);
-		FMathSSE::VectorStoreAligned(M02, Dst2);
-		FMathSSE::VectorStoreAligned(M12, Dst2 + 4);
-		FMathSSE::VectorStoreAligned(M22, Dst2 + 8);
-		FMathSSE::VectorStoreAligned(M32, Dst2 + 12);
-
-		float* Dst3 = reinterpret_cast<float*>(&WorldMatrices[i + 3]);
-		FMathSSE::VectorStoreAligned(M03, Dst3);
-		FMathSSE::VectorStoreAligned(M13, Dst3 + 4);
-		FMathSSE::VectorStoreAligned(M23, Dst3 + 8);
-		FMathSSE::VectorStoreAligned(M33, Dst3 + 12);
+			M[12] = px;
+			M[13] = py;
+			M[14] = pz;
+			M[15] = 1.0f;
+		}
 	}
+
+	const_cast<UScene&>(Scene).ClearDirtyTransformIndices();
 }
 
 void FSceneTransforms::ComputeBatchMVP(const FMatrix& InViewProj, FMatrix* OutMVPMatrices, int32 Count) const

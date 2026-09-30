@@ -111,6 +111,15 @@ public:
     FSceneTransforms& GetSceneTransforms() { return SceneTransforms; }
     const FSceneTransforms& GetSceneTransforms() const { return SceneTransforms; }
 
+    void MarkTransformDirty(int32 BatchIndex)
+    {
+        if (BatchIndex >= 0)
+        {
+            DirtyTransformIndices.push_back(BatchIndex);
+        }
+    }
+	const TArray<int32>& GetDirtyTransformIndices() const { return DirtyTransformIndices; }
+	void ClearDirtyTransformIndices() { DirtyTransformIndices.clear(); }
 private:
   TArray<AActor*> Actors;                        // 액터 목록 (Update용)
   TArray<UPrimitiveComponent*> RenderComponents; // 렌더링큐 (Draw용)
@@ -128,4 +137,6 @@ private:
   // 이번 프레임 재계산 대상
   TArray<UPrimitiveComponent*> DirtyBoundsList;
   FSceneTransforms SceneTransforms;
+  // 이번 프레임 트랜스폼 재계산 대상
+  TArray<int32> DirtyTransformIndices;
 };

@@ -118,19 +118,17 @@ void UScene::Update(float DeltaTime) {
 
   SceneTransforms.Reserve(PrimCount);
 
-  for (int32 i = 0; i < PrimCount; ++i)
+  for(int32 Index : DirtyTransformIndices)
   {
-	  UPrimitiveComponent* PrimComp = RenderComponents[i];
-	  if (!PrimComp) continue;
-	  
-	  PrimComp->SetBatchIndex(i);
-
-	  SceneTransforms.SetTransform(i, PrimComp->GetGlobalTransform());
+    if(Index >= 0 && Index < PrimCount && RenderComponents[Index])
+    {
+		SceneTransforms.SetTransform(Index, RenderComponents[Index]->GetGlobalTransform());
+    }
   }
 
   if(PrimCount > 0)
   {
-    SceneTransforms.UpdateWorldMatrices(PrimCount);
+    SceneTransforms.UpdateWorldMatrices(*this);
   }
 }
 
@@ -208,7 +206,9 @@ void UScene::AddRenderComponent(UPrimitiveComponent *prim) {
   if (std::find(RenderComponents.begin(), RenderComponents.end(), prim) ==
       RenderComponents.end()) {
       //RenderComponents에 넣기 전에 인덱스 설정
-    prim->SetSceneIndex(static_cast<int32>(RenderComponents.size()));
+	const int32 NewIndex = static_cast<int32>(RenderComponents.size());
+    prim->SetSceneIndex(NewIndex);
+	prim->SetBatchIndex(NewIndex);
 
     RenderComponents.push_back(prim);
     SceneBVH.AddObject(prim);
@@ -216,6 +216,7 @@ void UScene::AddRenderComponent(UPrimitiveComponent *prim) {
     //처음엔 일단 그리자
     CullDataList.push_back(MakeAlwaysVisibleCullData());
     MarkBoundsDirty(prim);
+    MarkTransformDirty(NewIndex);
   }
 }
 
@@ -234,6 +235,7 @@ void UScene::RemoveRenderComponent(UPrimitiveComponent *prim) {
   for (size_t i = Index; i < RenderComponents.size(); ++i)
   {
       RenderComponents[i]->SetSceneIndex(static_cast<int32>(i));
+	  RenderComponents[i]->SetBatchIndex(static_cast<int32>(i));
   }
 
   // 파괴될 포인터가 dirty 목록에 남지 않게

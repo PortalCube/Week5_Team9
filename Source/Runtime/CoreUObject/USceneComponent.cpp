@@ -163,6 +163,11 @@ void USceneComponent::MarkActorTransformDirty()
 {
     bGlobalDirty = true;
     OnTransformChanged();
+    
+    if (Scene && BatchIndex >= 0)
+    {
+		Scene->MarkTransformDirty(BatchIndex);
+    }
 
     if (ActorOwner)
     {

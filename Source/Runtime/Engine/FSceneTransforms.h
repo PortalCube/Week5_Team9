@@ -8,6 +8,8 @@
 #include "Runtime/Math/FQuaternion.h"
 #include "Runtime/Geometry/FTransform.h"
 
+class UScene;
+
 class FSceneTransforms
 {
 public:
@@ -23,6 +25,6 @@ public:
 	void ShutDown();
 	void Reserve(int32 NewCapacity);
 	void SetTransform(int32 Index, const FTransform& Transform);
-	void UpdateWorldMatrices(int32 Count);
+	void UpdateWorldMatrices(const UScene& Scene);
 	void ComputeBatchMVP(const FMatrix& InViewProj, FMatrix* OutMVPMatrices, int32 Count) const;
 };
