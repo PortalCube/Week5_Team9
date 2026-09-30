@@ -260,7 +260,7 @@ void FResourceLoader::LoadAssets()
 	}
 }
 
-bool FResourceLoader::ImportObj(const std::filesystem::path& ObjFilePath, FString* OutAssetId)
+bool FResourceLoader::ImportObj(const std::filesystem::path& ObjFilePath, FString* OutAssetId, bool bZUp)
 {
 	namespace fs = std::filesystem;
 
@@ -314,6 +314,7 @@ bool FResourceLoader::ImportObj(const std::filesystem::path& ObjFilePath, FStrin
 	FArchive Archive;
 	Archive.SetString("Name", ModelName);
 	Archive.SetString("MeshFilePath", RelativeMeshPath.generic_string());
+	Archive.SetBool("ZUp", bZUp);
 
 	LoadStaticMeshAsset(Archive, AssetID);
 
@@ -463,7 +464,9 @@ void FResourceLoader::LoadStaticMeshAsset(const FArchive& Archive, const FName& 
 	fs::path MeshFilePath = fs::path(Archive.GetString("MeshFilePath")).lexically_normal();
 	fs::path MeshRootPath = MeshFilePath.parent_path();
 	fs::path MeshFileFullPath = fs::path(EngineUtil::GetContentDirectory()) / MeshFilePath;
-	fs::path MeshBinPath = fs::path(MeshFileFullPath).replace_extension("bin");
+	const bool bZUp = !Archive.IsNull("ZUp") && Archive.GetBool("ZUp");
+	// Z-up 변환본은 Y-up 캐시와 섞이지 않도록 BIN 이름을 분리한다.
+	fs::path MeshBinPath = fs::path(MeshFileFullPath).replace_extension(bZUp ? "zup.bin" : "bin");
 
 	TArray<FVertexData> Vertices;
 	TArray<uint32> Indices;
@@ -488,7 +491,7 @@ void FResourceLoader::LoadStaticMeshAsset(const FArchive& Archive, const FName& 
 	else
 	{
 		FRawObjData RawObjData{};
-		if (!FObjParser::LoadObj(MeshFileFullPath.string().c_str(), RawObjData))
+		if (!FObjParser::LoadObj(MeshFileFullPath.string().c_str(), RawObjData, bZUp))
 		{
 			throw EngineUtil::CreateError(
 				"[FResourceLoader::LoadStaticMeshAsset] OBJ 파일을 불러오는데 실패했습니다. ID: {}, Path: {}",

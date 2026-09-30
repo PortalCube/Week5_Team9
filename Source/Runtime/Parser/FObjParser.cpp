@@ -40,7 +40,7 @@ struct FObjIndexHash
 
 //////////////////////////////////////////////////////////////////////////
 
-bool FObjParser::LoadObj(const char* InFilePath, FRawObjData& OutResult)
+bool FObjParser::LoadObj(const char* InFilePath, FRawObjData& OutResult, bool bZUp)
 {
     std::ifstream File(InFilePath, std::ios::binary | std::ios::ate);
     if (!File.is_open())
@@ -84,7 +84,7 @@ bool FObjParser::LoadObj(const char* InFilePath, FRawObjData& OutResult)
             float y = strtof(p, &next); p = next;
             float z = strtof(p, &next); p = next;
 
-            OutResult.Positions.push_back({ -z ,x , y }); // Change Unreal Coord
+            OutResult.Positions.push_back(bZUp ? FVector(y, x, z) : FVector(-z, x, y)); // Change Unreal Coord
         }
         else if (p[0] == 'v' && p[1] == 't' && (p[2] == ' ' || p[2] == '\t')) // Texture Coords
         {
@@ -103,7 +103,7 @@ bool FObjParser::LoadObj(const char* InFilePath, FRawObjData& OutResult)
             float y = strtof(p, &next); p = next;
             float z = strtof(p, &next); p = next;
             
-            OutResult.Normals.push_back({ -z , x , y}); // Change Unreal Coord
+            OutResult.Normals.push_back(bZUp ? FVector(y, x, z) : FVector(-z, x, y)); // Change Unreal Coord
         }
         else if (p[0] == 'f' && (p[1] == ' ' || p[1] == '\t')) // Faces
         {

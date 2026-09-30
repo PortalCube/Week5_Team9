@@ -67,7 +67,7 @@ struct FMeshFileHeader
 class FObjParser
 {
 public:
-	static bool LoadObj(const char* InFilePath, FRawObjData& OutResult);
+	static bool LoadObj(const char* InFilePath, FRawObjData& OutResult, bool bZUp = false);
 	static bool ConvertObjToVertex(const FRawObjData& InObjData, TArray<FVertexData>& OutVertices, TArray<uint32>& OutIndices, TArray<FMeshSection>& OutSections);
 	static bool SaveMeshToBinary(const char* OutFilePath, uint64 InSourceHash, const TArray<FVertexData>& InVertices, TArray<uint32>& InIndices, TArray<FMeshSection>& InSections);
 	static bool LoadMeshFromBinary(const char* InFilePath, TArray<FVertexData>& OutVertices, TArray<uint32>& OutIndices, TArray<FMeshSection>& OutSections);

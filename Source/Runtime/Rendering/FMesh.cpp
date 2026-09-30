@@ -12,7 +12,7 @@ constexpr int BinCount = 12;
 
 // SAH 비용 상수. 노드 하나를 더 방문하는 비용(자식 AABB 검사)과 삼각형 하나를 검사하는 비용의 비율.
 // TraversalCost가 없으면 분할 비용이 항상 리프 비용 이하가 되어 SAH가 리프에서 멈추지 못한다.
-constexpr float TraversalCost = 1.0f;
+constexpr float TraversalCost = 2.0f;
 constexpr float IntersectCost = 1.0f;
 
 struct FBin

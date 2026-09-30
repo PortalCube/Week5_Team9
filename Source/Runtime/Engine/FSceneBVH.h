@@ -61,8 +61,14 @@ public:
 
 private:
     void BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint32 ParentIdx);
-    void TraverseRay(uint32 NodeIdx, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
+    //RootIdx부터 스택으로 가까운 노드 먼저 순회한다
+    void TraverseRay(uint32 RootIdx, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
+    //리프의 오브젝트를 박스 검사 후 tNear 순으로 메시 검사한다
+    void TestLeafRay(const FSceneBVHNode& N, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
+    //월드 AABB 검사 후 통과하면 메시를 검사한다 (대기열 오브젝트용)
     void TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBoundingBox& WorldBox, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
+    //월드 AABB를 통과한 오브젝트의 메시(삼각형)를 검사한다
+    void TestObjectMesh(UPrimitiveComponent* C, const FRay& Ray, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
     void TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const FVector(&AbsNormals)[FFrustum::PlaneCount], TArray<UPrimitiveComponent*>& OutVisible) const;
 
     //해당 LeafNode에 영향 받는 BVHNode 모두 갱신

@@ -2,6 +2,7 @@
 #include "Runtime/Math/FMatrix.h"
 #include "Runtime/Rendering/FMesh.h"
 #include "Runtime/CoreUObject/UPrimitiveComponent.h"
+#include "Runtime/CoreUObject/FStatsManager.h"
 #include <limits>
 #include <cmath>
 #include <algorithm>
@@ -176,6 +177,7 @@ bool FRayCastingManager::IntersectMeshBVH(const FRay& ObjectRay, const FMesh& Me
 		const FStackEntry Entry = Stack[--Sp];
 		if (Entry.TNear >= OutClosestHit) { continue; }
 
+		++PickProfile.MeshNodes;
 		const FMesh::FMeshBVHNode& N = Nodes[Entry.Node];
 
 		// 리프: 이 노드에 속한 삼각형만 검사한다. LeftOrFirst는 삼각형 번호다.
@@ -185,6 +187,7 @@ bool FRayCastingManager::IntersectMeshBVH(const FRay& ObjectRay, const FMesh& Me
 			for (uint32 t = N.LeftOrFirst; t < End; ++t)
 			{
 				const FVector* V = Verts + static_cast<size_t>(t) * 3;
+				++PickProfile.Triangles;
 				float HitT = 0.0f;
 				if (FRayCastingManager::RayIntersectsTriangle(ObjectRay, V[0], V[1], V[2], HitT) &&
 					HitT < OutClosestHit)
@@ -232,6 +235,7 @@ static bool IntersectFlattenedTriangles(const FRay& ObjectRay, const FMesh& Mesh
 	bool bHit = false;
 	for (uint32 i = 0; i + 2 < Tri.size(); i += 3)
 	{
+		++FRayCastingManager::PickProfile.Triangles;
 		float HitT = 0.0f;
 		if (FRayCastingManager::RayIntersectsTriangle(ObjectRay, Tri[i], Tri[i+1], Tri[i+2], HitT) &&
 			HitT < OutClosestHit)
@@ -272,6 +276,7 @@ static bool IntersectIndexedTriangles(const FRay& ObjectRay, const FMesh& Mesh, 
 		FVector B = Positions[i1];
 		FVector C = Positions[i2];
 
+		++FRayCastingManager::PickProfile.Triangles;
 		float HitT = 0.0f;
 		if (FRayCastingManager::RayIntersectsTriangle(ObjectRay, A, B, C, HitT) &&
 			HitT < OutClosestHit)
@@ -297,6 +302,14 @@ bool FRayCastingManager::RayIntersectsMesh(const FRay& Ray, const FMesh& Mesh, c
 
 bool FRayCastingManager::RayIntersectsMeshWithInversedModel(const FRay& Ray, const FMesh& Mesh, const FMatrix& InvM, float& OutDistance, FVector& OutImpactPoint, float& ClosestHit, bool bBVH)
 {
+	// 이 함수 전체(광선 로컬 변환 + 삼각형 검사) 시간을 반환 경로와 관계없이 누적한다.
+	struct FMeshTimer
+	{
+		FScopeCycleCounter Counter;
+		~FMeshTimer() { PickProfile.MeshMs += Counter.Finish(); }
+	} MeshTimer;
+	++PickProfile.MeshTests;
+
 	const size_t VertexCount = bUseFlattenedTriangles
 		? Mesh.GetTriangleVertices().size()
 		: Mesh.GetPositions().size();
