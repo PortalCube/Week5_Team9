@@ -118,6 +118,8 @@ void UStaticMeshComponent::SetMaterialInstance(const FMaterialInstance& Instance
 {
 	if (Index < 0 || static_cast<size_t>(Index) >= RenderData.Materials.size()) { return; }
 	RenderData.Materials[static_cast<size_t>(Index)] = Instance;
+	UpdateMaterialCache();
+	UpdateSortKey();
 }
 
 void UStaticMeshComponent::SetPipeline(UPipeline* Pipeline, int Index)
@@ -126,6 +128,8 @@ void UStaticMeshComponent::SetPipeline(UPipeline* Pipeline, int Index)
 	FMaterialInstance& Instance = RenderData.Materials[static_cast<size_t>(Index)];
 
 	Instance.Pipeline = Pipeline;
+	UpdateMaterialCache();
+	UpdateSortKey();
 }
 
 void UStaticMeshComponent::SetTexture(UTexture* Texture, int Index)
@@ -134,11 +138,15 @@ void UStaticMeshComponent::SetTexture(UTexture* Texture, int Index)
 	FMaterialInstance& Instance = RenderData.Materials[static_cast<size_t>(Index)];
 
 	Instance.Texture = Texture;
+	UpdateMaterialCache();
+	UpdateSortKey();
 }
 
 void UStaticMeshComponent::ClearMaterial()
 {
 	RenderData.Materials.clear();
+	UpdateMaterialCache();
+	UpdateSortKey();
 }
 
 EEngineShowFlags UStaticMeshComponent::GetShowFlag() const

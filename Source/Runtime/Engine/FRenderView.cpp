@@ -53,36 +53,11 @@ namespace
             .LODIndex = Data.LODIndex,
         };
 
-        const FMaterialInstance& PrimaryMaterial = Data.Materials[0];
-
         if (Globals::bEnableRenderSort)
         {
-            uint64 PipelineId = 0;
-            uint64 MaterialId = 0;
-            uint64 TextureId = 0;
             // 같은 애셋이라도 LOD마다 버퍼가 다르므로 LOD 인덱스를 섞는다.
-            uint64 MeshId = static_cast<uint64>(Data.Mesh->GetID().GetHash()) + Data.LODIndex;
-
-            if (PrimaryMaterial.Pipeline)
-            {
-                PipelineId = static_cast<uint64>(PrimaryMaterial.Pipeline->GetID().GetHash());
-            }
-
-            if (PrimaryMaterial.Material)
-            {
-                MaterialId = static_cast<uint64>(PrimaryMaterial.Material->GetID().GetHash());
-            }
-
-            if (PrimaryMaterial.Texture)
-            {
-                TextureId = static_cast<uint64>(PrimaryMaterial.Texture->GetID().GetHash());
-            }
-
-            Command.SortKey =
-                ((PipelineId & 0xFFFFull) << 48) |
-                ((MaterialId & 0xFFFFull) << 32) |
-                ((TextureId & 0xFFFFull) << 16) |
-                ((MeshId & 0xFFFFull));
+            const uint64 MeshId = static_cast<uint64>(Data.Mesh->GetID().GetHash()) + Data.LODIndex;
+            Command.SortKey = Data.SortKey | (MeshId & 0xFFFFull);
 
             // ============================= Depth 정렬 비활성화 =============================
 

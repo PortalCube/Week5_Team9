@@ -58,7 +58,7 @@ void UBillBoardComp::Deserialize(const FArchive& Archive)
 
 void UBillBoardComp::SetTexture(UTexture* Texture)
 {
-    RenderData.Materials[0].Texture = Texture;
+    UPrimitiveComponent::SetTexture(Texture);
 }
 
 UTexture* UBillBoardComp::GetTexture() const

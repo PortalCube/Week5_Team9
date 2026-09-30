@@ -18,6 +18,7 @@ void UPrimitiveComponent::Initialize()
 
     RenderData.Materials.push_back(DefaultMaterial);
     UpdateMaterialCache();
+    UpdateSortKey();
 }
 
 void UPrimitiveComponent::SetMesh(UStaticMesh* Mesh)
@@ -38,6 +39,7 @@ void UPrimitiveComponent::SetMaterial(UMaterial* Material, int32 Index)
     }
     RenderData.Materials[TargetIndex] = FMaterialInstance{ Material };
     UpdateMaterialCache();
+    UpdateSortKey();
 }
 
 void UPrimitiveComponent::SetTexture(UTexture* Texture, int32 Index)
@@ -45,6 +47,7 @@ void UPrimitiveComponent::SetTexture(UTexture* Texture, int32 Index)
     if (Index < 0 || static_cast<size_t>(Index) >= RenderData.Materials.size()) { return; }
     RenderData.Materials[static_cast<size_t>(Index)].Texture = Texture;
     UpdateMaterialCache();
+    UpdateSortKey();
 }
 
 void UPrimitiveComponent::SetColor(const FVector4& Color, int32 Index)
@@ -129,4 +132,29 @@ void UPrimitiveComponent::UpdateMaterialCache()
 		Material.SetSamplerDesc(Item.SamplerDesc);
 		CachedMaterials.push_back(Material);
 	}
+}
+
+void UPrimitiveComponent::UpdateSortKey()
+{
+    RenderData.SortKey = 0;
+    if (RenderData.Materials.empty())
+    {
+        return;
+    }
+
+    const FMaterialInstance& Material = RenderData.Materials[0];
+    const uint64 PipelineId = Material.Pipeline
+        ? static_cast<uint64>(Material.Pipeline->GetID().GetHash())
+        : 0;
+    const uint64 MaterialId = Material.Material
+        ? static_cast<uint64>(Material.Material->GetID().GetHash())
+        : 0;
+    const uint64 TextureId = Material.Texture
+        ? static_cast<uint64>(Material.Texture->GetID().GetHash())
+        : 0;
+
+    RenderData.SortKey =
+        ((PipelineId & 0xFFFFull) << 48) |
+        ((MaterialId & 0xFFFFull) << 32) |
+        ((TextureId & 0xFFFFull) << 16);
 }

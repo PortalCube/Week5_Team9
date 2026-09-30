@@ -51,6 +51,7 @@ public:
 
     const std::vector<FMaterial>& GetCachedMaterials() const { return CachedMaterials; }
     void UpdateMaterialCache();
+    void UpdateSortKey();
 
 protected:
     UPrimitiveComponent() = default;
