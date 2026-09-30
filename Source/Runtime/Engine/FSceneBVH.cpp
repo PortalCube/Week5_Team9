@@ -188,6 +188,7 @@ bool FSceneBVH::ShouldRebuild() const
 bool FSceneBVH::QueryFrustum(const FFrustum & Frustum, float MinScreenPixels, TArray<UPrimitiveComponent*>& OutVisible) const
 {
     OutVisible.clear();
+    OutVisible.reserve(Objects.size());
 
     FVector AbsNormals[FFrustum::PlaneCount];
 
