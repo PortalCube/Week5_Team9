@@ -8,11 +8,8 @@
 #include "Runtime/Core/TMap.h"
 #include "Runtime/Material/FTextureSamplerDesc.h"
 #include "Vertices.h"
-#include <d3d11.h>
 
 class FMaterial final {
-	friend class FRenderer;
-
 public:
 
 	void SetPipeLine(FRenderPipeline* InPipeline) { Pipeline = InPipeline; }
@@ -23,8 +20,6 @@ public:
 
 	void SetSamplerDesc(FTextureSamplerDesc InSamplerDesc) { SamplerDesc = InSamplerDesc; }
 	FTextureSamplerDesc GetSamplerDesc() const { return SamplerDesc; }
-
-	void BindResources(ID3D11DeviceContext& Context) const;
 
 private:
 

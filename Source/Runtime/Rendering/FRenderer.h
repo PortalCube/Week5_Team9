@@ -191,7 +191,8 @@ private:
   double LastGPUTimeMs = 0.0;
   
   const FMesh* LastMesh = nullptr;
-  const FMaterial* LastMaterial = nullptr;
+  const FTexture* LastTexture = nullptr;
+  bool bHasLastTexture = false;
   const FRenderPipeline* LastRenderPipeline = nullptr;
 
   // Draw/DrawSection이 드로우마다 통계 매크로를 부르지 않도록 여기에 모았다가
