@@ -24,6 +24,12 @@ struct FDrawCommand
 class FRenderQueue
 {
 public:
+    // 큐 용량 사전 예약 (재할당 방지)
+    void Reserve(size_t InCapacity)
+    {
+        primRenderQ.reserve(InCapacity);
+    }
+
     // 아이템 추가
     void Push(FDrawCommand&& Data)
     {

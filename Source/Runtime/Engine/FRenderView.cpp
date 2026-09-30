@@ -127,6 +127,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     //}
 
     const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
+    RenderQueue.Reserve(Primitives.size());
 
     std::fill(std::begin(Globals::LODDrawCounts), std::end(Globals::LODDrawCounts), 0u);
 
