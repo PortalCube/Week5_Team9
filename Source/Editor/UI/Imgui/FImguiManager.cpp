@@ -3,12 +3,14 @@
 #include "ThirdParty/Imgui/imgui_internal.h"
 #include "ThirdParty/Imgui/imgui_impl_dx11.h"
 #include "ThirdParty/Imgui/imgui_impl_win32.h"
+#include "ThirdParty/Imgui/implot.h"
 
 
 bool FImguiManager::Initialize_ImplWin32DX11(HWND& Window, ID3D11Device* Device, ID3D11DeviceContext* Context)
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
+	ImPlot::CreateContext();
 
 	auto& IO = ImGui::GetIO();
 	IO.Fonts->AddFontFromFileTTF(

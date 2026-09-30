@@ -189,7 +189,7 @@ void FStatsManager::ResetFrame()
 
         if (Entry.Value.size() > MAX_RECORD)
         {
-            Entry.Value.pop_front();
+            Entry.Value.erase(Entry.Value.begin());
         }
 
         // 메모리는 현재 총량이므로 평활하지 않고 리셋도 하지 않는다.

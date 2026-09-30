@@ -14,6 +14,7 @@ void USceneComponent::Initialize()
     Super::Initialize();
     Scene = nullptr;
     bHasBegunPlay = false;
+    bTickEnabled = false;
 }
 void USceneComponent::Release()
 {
