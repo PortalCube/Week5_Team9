@@ -245,6 +245,10 @@ void FImguiStatsWindow::DrawUnits()
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
         "Draw", "%.2f ms", GetStat(FName("Draw")), Color, TransColor);
 
+    // Draw 안에서 드로우 명령을 모으는 시간 (LOD 선택 비용이 여기에 포함된다)
+    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+        "Collect", "%.2f ms", GetStat(FName("Collect")), Color, TransColor);
+
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
         "GPU Time", "%.2f ms", GetStat(FName("GPU Time")), Color, TransColor);
 

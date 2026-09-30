@@ -8,6 +8,12 @@
 #include "Runtime/Core/FString.h"
 #include "Runtime/Engine/ShowFlags.h"
 #include "Runtime/Engine/FRayCastingManager.h"
+#include "Runtime/Engine/UScene.h"
+#include "Runtime/CoreUObject/FStatsManager.h"
+#include "Runtime/CoreUObject/UPrimitiveComponent.h"
+#include <algorithm>
+#include <fstream>
+#include <iomanip>
 #include "Runtime/Math/Random.h"
 #include "Editor/Core/EditorConstant.h"
 #include <Windows.h>
@@ -47,7 +53,7 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     RenderStateSort(Editor);
 
     ImGui::Separator();
-	SIMDDebugSetting(Editor);
+	FrameResourceDebugSetting(Editor);
 
     ImGui::Separator();
     LODSetting(Editor);
@@ -92,12 +98,134 @@ void FImguiControlPanelWindow::BVHDebugSetting(FEditor& Editor)
     {
         Editor.ResetPickingStats();
     }
+
+    // 마지막 클릭 광선으로 피킹을 반복해 설정 간 차이만 비교한다.
+    // 캐시가 데워져 단발 클릭보다 빠르게 나오므로 상대 비교용이다.
+    static int BenchIterations = 1000;
+    ImGui::BeginDisabled(!FRayCastingManager::bHasLastPickRay);
+    if (ImGui::Button("Benchmark Last Ray"))
+    {
+        RunPickBenchmark(Editor, BenchIterations);
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(100.0f);
+    ImGui::DragInt("Iterations", &BenchIterations, 10.0f, 1, 100000);
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("뷰포트를 한 번 클릭한 뒤 사용. 결과는 로그에 [PickBench]로 출력");
+    }
+
+    // 재빌드/재실행 후에도 완전히 같은 광선으로 비교할 수 있게 파일로 저장한다.
+    ImGui::BeginDisabled(!FRayCastingManager::bHasLastPickRay);
+    if (ImGui::Button("Save Ray"))
+    {
+        SavePickRay();
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Load Ray"))
+    {
+        LoadPickRay();
+    }
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("%s 에서 광선을 불러와 Benchmark Last Ray에 사용", PickRayFilePath);
+    }
+}
+
+void FImguiControlPanelWindow::SavePickRay()
+{
+    std::ofstream File(PickRayFilePath);
+    if (!File)
+    {
+        UE_LOG_WARN("[PickBench] 광선 저장 실패: %s", PickRayFilePath);
+        return;
+    }
+
+    // float를 문자열로 바꿨다가 되읽어도 비트까지 같도록 유효숫자 9자리로 쓴다
+    const FRay& R = FRayCastingManager::LastPickRay;
+    File << std::setprecision(9)
+        << R.Origin.X << ' ' << R.Origin.Y << ' ' << R.Origin.Z << ' '
+        << R.Direction.X << ' ' << R.Direction.Y << ' ' << R.Direction.Z << '\n';
+
+    UE_LOG("[PickBench] 광선 저장: %s", PickRayFilePath);
+}
+
+void FImguiControlPanelWindow::LoadPickRay()
+{
+    std::ifstream File(PickRayFilePath);
+    if (!File)
+    {
+        UE_LOG_WARN("[PickBench] 저장된 광선이 없습니다: %s", PickRayFilePath);
+        return;
+    }
+
+    FRay R;
+    File >> R.Origin.X >> R.Origin.Y >> R.Origin.Z >> R.Direction.X >> R.Direction.Y >> R.Direction.Z;
+
+    if (!File)
+    {
+        UE_LOG_WARN("[PickBench] 광선 파일 형식이 올바르지 않습니다: %s", PickRayFilePath);
+        return;
+    }
+
+    FRayCastingManager::LastPickRay = R;
+    FRayCastingManager::bHasLastPickRay = true;
+    UE_LOG("[PickBench] 광선 불러옴: Origin(%.3f, %.3f, %.3f) Dir(%.3f, %.3f, %.3f)",
+        R.Origin.X, R.Origin.Y, R.Origin.Z, R.Direction.X, R.Direction.Y, R.Direction.Z);
+}
+
+void FImguiControlPanelWindow::RunPickBenchmark(FEditor& Editor, int Iterations)
+{
+    if (!FRayCastingManager::bHasLastPickRay || Iterations <= 0) { return; }
+
+    UScene* Scene = Editor.GetCurrentScene();
+    FEditorViewportClient* Viewport = Editor.GetActiveViewport();
+    const bool bUseBVH = Editor.bUseBVHPicking && Scene;
+    if (!bUseBVH && !Viewport) { return; }
+
+    const FRay Ray = FRayCastingManager::LastPickRay;
+    TArray<double> Times;
+    Times.reserve(Iterations);
+
+    UPrimitiveComponent* HitComponent = nullptr;
+    FVector ImpactPoint;
+    for (int i = 0; i < Iterations; ++i)
+    {
+        FRayCastingManager::PickProfile.Reset();
+        HitComponent = nullptr;
+
+        FScopeCycleCounter Counter;
+        if (bUseBVH)
+        {
+            Scene->GetSceneBVH().QueryRay(Ray, HitComponent, ImpactPoint);
+        }
+        else
+        {
+            FRayCastingManager::RayIntersectsMeshes(
+                Ray, Viewport->ViewportCamera, Editor.GetPrimitiveComponents(), HitComponent, ImpactPoint);
+        }
+        Times.push_back(Counter.Finish());
+    }
+
+    std::sort(Times.begin(), Times.end());
+    double Sum = 0.0;
+    for (double T : Times) { Sum += T; }
+
+    // 작업량은 매번 같으므로 마지막 반복의 값을 쓴다
+    const FRayCastingManager::FPickProfile& P = FRayCastingManager::PickProfile;
+    UE_LOG("[PickBench] %s x%d | Median %.4f ms | Min %.4f ms | Avg %.4f ms | SceneNodes %u | ObjBox %u | MeshTests %u | MeshNodes %u | Tris %u | Hit UUID %u",
+        bUseBVH ? "BVH" : "Linear", Iterations,
+        Times[Times.size() / 2], Times.front(), Sum / Times.size(),
+        P.SceneNodes, P.ObjectBoxTests, P.MeshTests, P.MeshNodes, P.Triangles,
+        HitComponent ? HitComponent->GetUUID() : 0u);
 }
 
 void FImguiControlPanelWindow::RenderStateSort(FEditor& Editor)
 {
     ImGui::Text("Render State Sort");
-    ImGui::Checkbox("정렬 활성화", &Globals::bSortTest);
+    ImGui::Checkbox("정렬 활성화", &Globals::bEnableRenderSort);
 
     if (ImGui::Button("1000 random spawn"))
     {
@@ -109,10 +237,11 @@ void FImguiControlPanelWindow::RenderStateSort(FEditor& Editor)
     }
 }
 
-void FImguiControlPanelWindow::SIMDDebugSetting(FEditor& Editor)
+void FImguiControlPanelWindow::FrameResourceDebugSetting(FEditor& Editor)
 {
-    ImGui::Text("SIMD Debug");
-    ImGui::Checkbox("배치 변환 최적화", &Globals::bEnableBatchTransform);
+    ImGui::Text("Frame Resource Debug");
+
+    ImGui::Checkbox("프레임 리소스 사용", &Globals::bUseFrameResources);
 }
 
 void FImguiControlPanelWindow::LODSetting(FEditor& Editor)

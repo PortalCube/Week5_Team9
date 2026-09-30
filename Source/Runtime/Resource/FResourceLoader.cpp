@@ -515,6 +515,9 @@ void FResourceLoader::LoadStaticMeshAsset(const FArchive& Archive, const FName& 
 		Section.SectionName = (MeshRootPath / fs::path(Section.SectionName)).generic_string();
 	}
 
+	// 정점 캐시, 오버드로우, 정점 fetch 순서 최적화. LOD도 최적화된 원본에서 만들어진다.
+	MeshLODBuilder::OptimizeMesh(Vertices, Indices, Sections);
+
 	FRenderResourceLibrary& ResourceLibrary = FRenderResourceLibrary::Get();
 	FRenderer* Renderer = ResourceLibrary.GetRenderer();
 	if (Renderer == nullptr)
@@ -751,7 +754,10 @@ void FResourceLoader::LoadMtlMaterial(const std::filesystem::path& MtlFilePath, 
 
 			FArchive MaterialArchive;
 			MaterialArchive.SetString("Name", MaterialAssetPath.generic_string());
-			MaterialArchive.SetString("UPipelineID", "Pipeline/Textured.json");
+			  
+			// TODO: TEMP: 다음에 바꿀것
+			//MaterialArchive.SetString("UPipelineID", "Pipeline/Textured.json");
+			MaterialArchive.SetString("UPipelineID", "Pipeline/Optimize.json");
 
 			MaterialArchive.SetString("UTextureID", TextureId.ToString());			
 			MaterialArchive.SetArchive("TextureSampler", SamplerArchive);

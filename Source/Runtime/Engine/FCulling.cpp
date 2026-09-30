@@ -1,7 +1,6 @@
 #include "FCulling.h"
-#include "Runtime/Geometry/FFrustum.h"
 
-namespace
+/*namespace FrustumUtils
 {
 	// 법선의 각 성분을 절댓값으로. r = |n|·e 계산용
 	FVector AbsVector(const FVector& V)
@@ -32,7 +31,7 @@ namespace
 		}
 		return true;
 	}
-}
+}*/
 
 uint32 FFlatFrustumCuller::Cull(const FFrustum& Frustum, const TArray<FAxisAlignedBoundingBox>& CullDataList, TArray<uint8>& OutVisibleFlags)
 {
@@ -42,13 +41,13 @@ uint32 FFlatFrustumCuller::Cull(const FFrustum& Frustum, const TArray<FAxisAlign
 	FVector AbsNormals[FFrustum::PlaneCount];
 	for (int32 p = 0; p < FFrustum::PlaneCount; ++p)
 	{
-		AbsNormals[p] = AbsVector(Frustum.Planes[p].Normal);
+		AbsNormals[p] = FrustumUtils::AbsVector(Frustum.Planes[p].Normal);
 	}
 
 	uint32 VisibleCount = 0;
 	for (size_t i = 0; i < CullDataList.size(); ++i)
 	{
-		const bool bVisible = IsVisible(Frustum, AbsNormals, CullDataList[i]);
+		const bool bVisible = FrustumUtils::IsVisible(Frustum, AbsNormals, CullDataList[i]);
 		OutVisibleFlags[i] = bVisible ? 1 : 0;
 		VisibleCount += bVisible ? 1 : 0;
 	}

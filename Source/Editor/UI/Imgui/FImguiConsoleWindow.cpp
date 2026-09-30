@@ -8,6 +8,13 @@
 #include <ctime>
 
 namespace {
+	struct FVisibleConsoleLine
+	{
+		const char* Begin;
+		const char* End;
+		const char* OriginalLog;
+	};
+
 	void ButtonHelper(bool& bShow, int type) {
 		ImVec4 BaseColor;
 		if (bShow)
@@ -112,9 +119,52 @@ void FImguiConsoleWindow::ShowLogRegion(bool bCopyToClipboard)
 		if (bCopyToClipboard)
 			ImGui::LogToClipboard();
 
-		for (const FString& item : FLogManager::Get().GetLogs())
+		TArray<FVisibleConsoleLine> VisibleLines;
+		const TArray<FString>& Logs = FLogManager::Get().GetLogs();
+		VisibleLines.reserve(Logs.size());
+
+		for (const FString& Log : Logs)
 		{
-			ShowLogLine(item.c_str());
+			const char* OriginalLog = Log.c_str();
+			if (!ShouldShowLog(OriginalLog))
+				continue;
+
+			const char* LineBegin = OriginalLog;
+			while (true)
+			{
+				const char* NewLine = strchr(LineBegin, '\n');
+				const char* LineEnd = NewLine ? NewLine : OriginalLog + Log.size();
+				if (LineEnd > LineBegin && LineEnd[-1] == '\r')
+					--LineEnd;
+
+				VisibleLines.push_back({ LineBegin, LineEnd, OriginalLog });
+				if (!NewLine || NewLine[1] == '\0')
+					break;
+
+				LineBegin = NewLine + 1;
+			}
+		}
+
+		auto DrawLine = [this, &VisibleLines](int32 LineIndex)
+			{
+				const FVisibleConsoleLine& Line = VisibleLines[LineIndex];
+				ShowLogLine(Line.Begin, Line.End, Line.OriginalLog);
+			};
+
+		if (bCopyToClipboard)
+		{
+			for (int32 LineIndex = 0; LineIndex < static_cast<int32>(VisibleLines.size()); ++LineIndex)
+				DrawLine(LineIndex);
+		}
+		else
+		{
+			ImGuiListClipper Clipper;
+			Clipper.Begin(static_cast<int>(VisibleLines.size()));
+			while (Clipper.Step())
+			{
+				for (int32 LineIndex = Clipper.DisplayStart; LineIndex < Clipper.DisplayEnd; ++LineIndex)
+					DrawLine(LineIndex);
+			}
 		}
 
 		if (bCopyToClipboard)
@@ -131,28 +181,36 @@ void FImguiConsoleWindow::ShowLogRegion(bool bCopyToClipboard)
 	ImGui::EndChild();
 }
 
-void FImguiConsoleWindow::ShowLogLine(const char* Line) const
+bool FImguiConsoleWindow::ShouldShowLog(const char* Log) const
 {
-	if (!Filter.PassFilter(Line))
-		return;
+	if (!Filter.PassFilter(Log))
+		return false;
 
-	// 레벨 토글에 걸리면 숨기고, 아니면 레벨별 색을 정한다.
+	if (strstr(Log, "[ERROR]"))
+		return bShowError;
+	if (strstr(Log, "[Warning]"))
+		return bShowWarn;
+	return bShowLog;
+}
+
+void FImguiConsoleWindow::ShowLogLine(
+	const char* LineBegin,
+	const char* LineEnd,
+	const char* OriginalLog) const
+{
 	ImVec4 color;
 	bool has_color = false;
-	if (strstr(Line, "[ERROR]")) {
-		if (!bShowError) return;
+	if (strstr(OriginalLog, "[ERROR]")) {
 		color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f); has_color = true;
 	}
-	else if (strstr(Line, "[Warning]")) {
-		if (!bShowWarn) return;
+	else if (strstr(OriginalLog, "[Warning]")) {
 		color = ImVec4(0.6f, 0.8f, 0.4f, 1.0f); has_color = true;
 	}
-	else if (!bShowLog) return;
-	else if (strncmp(Line, "# ", 2) == 0) { color = ImVec4(1.0f, 0.8f, 0.6f, 1.0f); has_color = true; }
+	else if (strncmp(OriginalLog, "# ", 2) == 0) { color = ImVec4(1.0f, 0.8f, 0.6f, 1.0f); has_color = true; }
 
 	if (has_color)
 		ImGui::PushStyleColor(ImGuiCol_Text, color);
-	ImGui::TextUnformatted(Line);
+	ImGui::TextUnformatted(LineBegin, LineEnd);
 	if (has_color)
 		ImGui::PopStyleColor();
 }

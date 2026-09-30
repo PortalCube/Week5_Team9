@@ -25,7 +25,6 @@ void UScene::Initialize() {
   Super::Initialize();
   bInitialized = true;
 
-  SceneTransforms.Initialize(10000);
 }
 
 void UScene::Release() {
@@ -48,7 +47,6 @@ void UScene::Release() {
   OcclusionTargetFlags.clear();
   RenderResourceLibrary = nullptr;
   bInitialized = false;
-  SceneTransforms.ShutDown();
 
   Super::Release();
 }
@@ -113,26 +111,6 @@ void UScene::Update(float DeltaTime) {
       Actor->Update(DeltaTime);
     }
   }*/
-
-  const auto& RenderComponents = GetRenderComponents();
-  const int32 PrimCount = static_cast<int32>(RenderComponents.size());
-
-  SceneTransforms.Reserve(PrimCount);
-
-  for (int32 i = 0; i < PrimCount; ++i)
-  {
-	  UPrimitiveComponent* PrimComp = RenderComponents[i];
-	  if (!PrimComp) continue;
-	  
-	  PrimComp->SetBatchIndex(i);
-
-	  SceneTransforms.SetTransform(i, PrimComp->GetGlobalTransform());
-  }
-
-  if(PrimCount > 0)
-  {
-    SceneTransforms.UpdateWorldMatrices(PrimCount);
-  }
 }
 
 void UScene::EndPlay() {
@@ -209,7 +187,9 @@ void UScene::AddRenderComponent(UPrimitiveComponent *prim) {
   if (std::find(RenderComponents.begin(), RenderComponents.end(), prim) ==
       RenderComponents.end()) {
       //RenderComponents에 넣기 전에 인덱스 설정
-    prim->SetSceneIndex(static_cast<int32>(RenderComponents.size()));
+	const int32 NewIndex = static_cast<int32>(RenderComponents.size());
+    prim->SetSceneIndex(NewIndex);
+	prim->SetBatchIndex(NewIndex);
 
     RenderComponents.push_back(prim);
     SceneBVH.AddObject(prim);
@@ -240,6 +220,7 @@ void UScene::RemoveRenderComponent(UPrimitiveComponent *prim) {
   for (size_t i = Index; i < RenderComponents.size(); ++i)
   {
       RenderComponents[i]->SetSceneIndex(static_cast<int32>(i));
+	  RenderComponents[i]->SetBatchIndex(static_cast<int32>(i));
   }
 
   // 파괴될 포인터가 dirty 목록에 남지 않게

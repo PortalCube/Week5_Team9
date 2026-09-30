@@ -24,8 +24,10 @@ namespace Globals
 	inline uint32 ResizeWidth = 0u;
 	inline uint32 ResizeHeight = 0u;
 
-	inline bool bSortTest = false;
+	inline bool bEnableRenderSort = true;
 	inline bool bEnableBatchTransform = true;
+	inline bool bSortTest = false;
+	inline bool bUseFrameResources = true;
 
 	// LOD 설정. ForcedLOD가 0 이상이면 화면 크기와 상관없이 해당 LOD로 고정한다.
 	inline bool bEnableLOD = true;

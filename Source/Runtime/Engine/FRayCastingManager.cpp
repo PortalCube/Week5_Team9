@@ -2,6 +2,7 @@
 #include "Runtime/Math/FMatrix.h"
 #include "Runtime/Rendering/FMesh.h"
 #include "Runtime/CoreUObject/UPrimitiveComponent.h"
+#include "Runtime/CoreUObject/FStatsManager.h"
 #include <limits>
 #include <cmath>
 #include <algorithm>
@@ -66,10 +67,8 @@ bool FRayCastingManager::RayIntersectsMeshes(
 
 		float HitDistance;
 		FVector ImpactPoint;
-		if (RayIntersectsMesh(Ray, *Mesh, World, HitDistance, ImpactPoint) &&
-			HitDistance < ClosestHit)
+		if (RayIntersectsMesh(Ray, *Mesh, World, HitDistance, ImpactPoint, ClosestHit))
 		{
-			ClosestHit = HitDistance;
 			ClosestComponent = Component;
 			ClosestImpactPoint = ImpactPoint;
 		}
@@ -124,6 +123,110 @@ bool FRayCastingManager::RayIntersectsAABB(const FRay& Ray, const FAxisAlignedBo
 	return TNear <= TFar;
 }
 
+FVector FRayCastingManager::MakeInvDir(const FVector& Direction)
+{
+	// 방향 성분이 0이면 1/0 = inf가 되고, 0 * inf = NaN이 slab 검사를 망가뜨린다.
+	// 아주 작은 값으로 바꿔 유한한 큰 수가 나오게 한다.
+	FVector InvDir;
+	for (int a = 0; a < 3; ++a)
+	{
+		const float D = Direction[a];
+		InvDir[a] = 1.0f / (std::fabs(D) > 1e-12f ? D : std::copysign(1e-12f, D));
+	}
+	return InvDir;
+}
+
+bool FRayCastingManager::RayIntersectsBoundsInv(const FVector& Origin, const FVector& InvDir, const FVector& Min, const FVector& Max, float& OutTNear)
+{
+	float TNear = 0.0f;
+	float TFar = (std::numeric_limits<float>::max)();
+	for (int a = 0; a < 3; ++a)
+	{
+		const float T0 = (Min[a] - Origin[a]) * InvDir[a];
+		const float T1 = (Max[a] - Origin[a]) * InvDir[a];
+		TNear = std::max(TNear, std::min(T0, T1));
+		TFar = std::min(TFar, std::max(T0, T1));
+	}
+	OutTNear = TNear;
+	return TNear <= TFar;
+}
+
+bool FRayCastingManager::IntersectMeshBVH(const FRay& ObjectRay, const FMesh& Mesh, float& OutClosestHit)
+{
+	const TArray<FMesh::FMeshBVHNode>& Nodes = Mesh.GetMeshBVHNodes();
+	const FVector* Verts = Mesh.GetTriangleVertices().data();
+
+	// 메시 BVH는 로컬 공간이므로 로컬 광선으로 계산한다.
+	const FVector InvDir = MakeInvDir(ObjectRay.Direction);
+
+	float RootNear = 0.0f;
+	if (!RayIntersectsBoundsInv(ObjectRay.Origin, InvDir, Nodes[0].BoundsMin, Nodes[0].BoundsMax, RootNear))
+	{
+		return false;
+	}
+
+	// 노드 번호와 진입 거리를 같이 쌓아, 꺼낼 때 그사이 줄어든 Closest로 다시 가지친다.
+	struct FStackEntry { uint32 Node; float TNear; };
+	FStackEntry Stack[64];
+	int32 Sp = 0;
+	Stack[Sp++] = { 0, RootNear };
+
+	bool bHit = false;
+	while (Sp > 0)
+	{
+		const FStackEntry Entry = Stack[--Sp];
+		if (Entry.TNear >= OutClosestHit) { continue; }
+
+		++PickProfile.MeshNodes;
+		const FMesh::FMeshBVHNode& N = Nodes[Entry.Node];
+
+		// 리프: 이 노드에 속한 삼각형만 검사한다. LeftOrFirst는 삼각형 번호다.
+		if (N.TriCount > 0)
+		{
+			const uint32 End = N.LeftOrFirst + N.TriCount;
+			for (uint32 t = N.LeftOrFirst; t < End; ++t)
+			{
+				const FVector* V = Verts + static_cast<size_t>(t) * 3;
+				++PickProfile.Triangles;
+				float HitT = 0.0f;
+				if (FRayCastingManager::RayIntersectsTriangle(ObjectRay, V[0], V[1], V[2], HitT) &&
+					HitT < OutClosestHit)
+				{
+					OutClosestHit = HitT;
+					bHit = true;
+				}
+			}
+			continue;
+		}
+
+		// 내부 노드: 자식 둘은 항상 연속해 있다.
+		const uint32 L = N.LeftOrFirst;
+		const uint32 R = L + 1;
+
+		float TL = 0.0f, TR = 0.0f;
+		const bool bL = RayIntersectsBoundsInv(ObjectRay.Origin, InvDir, Nodes[L].BoundsMin, Nodes[L].BoundsMax, TL) && TL < OutClosestHit;
+		const bool bR = RayIntersectsBoundsInv(ObjectRay.Origin, InvDir, Nodes[R].BoundsMin, Nodes[R].BoundsMax, TR) && TR < OutClosestHit;
+
+		// 먼 쪽을 먼저 넣어야 가까운 쪽이 먼저 나온다.
+		if (bL && bR)
+		{
+			if (TL <= TR)
+			{
+				Stack[Sp++] = { R, TR };
+				Stack[Sp++] = { L, TL };
+			}
+			else
+			{
+				Stack[Sp++] = { L, TL };
+				Stack[Sp++] = { R, TR };
+			}
+		}
+		else if (bL) { Stack[Sp++] = { L, TL }; }
+		else if (bR) { Stack[Sp++] = { R, TR }; }
+	}
+	return bHit;
+}
+
 // 펼친 삼각형 배열을 순서대로 검사한다.
 static bool IntersectFlattenedTriangles(const FRay& ObjectRay, const FMesh& Mesh, float& OutClosestHit)
 {
@@ -132,6 +235,7 @@ static bool IntersectFlattenedTriangles(const FRay& ObjectRay, const FMesh& Mesh
 	bool bHit = false;
 	for (uint32 i = 0; i + 2 < Tri.size(); i += 3)
 	{
+		++FRayCastingManager::PickProfile.Triangles;
 		float HitT = 0.0f;
 		if (FRayCastingManager::RayIntersectsTriangle(ObjectRay, Tri[i], Tri[i+1], Tri[i+2], HitT) &&
 			HitT < OutClosestHit)
@@ -172,6 +276,7 @@ static bool IntersectIndexedTriangles(const FRay& ObjectRay, const FMesh& Mesh, 
 		FVector B = Positions[i1];
 		FVector C = Positions[i2];
 
+		++FRayCastingManager::PickProfile.Triangles;
 		float HitT = 0.0f;
 		if (FRayCastingManager::RayIntersectsTriangle(ObjectRay, A, B, C, HitT) &&
 			HitT < OutClosestHit)
@@ -183,106 +288,28 @@ static bool IntersectIndexedTriangles(const FRay& ObjectRay, const FMesh& Mesh, 
 	return bHit;
 }
 
-// 역방향 벡터를 쓰는 slab 검사. 나눗셈 대신 곱셈만 한다.
-// 박스에 맞으면 진입 거리(음수면 0)를 OutTNear에 담는다.
-static bool RayIntersectsBoundsInv(const FVector& Origin, const FVector& InvDir, const FVector& Min, const FVector& Max, float& OutTNear)
+bool FRayCastingManager::RayIntersectsMesh(const FRay& Ray, const FMesh& Mesh, const FMatrix& ModelMatrix, float& OutDistance, FVector& OutImpactPoint, float &ClosestHit, bool bBVH)
 {
-	float TNear = 0.0f;
-	float TFar = (std::numeric_limits<float>::max)();
-	for (int a = 0; a < 3; ++a)
-	{
-		const float T0 = (Min[a] - Origin[a]) * InvDir[a];
-		const float T1 = (Max[a] - Origin[a]) * InvDir[a];
-		TNear = std::max(TNear, std::min(T0, T1));
-		TFar = std::min(TFar, std::max(T0, T1));
-	}
-	OutTNear = TNear;
-	return TNear <= TFar;
-}
-
-// 메시 로컬 BVH를 가까운 노드부터 순회한다. ObjectRay는 메시 로컬 공간의 광선이다.
-static bool IntersectMeshBVH(const FRay& ObjectRay, const FMesh& Mesh, float& OutClosestHit)
-{
-	const TArray<FMesh::FMeshBVHNode>& Nodes = Mesh.GetMeshBVHNodes();
-	const FVector* Verts = Mesh.GetTriangleVertices().data();
-
-	// 방향 성분이 0이면 1/0 = inf가 되고, 0 * inf = NaN이 slab 검사를 망가뜨린다.
-	// 아주 작은 값으로 바꿔 유한한 큰 수가 나오게 한다.
-	FVector InvDir;
-	for (int a = 0; a < 3; ++a)
-	{
-		const float D = ObjectRay.Direction[a];
-		InvDir[a] = 1.0f / (std::fabs(D) > 1e-12f ? D : std::copysign(1e-12f, D));
-	}
-
-	float RootNear = 0.0f;
-	if (!RayIntersectsBoundsInv(ObjectRay.Origin, InvDir, Nodes[0].BoundsMin, Nodes[0].BoundsMax, RootNear))
+	// Ray를 Object 좌표계로 변환
+	FMatrix InvM;
+	if (!ModelMatrix.Inverse(InvM))
 	{
 		return false;
 	}
 
-	// 노드 번호와 진입 거리를 같이 쌓아, 꺼낼 때 그사이 줄어든 Closest로 다시 가지친다.
-	struct FStackEntry { uint32 Node; float TNear; };
-	FStackEntry Stack[64];
-	int32 Sp = 0;
-	Stack[Sp++] = { 0, RootNear };
-
-	bool bHit = false;
-	while (Sp > 0)
-	{
-		const FStackEntry Entry = Stack[--Sp];
-		if (Entry.TNear >= OutClosestHit) { continue; }
-
-		const FMesh::FMeshBVHNode& N = Nodes[Entry.Node];
-
-		// 리프: 이 노드에 속한 삼각형만 검사한다. LeftOrFirst는 삼각형 번호다.
-		if (N.TriCount > 0)
-		{
-			const uint32 End = N.LeftOrFirst + N.TriCount;
-			for (uint32 t = N.LeftOrFirst; t < End; ++t)
-			{
-				const FVector* V = Verts + static_cast<size_t>(t) * 3;
-				float HitT = 0.0f;
-				if (FRayCastingManager::RayIntersectsTriangle(ObjectRay, V[0], V[1], V[2], HitT) &&
-					HitT < OutClosestHit)
-				{
-					OutClosestHit = HitT;
-					bHit = true;
-				}
-			}
-			continue;
-		}
-
-		// 내부 노드: 자식 둘은 항상 연속해 있다.
-		const uint32 L = N.LeftOrFirst;
-		const uint32 R = L + 1;
-
-		float TL = 0.0f, TR = 0.0f;
-		const bool bL = RayIntersectsBoundsInv(ObjectRay.Origin, InvDir, Nodes[L].BoundsMin, Nodes[L].BoundsMax, TL) && TL < OutClosestHit;
-		const bool bR = RayIntersectsBoundsInv(ObjectRay.Origin, InvDir, Nodes[R].BoundsMin, Nodes[R].BoundsMax, TR) && TR < OutClosestHit;
-
-		// 먼 쪽을 먼저 넣어야 가까운 쪽이 먼저 나온다.
-		if (bL && bR)
-		{
-			if (TL <= TR)
-			{
-				Stack[Sp++] = { R, TR };
-				Stack[Sp++] = { L, TL };
-			}
-			else
-			{
-				Stack[Sp++] = { L, TL };
-				Stack[Sp++] = { R, TR };
-			}
-		}
-		else if (bL) { Stack[Sp++] = { L, TL }; }
-		else if (bR) { Stack[Sp++] = { R, TR }; }
-	}
-	return bHit;
+	return RayIntersectsMeshWithInversedModel(Ray, Mesh, InvM, OutDistance, OutImpactPoint, ClosestHit, bBVH);
 }
 
-bool FRayCastingManager::RayIntersectsMesh(const FRay& Ray, const FMesh& Mesh, const FMatrix& ModelMatrix, float& OutDistance, FVector& OutImpactPoint)
+bool FRayCastingManager::RayIntersectsMeshWithInversedModel(const FRay& Ray, const FMesh& Mesh, const FMatrix& InvM, float& OutDistance, FVector& OutImpactPoint, float& ClosestHit, bool bBVH)
 {
+	// 이 함수 전체(광선 로컬 변환 + 삼각형 검사) 시간을 반환 경로와 관계없이 누적한다.
+	struct FMeshTimer
+	{
+		FScopeCycleCounter Counter;
+		~FMeshTimer() { PickProfile.MeshMs += Counter.Finish(); }
+	} MeshTimer;
+	++PickProfile.MeshTests;
+
 	const size_t VertexCount = bUseFlattenedTriangles
 		? Mesh.GetTriangleVertices().size()
 		: Mesh.GetPositions().size();
@@ -291,25 +318,20 @@ bool FRayCastingManager::RayIntersectsMesh(const FRay& Ray, const FMesh& Mesh, c
 		return false;
 	}
 
-	// Ray를 Object 좌표계로 변환
-	FMatrix InvM;
-	if (!ModelMatrix.Inverse(InvM))
-	{
-		return false;
-	}
-
 	const FVector ObjectOrigin = InvM.TransformPointRow(Ray.Origin);
 	const FVector ObjectDirection = InvM.TransformPointRow(Ray.Direction, 0.0f); // 1.0은 점을 나타내므로 0.0으로 하여 벡터로 유지
 	const FRay ObjectRay{ ObjectOrigin, ObjectDirection };
 
-	float DummyNear;
-	FAxisAlignedBoundingBox AABB = Mesh.GetLocalBounds();
-	if (!RayIntersectsAABB(ObjectRay, AABB, DummyNear))
+	if (!bBVH)
 	{
-		return false;
+		float DummyNear;
+		FAxisAlignedBoundingBox AABB = Mesh.GetLocalBounds();
+		if (!RayIntersectsAABB(ObjectRay, AABB, DummyNear))
+		{
+			return false;
+		}
 	}
 
-	float ClosestHit = (std::numeric_limits<float>::max)();
 	bool bHit = false;
 	if (bUseMeshBVH && !Mesh.GetMeshBVHNodes().empty())
 	{

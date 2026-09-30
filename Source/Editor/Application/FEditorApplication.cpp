@@ -45,6 +45,7 @@ void FEditorApplication::Initialize_Runtime(USceneManager *SceneManager,
 
   // TEMP: 당분간 기본값으로 활성화
   EditorViewportWindow.Toggle(FImguiStatsWindow::EStatsWindow::Unit);
+  EditorViewportWindow.Toggle(FImguiStatsWindow::EStatsWindow::FPS);
 }
 
 void FEditorApplication::Shutdown() { Editor.Shutdown(); }

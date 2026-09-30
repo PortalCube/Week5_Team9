@@ -16,7 +16,9 @@
 
 #include <Windows.h>
 #include <d3d11.h>
+#include <d3d11_1.h>
 #include <wrl/client.h>
+#include <span>
 
 class FTexture;
 struct FTextureDesc;
@@ -26,6 +28,12 @@ struct FDrawCommand;
 
 #include "Runtime/Engine/ShowFlags.h"
 
+struct FFrameResource
+{
+	Microsoft::WRL::ComPtr<ID3D11Buffer> FrameConstantBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> ViewConstantBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> ObjectConstantBuffer;
+};
 
 class FRenderer final {
 public:
@@ -79,6 +87,20 @@ public:
   void Draw(const FDrawCommand& Command, uint32 Slot = 2,
             bool bApplyViewMode = true);
 
+  void DrawPrimitiveBatch(std::span<const FDrawCommand> Commands);
+
+  bool UploadObjectConstants(std::span<const FDrawCommand> Commands);
+
+  void BindObjectConstantRange(uint32 Slot, uint32 ByteOffset);
+  void BindDrawResources(
+      const FMesh& Mesh,
+      const FMaterial& Material,
+      uint64 RenderStateKey,
+      bool bApplyViewMode
+  );
+
+  void DrawUploadedCommand(const FDrawCommand& Command, bool bApplyViewMode = true);
+
   void RenderOutline();
   ID3D11RenderTargetView* GetBackBuffer() { return BackBufferRTV.Get(); }
   ID3D11DepthStencilView* GetDepthStencilView() { return DepthStencilView.Get(); }
@@ -115,6 +137,9 @@ private:
   Microsoft::WRL::ComPtr<IDXGISwapChain> SwapChain;
   D3D11_VIEWPORT Viewport{};
 
+  // D3D11_1 Extension
+  Microsoft::WRL::ComPtr<ID3D11DeviceContext1> Context1;
+
   Microsoft::WRL::ComPtr<ID3D11RenderTargetView> BackBufferRTV;
   Microsoft::WRL::ComPtr<ID3D11Texture2D> DepthStencilBuffer;
   Microsoft::WRL::ComPtr<ID3D11DepthStencilView> DepthStencilView;
@@ -123,10 +148,13 @@ private:
   static constexpr UINT ConstantBufferSize = 256u;
 
   // 상수 버퍼들
-  Microsoft::WRL::ComPtr<ID3D11Buffer> FrameConstantBuffer;
+  /*Microsoft::WRL::ComPtr<ID3D11Buffer> FrameConstantBuffer;
   Microsoft::WRL::ComPtr<ID3D11Buffer> ViewConstantBuffer;
-  Microsoft::WRL::ComPtr<ID3D11Buffer> ObjectConstantBuffer;
+  Microsoft::WRL::ComPtr<ID3D11Buffer> ObjectConstantBuffer;*/
   Microsoft::WRL::ComPtr<ID3D11Buffer> LightConstantBuffer;
+
+  // 임시 상수버퍼
+  Microsoft::WRL::ComPtr<ID3D11Buffer> ObjectConstantUploadBuffer;
 
   Microsoft::WRL::ComPtr<ID3D11RenderTargetView> EditorViewPortRTV;
   Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> EditorViewPortSRV;
@@ -170,6 +198,12 @@ private:
   uint32 PendingDrawCount = 0u;
   uint32 PendingPrimCount = 0u;
 
+	static constexpr uint32 NumFrameResourceCount = 3;
+	FFrameResource FrameResources[NumFrameResourceCount];
+	uint32 CurrentFrameResourceIndex = 0;
+
+    FFrameResource* GetCurrentFrameResource() { return &FrameResources[CurrentFrameResourceIndex]; }
+	FFrameResource* GetNextFrameResource() { return &FrameResources[(CurrentFrameResourceIndex + 1) % NumFrameResourceCount]; }
 public:
   template <typename TConstants>
   void FlushLineBatch(
@@ -193,22 +227,12 @@ public:
   {
     UpdateBuffer(Constants, 2);
 
-    if (RenderStateKey == 0 || LastRenderStateKey != RenderStateKey)
-    {
-        LastRenderStateKey = RenderStateKey;
-
-        FRenderPipeline* Pipeline = Material.Pipeline;
-
-        if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {
-          Pipeline = GetPipeline(FName("#Simple_Wireframe")).get();
-        }
-        if (Pipeline) {
-          Pipeline->Bind(*Context.Get());
-        }
-
-        Material.BindResources(*Context.Get());
-        Mesh.BindResources(*Context.Get());
-    }
+    BindDrawResources(
+        Mesh,
+        Material,
+        RenderStateKey,
+        bApplyViewMode
+    );
 
     if (Mesh.HasIndices()) {
       Context->DrawIndexed(Mesh.IndexCount, 0, 0);
@@ -233,21 +257,13 @@ public:
   )
   {
       UpdateBuffer(Constants, Slot);
-      if (RenderStateKey == 0 || LastRenderStateKey != RenderStateKey)
-      {
-          LastRenderStateKey = RenderStateKey;
-          FRenderPipeline* Pipeline = Material.Pipeline;
-          if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {
-              Pipeline = GetPipeline(FName("#Simple_Wireframe")).get();
-          }
 
-          if (Pipeline) {
-              Pipeline->Bind(*Context.Get());
-          }
-
-          Material.BindResources(*Context.Get());
-          Mesh.BindResources(*Context.Get());
-      }
+      BindDrawResources(
+          Mesh,
+          Material,
+          RenderStateKey,
+          bApplyViewMode
+      );
 
       if (Mesh.HasIndices()) {
           Context->DrawIndexed(IndexCount, StartIndex, 0);
@@ -262,7 +278,7 @@ public:
 
   // Constant Buffer를 갱신한다.
   // 크기가 맞는지는 컴파일 타임에 검사한다.
-  template <typename TConstants>
+/*  template <typename TConstants>
   void UpdateBuffer(const TConstants &Constants, uint32 Slot) {
     static_assert(sizeof(TConstants) <= ConstantBufferSize);
     static_assert(sizeof(TConstants) % 16 == 0);
@@ -284,6 +300,30 @@ public:
 
     Context->VSSetConstantBuffers(Slot, 1u, ObjectConstantBuffer.GetAddressOf());
     Context->PSSetConstantBuffers(Slot, 1u, ObjectConstantBuffer.GetAddressOf());
+  }*/
+
+  template <typename TConstants>
+  void UpdateBuffer(const TConstants& Constants, uint32 Slot) {
+      static_assert(sizeof(TConstants) <= ConstantBufferSize);
+      static_assert(sizeof(TConstants) % 16 == 0);
+
+      // 언리얼 Clip -> D3D Clip 좌표 변환.
+      // MVP, VP를 가진 상수 타입에만 적용한다(없는 타입은 그대로 통과).
+      TConstants ShaderConstants = Constants;
+      if constexpr (requires { ShaderConstants.MVP; }) {
+          ShaderConstants.MVP = ShaderConstants.MVP.ToD3DMatrix();
+      }
+
+      D3D11_MAPPED_SUBRESOURCE Mapped{};
+      if (FAILED(Context->Map(GetCurrentFrameResource()->ObjectConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD,
+          0, &Mapped))) {
+          return;
+      }
+      std::memcpy(Mapped.pData, &ShaderConstants, sizeof(TConstants));
+      Context->Unmap(GetCurrentFrameResource()->ObjectConstantBuffer.Get(), 0);
+
+      Context->VSSetConstantBuffers(Slot, 1u, GetCurrentFrameResource()->ObjectConstantBuffer.GetAddressOf());
+      Context->PSSetConstantBuffers(Slot, 1u, GetCurrentFrameResource()->ObjectConstantBuffer.GetAddressOf());
   }
 public:
   //현재 깊이 버퍼 기준으로 각 명령이 실제로 보이는 픽셀 수를 GPU에 묻는다.

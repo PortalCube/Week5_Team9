@@ -34,29 +34,29 @@ namespace
             return {};
         }
 
+        const FMaterialInstance& Material = Data.Materials[0];
+
         FDrawCommand Command
         {
             .Mesh = Data.Mesh->Get(Data.LODIndex),
             .Materials = Component.GetCachedMaterials(),
+            .Constants =
+            {
+                Material.Color,
+                Material.UVScale,
+                Material.UVOffset,
+                FMatrix::Identity,
+                Material.bDisableShading ? 1.0f : 0.0f,
+            },
             .Type = Data.Type,
 			.Instances = std::span<const FInstanceData>(Data.Instances.data(), Data.Instances.size()),
             .LODIndex = Data.LODIndex,
         };
 
-
-        Command.Constants =
-        {
-            .Color = Data.Materials[0].Color,
-            .UVScale = Data.Materials[0].UVScale,
-            .UVOffset = Data.Materials[0].UVOffset,
-            .World = FMatrix::Identity,
-            .DisableShading = Data.Materials[0].bDisableShading ? 1.0f : 0.0f,
-        };
-
         const FMaterialInstance& PrimaryMaterial = Data.Materials[0];
         
 
-        if (Globals::bSortTest)
+        if (Globals::bEnableRenderSort)
         {
             uint64 PipelineId = 0;
             uint64 MaterialId = 0;
@@ -85,21 +85,28 @@ namespace
                 ((TextureId & 0xFFFFull) << 16) |
                 ((MeshId & 0xFFFFull));
             
+            // ============================= Depth 정렬 비활성화 =============================
+
             // AABB의 Min X 값을 Depth로 지정
-            FAxisAlignedBoundingBox AABB = Component.GetWorldBounds();
+            //FAxisAlignedBoundingBox AABB = Component.GetWorldBounds();
 
-            FVector CameraForward = Camera.GetForwardVector();
-            FVector CameraPosition = Camera.GetPosition();
-            float ProjectedExtent =
-                std::abs(CameraForward.X) * AABB.Extent.X +
-                std::abs(CameraForward.Y) * AABB.Extent.Y +
-                std::abs(CameraForward.Z) * AABB.Extent.Z;
+            //FVector CameraForward = Camera.GetForwardVector();
+            //FVector CameraPosition = Camera.GetPosition();
+            //float ProjectedExtent =
+            //    std::abs(CameraForward.X) * AABB.Extent.X +
+            //    std::abs(CameraForward.Y) * AABB.Extent.Y +
+            //    std::abs(CameraForward.Z) * AABB.Extent.Z;
 
-            Command.Depth = (AABB.Center - CameraPosition).Dot(CameraForward) - ProjectedExtent;
-            float Near = Camera.GetProjection().GetNearPlane();
-            float Far = Camera.GetProjection().GetFarPlane();
-            
-            Command.DepthBucket = static_cast<int32>((Command.Depth - Near) * 32 / (Far - Near));
+            //Command.Depth = (AABB.Center - CameraPosition).Dot(CameraForward) - ProjectedExtent;
+            //float Near = Camera.GetProjection().GetNearPlane();
+            //float Far = Camera.GetProjection().GetFarPlane();
+            //
+            //Command.DepthBucket = static_cast<int32>((Command.Depth - Near) * 32 / (Far - Near));
+
+            // =================================================================================
+
+            Command.Depth = 0.0f;
+            Command.DepthBucket = 0;
         }
 
         return Command;
@@ -108,7 +115,6 @@ namespace
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
-    const auto& SceneTransforms = Scene.GetSceneTransforms();
     const int32 TotalBatchCount = static_cast<int32>(Scene.GetRenderComponents().size());
 
     //if (Globals::bEnableBatchTransform)
@@ -173,9 +179,9 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
 		int32 Index = PrimitiveComponent->GetBatchIndex();
 
-        if (Globals::bEnableBatchTransform && Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
+        if (Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
         {
-            DrawCommand.Constants.World = SceneTransforms.WorldMatrices[Index];
+            DrawCommand.Constants.World = PrimitiveComponent->GetGlobalTransformMatrix();
         }
         else
         {
@@ -252,10 +258,13 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
         CullScene(View, Scene);
     }
 
-    // 씬 컴포넌트 수집
-    CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
+    // 씬 컴포넌트 수집 (LOD 선택 포함). 독립 카운터라 부모인 Draw 수치에는 영향이 없다.
+    {
+        SCOPE_CYCLE_COUNTER_IMPL(__COUNTER__, "Collect", true);
+        CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
+    }
 
-    if (Globals::bSortTest)
+    if (Globals::bEnableRenderSort)
     {
         RenderQueue.Sort();
     }
@@ -487,10 +496,9 @@ void FRenderView::FlushQueue(const FCamera& Camera)
     auto& ResLib = FRenderResourceLibrary::Get();
     
     // Primitive 큐 처리
-    for (const FDrawCommand& Data : RenderQueue.GetPrimRenderQ())
-    {
-        Renderer.Draw(Data);
-    }
+    Renderer.DrawPrimitiveBatch(
+        RenderQueue.GetPrimRenderQ()
+    );
 
     // Instancing 큐
     if (!RenderQueue.IsInstancingRQEmpty())

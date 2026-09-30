@@ -93,6 +93,7 @@ private:
 	FCullingSettings CullingSettings;
 	//컬링 후 가시 여부 인덱스(실제 renderComponent 인덱스와 동일하게)
 	TArray<uint8> VisibleFlags;
+	TArray<UPrimitiveComponent*> VisiblePrimitives;
 	bool bCullResultValid = false;
 
 	static constexpr uint32 MaxViewCount = 4;   // FEditor::Leaf 개수

@@ -1,6 +1,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "Runtime/Mesh/MeshLODBuilder.h"
+#include "meshoptimizer.h"
 
 #include <cmath>
 #include <numbers>
@@ -14,12 +15,16 @@ namespace
         for (uint32 r = 0; r <= Rings; ++r)
         {
             const float Theta = std::numbers::pi_v<float> * r / Rings;
+            // 극점은 모든 정점의 위치가 바이트 단위로 같아야 한다.
+            // float의 sin(pi)는 0이 아니고, 0 * 음수는 -0이 되므로 곱하지 않고 0을 넣는다.
+            const bool bPole = (r == 0 || r == Rings);
+            const float SinTheta = std::sin(Theta);
             for (uint32 s = 0; s <= Segments; ++s)
             {
                 const float Phi = 2.0f * std::numbers::pi_v<float> * s / Segments;
                 FVertexData Vertex{};
-                Vertex.nx = std::sin(Theta) * std::cos(Phi);
-                Vertex.ny = std::sin(Theta) * std::sin(Phi);
+                Vertex.nx = bPole ? 0.0f : SinTheta * std::cos(Phi);
+                Vertex.ny = bPole ? 0.0f : SinTheta * std::sin(Phi);
                 Vertex.nz = std::cos(Theta);
                 Vertex.x = Vertex.nx;
                 Vertex.y = Vertex.ny;
@@ -89,5 +94,59 @@ TEST_CASE(
         {
             REQUIRE(Index < LOD.Vertices.size());
         }
+    }
+}
+
+TEST_CASE(
+    "MeshLODBuilder OptimizeMesh",
+    "[unit][mesh][optimize]")
+{
+    TArray<FVertexData> Vertices;
+    TArray<uint32> Indices;
+    TArray<FMeshSection> Sections;
+    CreateSphere(32, 64, Vertices, Indices, Sections);
+
+    const TArray<FVertexData> SourceVertices = Vertices;
+    const TArray<uint32> SourceIndices = Indices;
+    const TArray<FMeshSection> SourceSections = Sections;
+
+    MeshLODBuilder::OptimizeMesh(Vertices, Indices, Sections);
+
+    SECTION("degenerate pole triangles are removed")
+    {
+        // 극점 링의 삼각형은 두 정점의 위치가 같아 면적이 0이다. 위/아래 극에 각각 Segments개.
+        CHECK(Indices.size() == SourceIndices.size() - 2 * 64 * 3);
+    }
+
+    SECTION("sections stay contiguous and in order")
+    {
+        REQUIRE(Sections.size() == SourceSections.size());
+        uint32 Expected = 0;
+        for (size_t i = 0; i < Sections.size(); ++i)
+        {
+            CHECK(Sections[i].SectionName == SourceSections[i].SectionName);
+            CHECK(Sections[i].StartIndex == Expected);
+            Expected += Sections[i].IndexCount;
+        }
+        CHECK(Expected == Indices.size());
+    }
+
+    SECTION("indices are valid and vertices are ordered by first use")
+    {
+        uint32 NextNew = 0;
+        for (uint32 Index : Indices)
+        {
+            REQUIRE(Index < Vertices.size());
+            if (Index == NextNew) { ++NextNew; }
+            REQUIRE(Index < NextNew);
+        }
+        CHECK(NextNew == Vertices.size());
+    }
+
+    SECTION("vertex cache efficiency improves")
+    {
+        const auto Before = meshopt_analyzeVertexCache(SourceIndices.data(), SourceIndices.size(), SourceVertices.size(), 16, 0, 0);
+        const auto After = meshopt_analyzeVertexCache(Indices.data(), Indices.size(), Vertices.size(), 16, 0, 0);
+        CHECK(After.acmr < Before.acmr);
     }
 }
