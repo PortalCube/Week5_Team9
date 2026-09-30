@@ -7,8 +7,8 @@ const TArray<MeshLODBuilder::FLODSetting>& MeshLODBuilder::GetDefaultSettings()
 	static const TArray<FLODSetting> Settings
 	{
 		{ .TriangleRatio = 0.5f,  .MaxError = 0.02f, .ScreenSize = 0.5f  },
-		{ .TriangleRatio = 0.25f, .MaxError = 0.05f, .ScreenSize = 0.25f },
-		{ .TriangleRatio = 0.1f,  .MaxError = 0.1f,  .ScreenSize = 0.1f  },
+		{ .TriangleRatio = 0.25f, .MaxError = 0.05f, .ScreenSize = 0.2f },
+		{ .TriangleRatio = 0.1f,  .MaxError = 0.1f,  .ScreenSize = 0.03f  },
 	};
 	return Settings;
 }

@@ -57,40 +57,6 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
 
 void FImguiControlPanelWindow::BVHDebugSetting(FEditor& Editor)
 {
-    static int Iterations = 1000;
-
-    ImGui::Text("Scene BVH");
-
-    if (ImGui::Button("Validate"))
-    {
-        UScene* Scene = Editor.GetCurrentScene();
-        if (!Scene)
-        {
-            UE_LOG_WARN("[BVH] 활성 씬이 없습니다");
-        }
-        else
-        {
-            FSceneBVH& BVH = Scene->GetSceneBVH();
-            if (BVH.Validate())
-            {
-                const FVector Max = BVH.GetNode(0).Bounds.Max;
-                const FVector Min = BVH.GetNode(0).Bounds.Min;
-                UE_LOG("[BVH] 유효 | Root Max=(%f, %f, %f) Min=(%f, %f, %f)",
-                    Max.X, Max.Y, Max.Z, Min.X, Min.Y, Min.Z);
-            }
-            else
-            {
-                UE_LOG_WARN("[BVH] Validate 실패");
-            }
-        }
-    }
-
-    ImGui::SameLine();
-
-    ImGui::SetNextItemWidth(120.0f);
-    ImGui::DragInt("Iterations", &Iterations, 10.0f, 1, 100000);
-
-    ImGui::Separator();
     ImGui::Text("Picking path");
 
     if (ImGui::Checkbox("Use BVH (QueryRay)", &Editor.bUseBVHPicking))

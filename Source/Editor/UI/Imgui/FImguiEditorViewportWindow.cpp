@@ -11,6 +11,7 @@
 #include "Runtime/Actors/AActor.h"
 #include "ThirdParty/Imgui/imgui.h"
 #include "ThirdParty/Imgui/imgui_internal.h"
+#include "Runtime/Engine/FTimeManager.h"
 #include <Runtime/CoreUObject/FStatsManager.h>
 
 namespace
@@ -20,12 +21,20 @@ namespace
     {
         if (Editor.PickingAttempts <= 0) { return; }
 
-        char Buffer[256];
-        snprintf(Buffer, sizeof(Buffer),
-                 "Picking Time %.3f ms : Num Attempts %d : Accumulated Time %.3f ms",
-                 Editor.LastPickingMs, Editor.PickingAttempts, Editor.AccumulatedPickingMs);
+        double DeltaTime = FTimeManager::GetDeltaTime();
 
         const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
+        const int ResolutionX = static_cast<int>(MainViewport->Size.x);
+        const int ResolutionY = static_cast<int>(MainViewport->Size.y);
+
+        const int FPS = DeltaTime > 0.0 ? static_cast<int>(1.0 / DeltaTime) : 0;
+        const double FrameMs = DeltaTime * 1000.0;
+
+        char Buffer[256];
+        snprintf(Buffer, sizeof(Buffer),
+                 "Resolution : %dx%d\nFPS : %d (%.2f ms)\nPicking Time %.3f ms : Num Attempts %d : Accumulated Time %.3f ms",
+                 ResolutionX, ResolutionY, FPS, FrameMs, Editor.LastPickingMs, Editor.PickingAttempts, Editor.AccumulatedPickingMs);
+
         const ImVec2 Pos(MainViewport->Pos.x + 12.0f, MainViewport->Pos.y + 6.0f);
         constexpr float FontSize = 26.0f;
 
