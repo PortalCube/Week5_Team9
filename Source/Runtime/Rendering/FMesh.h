@@ -6,6 +6,7 @@
 #include "Runtime/Core/FName.h"
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <limits>
 #include "Runtime/Core/TArray.h"
 #include "Runtime/Geometry/FAxisAlignedBoundingBox.h"
 
@@ -60,7 +61,7 @@ public:
 private:
 	void BindResources(ID3D11DeviceContext& Context) const;
 	void BuildTriangleVertices();
-	void BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, TArray<FTriRef>& Tris);
+	void BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, TArray<FTriRef>& Tris, uint32 Depth);
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> VertexBuffer;
 	uint32 VertexCount = 0u;

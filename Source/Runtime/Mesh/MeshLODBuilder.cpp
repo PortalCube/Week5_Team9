@@ -59,11 +59,76 @@ void MeshLODBuilder::BuildLOD(
 		OutData.Sections.push_back(NewSection);
 	}
 
-	// 단순화 후 참조되지 않는 정점을 제거하고, 인덱스 순서대로 정점을 재배치한다.
-	OutData.Vertices.resize(Vertices.size());
-	const size_t UniqueVertexCount = meshopt_optimizeVertexFetch(
-		OutData.Vertices.data(),
-		OutData.Indices.data(), OutData.Indices.size(),
+	// 단순화 결과는 원본 정점 버퍼를 참조하므로, 복사한 뒤 최적화하면서 쓰지 않는 정점을 제거한다.
+	OutData.Vertices = Vertices;
+	OptimizeMesh(OutData.Vertices, OutData.Indices, OutData.Sections);
+}
+
+void MeshLODBuilder::OptimizeMesh(
+	TArray<FVertexData>& Vertices,
+	TArray<uint32>& Indices,
+	TArray<FMeshSection>& Sections)
+{
+	if (Vertices.empty() || Indices.empty()) { return; }
+
+	// 1) 바이트 단위로 완전히 같은 정점을 하나로 합친다.
+	{
+		TArray<uint32> Remap(Vertices.size());
+		const size_t UniqueCount = meshopt_generateVertexRemap(
+			Remap.data(), Indices.data(), Indices.size(),
+			Vertices.data(), Vertices.size(), sizeof(FVertexData));
+
+		TArray<FVertexData> Unique(UniqueCount);
+		meshopt_remapVertexBuffer(Unique.data(), Vertices.data(), Vertices.size(), sizeof(FVertexData), Remap.data());
+		meshopt_remapIndexBuffer(Indices.data(), Indices.data(), Indices.size(), Remap.data());
+		Vertices = std::move(Unique);
+	}
+
+	// 2~4) 섹션은 각각 드로우 범위이므로 섹션 단위로 처리하고, 결과를 앞에서부터 다시 채운다.
+	TArray<uint32> Optimized;
+	Optimized.reserve(Indices.size());
+	TArray<uint32> Scratch;
+
+	for (FMeshSection& Section : Sections)
+	{
+		const uint32 NewStart = static_cast<uint32>(Optimized.size());
+		const uint32* SectionIndices = Indices.data() + Section.StartIndex;
+
+		// 2) 위치가 겹쳐 면적이 0인 삼각형과, 같은 방향으로 중복된 삼각형을 제거한다.
+		Scratch.resize(Section.IndexCount);
+		const size_t FilteredCount = Section.IndexCount < 3 ? 0 : meshopt_filterIndexBuffer(
+			Scratch.data(), SectionIndices, Section.IndexCount,
+			&Vertices[0].x, Vertices.size(), sizeof(float) * 3, sizeof(FVertexData));
+
+		if (FilteredCount > 0)
+		{
+			const size_t Offset = Optimized.size();
+			Optimized.resize(Offset + FilteredCount);
+			uint32* Target = Optimized.data() + Offset;
+
+			// 3) 정점 셰이더 결과 캐시에 잘 맞도록 삼각형 순서를 바꾼다.
+			meshopt_optimizeVertexCache(Target, Scratch.data(), FilteredCount, Vertices.size());
+
+			// 4) 바깥쪽 면이 먼저 그려지도록 순서를 조정해 오버드로우를 줄인다.
+			//    정점 캐시 효율은 최대 5%까지만 양보한다.
+			meshopt_optimizeOverdraw(Scratch.data(), Target, FilteredCount,
+				&Vertices[0].x, Vertices.size(), sizeof(FVertexData), 1.05f);
+			std::copy(Scratch.begin(), Scratch.begin() + FilteredCount, Target);
+		}
+
+		Section.StartIndex = NewStart;
+		Section.IndexCount = static_cast<uint32>(FilteredCount);
+	}
+
+	Indices = std::move(Optimized);
+	if (Indices.empty()) { return; }
+
+	// 5) 인덱스가 처음 등장하는 순서대로 정점을 재배치해 메모리 읽기를 연속적으로 만든다.
+	//    쓰이지 않는 정점도 여기서 제거된다.
+	TArray<FVertexData> Fetched(Vertices.size());
+	const size_t UsedCount = meshopt_optimizeVertexFetch(
+		Fetched.data(), Indices.data(), Indices.size(),
 		Vertices.data(), Vertices.size(), sizeof(FVertexData));
-	OutData.Vertices.resize(UniqueVertexCount);
+	Fetched.resize(UsedCount);
+	Vertices = std::move(Fetched);
 }
