@@ -62,7 +62,10 @@ public:
 private:
     void BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint32 ParentIdx);
     void TraverseRay(uint32 NodeIdx, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
+    //월드 AABB 검사 후 통과하면 메시를 검사한다 (대기열 오브젝트용)
     void TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBoundingBox& WorldBox, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
+    //월드 AABB를 통과한 오브젝트의 메시(삼각형)를 검사한다
+    void TestObjectMesh(UPrimitiveComponent* C, const FRay& Ray, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
     void TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const FVector(&AbsNormals)[FFrustum::PlaneCount], TArray<UPrimitiveComponent*>& OutVisible) const;
 
     //해당 LeafNode에 영향 받는 BVHNode 모두 갱신
@@ -73,7 +76,7 @@ private:
     TArray<FAxisAlignedBoundingBox> ObjectBounds;   //Objects의 index에 해당하는 prim의 BoundingBox
     TArray<uint32> LeafOfObject;                    //여려개의 BVHIndex -> 하나의 Leaf BVHNode 맵핑
 
-    uint32 LeafSize = 8;
+    uint32 LeafSize = 16;
 
     TArray<UPrimitiveComponent*> PendingObjects;
     uint32 PendingLimit = 256;
