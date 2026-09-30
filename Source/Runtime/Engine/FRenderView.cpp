@@ -114,17 +114,6 @@ namespace
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
-    const int32 TotalBatchCount = static_cast<int32>(Scene.GetRenderComponents().size());
-
-    //if (Globals::bEnableBatchTransform)
-    //{
-    //    ReserveScratchMVPBuffer(TotalBatchCount);
-    //    if (TotalBatchCount > 0)
-    //    {
-    //        SceneTransforms.ComputeBatchMVP(View.ViewProj, ScratchMVPBuffer, TotalBatchCount);
-    //    }
-    //}
-
     const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
     RenderQueue.Reserve(Primitives.size());
 
@@ -165,7 +154,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
 		int32 Index = PrimitiveComponent->GetBatchIndex();
 
-        if (Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
+        if (!PrimitiveComponent->Cast<UBillBoardComp>())
         {
             DrawCommand.Constants.World = PrimitiveComponent->GetGlobalTransformMatrix();
         }
@@ -536,10 +525,18 @@ void FRenderView::CullScene(const FSceneView& View, const UScene& Scene)
         // 컬링 OFF: 전부 가시로 집계
         return;
     }
-
+    VisibleFlags.resize(Count);
     // 매 프레임 그 프레임의 Frustum으로 전체 판정 (이전 결과 재사용 없음)
     const FFrustum Frustum = GetCullFrustum(View);
-    const uint32 VisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
+
+    if(Globals::bUseSIMDCulling)
+    {
+        const uint32 VisibleCount = FlatCuller.Cull_SIMD(Frustum, CullDataList.data(), Count, VisibleFlags.data());
+    }
+    else
+    {
+        const uint32 VisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
+    }
 
     //Culling 결과를 카운트
     //...

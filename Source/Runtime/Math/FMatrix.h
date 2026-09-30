@@ -1,7 +1,7 @@
 #pragma once
 
 #include "FVector.h"
-#include "MathSSE.h"
+#include "FMathSSE.h"
 #include <DirectXMath.h>
 #include <numbers>
 #include <cmath>

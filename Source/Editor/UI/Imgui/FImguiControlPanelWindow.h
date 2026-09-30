@@ -27,6 +27,6 @@ private:
 	void LoadPickRay();
 	static constexpr const char* PickRayFilePath = "PickBenchRay.txt";
 	void RenderStateSort(FEditor& Editor);
-	void FrameResourceDebugSetting(FEditor& Editor);
+	void SIMDCullingDebugSetting(FEditor& Editor);
 	void LODSetting(FEditor& Editor);
 };

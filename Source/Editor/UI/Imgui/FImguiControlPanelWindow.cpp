@@ -58,7 +58,7 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     RenderStateSort(Editor);
 
     ImGui::Separator();
-	FrameResourceDebugSetting(Editor);
+	SIMDCullingDebugSetting(Editor);
 
     ImGui::Separator();
     LODSetting(Editor);
@@ -242,11 +242,11 @@ void FImguiControlPanelWindow::RenderStateSort(FEditor& Editor)
     }
 }
 
-void FImguiControlPanelWindow::FrameResourceDebugSetting(FEditor& Editor)
+void FImguiControlPanelWindow::SIMDCullingDebugSetting(FEditor& Editor)
 {
-    ImGui::Text("Frame Resource Debug");
+    ImGui::Text("SIMD 컬링 Debug");
 
-    ImGui::Checkbox("프레임 리소스 사용", &Globals::bUseFrameResources);
+    ImGui::Checkbox("SIMD 컬링 사용", &Globals::bUseSIMDCulling);
 }
 
 void FImguiControlPanelWindow::LODSetting(FEditor& Editor)

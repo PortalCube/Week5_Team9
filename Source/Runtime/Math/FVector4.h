@@ -3,7 +3,7 @@
 #include "Runtime/Core/IntTypes.h"
 #include <cassert>
 #include <cmath>
-#include "MathSSE.h"
+#include "FMathSSE.h"
 #include "FVector.h"
 
 struct alignas(16) FVector4
