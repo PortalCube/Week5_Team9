@@ -32,7 +32,7 @@ namespace
 
         char Buffer[256];
         snprintf(Buffer, sizeof(Buffer),
-                 "Resolution : %dx%d\nFPS : %d (%.2f ms)\nPicking Time %.3f ms : Num Attempts %d : Accumulated Time %.3f ms",
+                 "Resolution : %dx%d\nFPS : %d (%.2f ms)\nPicking Time %.4f ms : Num Attempts %d : Accumulated Time %.4f ms",
                  ResolutionX, ResolutionY, FPS, FrameMs, Editor.LastPickingMs, Editor.PickingAttempts, Editor.AccumulatedPickingMs);
 
         const ImVec2 Pos(MainViewport->Pos.x + 12.0f, MainViewport->Pos.y + 6.0f);
