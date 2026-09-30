@@ -16,7 +16,9 @@
 
 #include <Windows.h>
 #include <d3d11.h>
+#include <d3d11_1.h>
 #include <wrl/client.h>
+#include <span>
 
 class FTexture;
 struct FTextureDesc;
@@ -85,6 +87,20 @@ public:
   void Draw(const FDrawCommand& Command, uint32 Slot = 2,
             bool bApplyViewMode = true);
 
+  void DrawPrimitiveBatch(std::span<const FDrawCommand> Commands);
+
+  bool UploadObjectConstants(std::span<const FDrawCommand> Commands);
+
+  void BindObjectConstantRange(uint32 Slot, uint32 ByteOffset);
+  void BindDrawResources(
+      const FMesh& Mesh,
+      const FMaterial& Material,
+      uint64 RenderStateKey,
+      bool bApplyViewMode
+  );
+
+  void DrawUploadedCommand(const FDrawCommand& Command, bool bApplyViewMode = true);
+
   void RenderOutline();
   ID3D11RenderTargetView* GetBackBuffer() { return BackBufferRTV.Get(); }
   ID3D11DepthStencilView* GetDepthStencilView() { return DepthStencilView.Get(); }
@@ -121,6 +137,9 @@ private:
   Microsoft::WRL::ComPtr<IDXGISwapChain> SwapChain;
   D3D11_VIEWPORT Viewport{};
 
+  // D3D11_1 Extension
+  Microsoft::WRL::ComPtr<ID3D11DeviceContext1> Context1;
+
   Microsoft::WRL::ComPtr<ID3D11RenderTargetView> BackBufferRTV;
   Microsoft::WRL::ComPtr<ID3D11Texture2D> DepthStencilBuffer;
   Microsoft::WRL::ComPtr<ID3D11DepthStencilView> DepthStencilView;
@@ -133,6 +152,9 @@ private:
   Microsoft::WRL::ComPtr<ID3D11Buffer> ViewConstantBuffer;
   Microsoft::WRL::ComPtr<ID3D11Buffer> ObjectConstantBuffer;*/
   Microsoft::WRL::ComPtr<ID3D11Buffer> LightConstantBuffer;
+
+  // 임시 상수버퍼
+  Microsoft::WRL::ComPtr<ID3D11Buffer> ObjectConstantUploadBuffer;
 
   Microsoft::WRL::ComPtr<ID3D11RenderTargetView> EditorViewPortRTV;
   Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> EditorViewPortSRV;
@@ -205,22 +227,12 @@ public:
   {
     UpdateBuffer(Constants, 2);
 
-    if (RenderStateKey == 0 || LastRenderStateKey != RenderStateKey)
-    {
-        LastRenderStateKey = RenderStateKey;
-
-        FRenderPipeline* Pipeline = Material.Pipeline;
-
-        if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {
-          Pipeline = GetPipeline(FName("#Simple_Wireframe")).get();
-        }
-        if (Pipeline) {
-          Pipeline->Bind(*Context.Get());
-        }
-
-        Material.BindResources(*Context.Get());
-        Mesh.BindResources(*Context.Get());
-    }
+    BindDrawResources(
+        Mesh,
+        Material,
+        RenderStateKey,
+        bApplyViewMode
+    );
 
     if (Mesh.HasIndices()) {
       Context->DrawIndexed(Mesh.IndexCount, 0, 0);
@@ -245,21 +257,13 @@ public:
   )
   {
       UpdateBuffer(Constants, Slot);
-      if (RenderStateKey == 0 || LastRenderStateKey != RenderStateKey)
-      {
-          LastRenderStateKey = RenderStateKey;
-          FRenderPipeline* Pipeline = Material.Pipeline;
-          if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {
-              Pipeline = GetPipeline(FName("#Simple_Wireframe")).get();
-          }
 
-          if (Pipeline) {
-              Pipeline->Bind(*Context.Get());
-          }
-
-          Material.BindResources(*Context.Get());
-          Mesh.BindResources(*Context.Get());
-      }
+      BindDrawResources(
+          Mesh,
+          Material,
+          RenderStateKey,
+          bApplyViewMode
+      );
 
       if (Mesh.HasIndices()) {
           Context->DrawIndexed(IndexCount, StartIndex, 0);

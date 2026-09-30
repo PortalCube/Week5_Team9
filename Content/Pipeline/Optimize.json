@@ -1,0 +1,21 @@
+{
+    "Version": 1,
+    "Name": "Optimize",
+    "AssetType": "Pipeline",
+    "VertexShaderFilePath": "Shader/OptimizeVS.cso",
+    "PixelShaderFilePath": "Shader/OptimizePS.cso",
+    "Rasterizer": {
+        "FillMode": "Solid",
+        "CullMode": "Back",
+        "FrontFaceMode": "Clockwise",
+        "Multisample": false,
+        "AntialiasedLine": false
+    },
+    "Blend": { "BlendMode": "Translucent" },
+    "DepthStencil": {
+        "DepthEnable": true,
+        "StencilEnable": true,
+        "DepthWriteMode": "Enable"
+    },
+    "Instancing": false
+}

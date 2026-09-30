@@ -24,6 +24,8 @@ namespace Globals
 	inline uint32 ResizeWidth = 0u;
 	inline uint32 ResizeHeight = 0u;
 
+	inline bool bEnableRenderSort = true;
+	inline bool bEnableBatchTransform = true;
 	inline bool bSortTest = false;
 	inline bool bUseFrameResources = true;
 
