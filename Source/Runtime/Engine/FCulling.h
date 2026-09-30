@@ -17,7 +17,7 @@ inline FAxisAlignedBoundingBox MakeAlwaysVisibleCullData()
 namespace FrustumUtils
 {
 	// 법선의 각 성분을 절댓값으로. r = |n|·e 계산용
-	FVector AbsVector(const FVector& V)
+	inline FVector AbsVector(const FVector& V)
 	{
 		return FVector{ std::fabs(V.X), std::fabs(V.Y), std::fabs(V.Z) };
 	}
@@ -26,7 +26,7 @@ namespace FrustumUtils
 	//   CenterDist : 상자 중심의 부호 있는 거리 = n·c + D
 	//   Radius     : 중심에서 상자 안의 점으로 이동할 때 n·P가 늘어날 수 있는 최대량 = |n|·e
 	//   상자에서 가장 안쪽인 점의 거리 = CenterDist + Radius  →  이것도 음수면 전부 바깥
-	bool IsOutsidePlane(const FPlane& Plane, const FVector& AbsNormal, const FAxisAlignedBoundingBox& Box)
+	inline bool IsOutsidePlane(const FPlane& Plane, const FVector& AbsNormal, const FAxisAlignedBoundingBox& Box)
 	{
 		const float CenterDist = Plane.Distance(Box.Center);
 		const float Radius = AbsNormal.Dot(Box.Extent);
@@ -34,7 +34,7 @@ namespace FrustumUtils
 	}
 
 	// 6개 평면 중 하나라도 완전히 바깥이면 컬링. 걸치면 가시(보수적)
-	bool IsVisible(const FFrustum& Frustum, const FVector(&AbsNormals)[FFrustum::PlaneCount], const FAxisAlignedBoundingBox& Box)
+	inline bool IsVisible(const FFrustum& Frustum, const FVector(&AbsNormals)[FFrustum::PlaneCount], const FAxisAlignedBoundingBox& Box)
 	{
 		for (int32 p = 0; p < FFrustum::PlaneCount; ++p)
 		{

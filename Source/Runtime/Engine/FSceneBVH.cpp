@@ -183,9 +183,39 @@ bool FSceneBVH::ShouldRebuild() const
     return false;
 }
 
-bool FSceneBVH::QueryFrustum(const FFrustum & Frustum, float MinScreenPixels, TArray<UPrimitiveComponent*>&OutVisible) const
+bool FSceneBVH::QueryFrustum(const FFrustum & Frustum, float MinScreenPixels, TArray<UPrimitiveComponent*>& OutVisible) const
 {
+    OutVisible.clear();
 
+    FVector AbsNormals[FFrustum::PlaneCount];
+
+    // |n|은 평면마다 고정이므로 오브젝트 루프 밖에서 한 번만 계산
+    for (int32 p = 0; p < FFrustum::PlaneCount; ++p)
+    {
+        AbsNormals[p] = FrustumUtils::AbsVector(Frustum.Planes[p].Normal);
+    }
+
+    if(!Nodes.empty())
+    {
+        TraverseFrustum(0, Frustum, AbsNormals, OutVisible);
+    }
+
+    for(UPrimitiveComponent* C : PendingObjects)
+    {
+        if (!C) { continue; }
+
+        const FAxisAlignedBoundingBox Local = C->GetLocalBounds();
+        if (!Local.IsValid()) { continue; }
+
+        const FAxisAlignedBoundingBox World(Local, C->GetGlobalTransformMatrix());
+
+        if (FrustumUtils::IsVisible(Frustum, AbsNormals, World))
+        {
+            OutVisible.push_back(C);
+        }
+    }
+
+    return !OutVisible.empty();
 }
 
 bool FSceneBVH::QueryRay(const FRay &Ray, UPrimitiveComponent*& OutHit, FVector &OutImpact) const
@@ -265,19 +295,28 @@ void FSceneBVH::TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPr
     else if (bR) { if (tR < Closest) { TraverseRay(R, Ray, Closest, OutHit, OutImpact); } }
 }
 
-void FSceneBVH::TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const TArray<FAxisAlignedBoundingBox>& CullDataList, const FVector(&AbsNormals)[FFrustum::PlaneCount], TArray<UPrimitiveComponent*>& OutVisible) const
+void FSceneBVH::TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const FVector(&AbsNormals)[FFrustum::PlaneCount], TArray<UPrimitiveComponent*>& OutVisible) const
 {
 	const FSceneBVHNode& N = Nodes[NodeIdx];
 
 	if (!N.Bounds.IsValid()) { return; }
 
+    if (!FrustumUtils::IsVisible(Frustum, AbsNormals, N.Bounds))
+    {
+        return;
+    }
+
     if(N.bLeafNode)
     {
         for (uint32 i = N.ObjStart; i < N.ObjStart + N.ObjCount; ++i)
         {
+			UPrimitiveComponent* C = Objects[i];
             if (!Objects[i]) { continue; }
 
-            FrustumUtils::IsVisible(Frustum, AbsNormals, CullDataList[i]);
+            if (FrustumUtils::IsVisible(Frustum, AbsNormals, ObjectBounds[i]))
+            {
+				OutVisible.push_back(Objects[i]);
+            }
         }
         return;
     }
@@ -285,25 +324,9 @@ void FSceneBVH::TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const T
     const uint32 L = N.Left;
     const uint32 R = N.Left + 1;
 
-    float tL = 0.0f, tR = 0.0f;
-    const bool bL = Nodes[L].Bounds.IsValid()
-        && FRayCastingManager::RayIntersectsAABB(Ray, Nodes[L].Bounds, tL);
-    const bool bR = Nodes[R].Bounds.IsValid()
-        && FRayCastingManager::RayIntersectsAABB(Ray, Nodes[R].Bounds, tR);
 
-    if (bL && bR)
-    {
-        uint32 Near = L, Far = R;
-        float  tFar = tR;
-        if (tR < tL) { Near = R; Far = L; tFar = tL; }
-
-        TraverseFrustum(Near, Frustum, CullDataList, AbsNormals, OutVisible);
-
-        if (tFar < Closest) { TraverseFrustum(Near, Frustum, CullDataList, AbsNormals, OutVisible); }
-    }
-
-    else if (bL) { if (tL < Closest) { TraverseFrustum(L, Frustum, CullDataList, AbsNormals, OutVisible); } }
-    else if (bR) { if (tR < Closest) { TraverseFrustum(R, Frustum, CullDataList, AbsNormals, OutVisible); } }
+	TraverseFrustum(L, Frustum, AbsNormals, OutVisible);
+	TraverseFrustum(R, Frustum, AbsNormals, OutVisible);
 }
 
 //AABB -> 뮐러 트럼보어

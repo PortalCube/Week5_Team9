@@ -120,14 +120,16 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     //    }
     //}
 
-    const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
+	const TArray<UPrimitiveComponent*>& TargetPrimitives = bCullResultValid ? VisiblePrimitives : Scene.GetRenderComponents();
+
+    //const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
 
     std::fill(std::begin(Globals::LODDrawCounts), std::end(Globals::LODDrawCounts), 0u);
 
     //assert(!bCullResultValid || VisibleFlags.size() == Primitives.size());
 
     //컬링 결과 인덱스를 맞추기 위해 인덱스 for문으로 변경
-    for (size_t i = 0; i < Primitives.size(); i++)
+/*    for (size_t i = 0; i < Primitives.size(); i++)
     {
         UPrimitiveComponent* PrimitiveComponent = Primitives[i];
         if (!PrimitiveComponent) continue;
@@ -158,6 +160,74 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         }
 
 		int32 Index = PrimitiveComponent->GetBatchIndex();
+
+        if (Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
+        {
+            DrawCommand.Constants.World = SceneTransforms.WorldMatrices[Index];
+        }
+        else
+        {
+            const FMatrix World = PrimitiveComponent->GetRenderMatrix(View.Camera);
+            DrawCommand.Constants.World = World;
+        }
+        DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.0f };
+        DrawCommand.Constants.DisableShading = View.ViewMode == EViewModeIndex::VMI_Unlit ? 1.0f : 0.0f;
+
+        if (DrawCommand.Mesh)
+        {
+            const uint32 DebugLOD = std::min(DrawCommand.LODIndex, Globals::MaxDebugLODCount - 1);
+            ++Globals::LODDrawCounts[DebugLOD];
+
+            if (Globals::bShowLODColor)
+            {
+                // 언리얼의 LOD Coloration과 같은 순서: 흰색, 빨강, 초록, 파랑
+                static const FVector4 LODColors[Globals::MaxDebugLODCount]
+                {
+                    { 1.0f, 1.0f, 1.0f, 0.8f },
+                    { 1.0f, 0.2f, 0.2f, 0.8f },
+                    { 0.2f, 1.0f, 0.2f, 0.8f },
+                    { 0.2f, 0.4f, 1.0f, 0.8f },
+                };
+                DrawCommand.Constants.Color = LODColors[DebugLOD];
+            }
+        }
+
+        if (bSelected && DrawCommand.Constants.Color.W > 0.0f)
+        {
+            DrawCommand.Constants.Color = DrawCommand.Constants.Color * 0.7f + FVector4{ 0.3f, 0.3f, 0.3f, 0.0f };
+        }
+        else if (bSelected)
+        {
+            DrawCommand.Constants.Color = { 1.0f, 1.0f, 1.0f, 0.5f };
+        }
+        RenderQueue.Push(std::move(DrawCommand));
+    }*/
+
+    for(UPrimitiveComponent* PrimitiveComponent : TargetPrimitives)
+    {
+        if (!PrimitiveComponent) continue;
+
+        if((static_cast<uint64>(View.ShowFlags) & static_cast<uint64>(PrimitiveComponent->GetShowFlag())) == 0)
+        {
+            continue;
+        }
+
+        bool bSelected = false;
+        if (PrimitiveComponent->GetActorOwner() && PrimitiveComponent->GetActorOwner() == SelectedActor)
+        {
+            bSelected = true;
+        }
+
+        FDrawCommand DrawCommand = GetDrawCommand(*PrimitiveComponent, View.Camera);
+
+        // 인스턴싱 및 텍스트는 인스턴스 배열을 사용하므로 바로 푸시
+        if (DrawCommand.Type == ERenderType::Text || DrawCommand.Type == ERenderType::Instancing)
+        {
+            RenderQueue.Push(std::move(DrawCommand));
+            continue;
+        }
+
+        int32 Index = PrimitiveComponent->GetBatchIndex();
 
         if (Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
         {
@@ -531,7 +601,9 @@ void FRenderView::CullScene(const FSceneView& View, const UScene& Scene)
 
     // 매 프레임 그 프레임의 Frustum으로 전체 판정 (이전 결과 재사용 없음)
     const FFrustum Frustum = GetCullFrustum(View);
-    const uint32 VisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
+    //const uint32 VisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
+
+	Scene.GetSceneBVH().QueryFrustum(Frustum, 0.0f, VisiblePrimitives);
 
     //Culling 결과를 카운트
     //...
