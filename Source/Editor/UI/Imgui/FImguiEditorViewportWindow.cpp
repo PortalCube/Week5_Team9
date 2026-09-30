@@ -272,6 +272,7 @@ void FImguiEditorViewportWindow::UpdateCamera(FEditor &Editor, FEditorViewportCl
 {
     if (!Input.bFocused)
     {
+        CameraController.ResetVelocity();
         return;
     }
 
@@ -297,6 +298,10 @@ void FImguiEditorViewportWindow::UpdateCamera(FEditor &Editor, FEditorViewportCl
     {
         CameraController.UpdateKeyInput(Camera, DeltaTime);
         return;
+    }
+    else
+    {
+        CameraController.ResetVelocity();
     }
 
 

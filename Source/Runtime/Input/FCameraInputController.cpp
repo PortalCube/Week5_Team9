@@ -115,3 +115,8 @@ void FCameraInputController::UpdateMouseInput_ORTHOGRAPHIC(FCamera& Camera) cons
 		Camera.SetPosition(Camera.GetPosition() + (Up * Delta.Y - Right * Delta.X) * PanSpeed);
 	}
 }
+
+void FCameraInputController::ResetVelocity()
+{
+	Velocity = FVector{};
+}
