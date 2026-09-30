@@ -25,6 +25,7 @@
 #include "Editor/Core/FEditor.h"
 #include <Editor/UI/Imgui/FImguiStatsWindow.h>
 #include <Runtime/CoreUObject/FStatsManager.h>
+#include "Runtime/Core/Globals.h"
 
 
 void FEditorApplication::Initialize_ImguiWin32DX11(
@@ -206,63 +207,9 @@ void FEditorApplication::ExecuteCommand(const char* Command) {
     else if (lowerCmd.compare("cull") == 0)
     {
         //컬링 토글
-        RenderView->SetCullingEnabled(!RenderView->GetCullingSettings().bEnabled);
-        UE_LOG("Culling : %s", RenderView->GetCullingSettings().bEnabled ? "ON" : "OFF");
-    }
-
-    else if (lowerCmd.compare("cull on") == 0)
-    {
-        //컬링 On
-        RenderView->SetCullingEnabled(true);
-        UE_LOG("Culling : %s", RenderView->GetCullingSettings().bEnabled ? "ON" : "OFF");
-    }
-
-    else if (lowerCmd.compare("cull off") == 0)
-    {
-        //컬링 Off
-        RenderView->SetCullingEnabled(false);
-        UE_LOG("Culling : %s", RenderView->GetCullingSettings().bEnabled ? "ON" : "OFF");
-    }
-
-    else if (lowerCmd.compare("cull occlusion?") == 0)
-    {
-        UE_LOG("Occlusion Culling : %s", RenderView->IsOcclusionEnabled() ? "ON" : "OFF");
-    }
-
-    else if (lowerCmd.compare("cull occlusion") == 0)
-    {
-        RenderView->SetOcclusionEnabled(!RenderView->IsOcclusionEnabled());
-        UE_LOG("Occlusion Culling : %s", RenderView->IsOcclusionEnabled() ? "ON" : "OFF");
-    }
-
-    else if (lowerCmd.compare("occlusion oracle") == 0)
-    {
-        RenderView->RequestOcclusionOracle();
-        UE_LOG("다음 프레임에서 오클루전 오라클을 측정합니다 (한 프레임 멈춤)");
-    }
-
-    else if (sscanf_s(lowerCmd.c_str(), "occlusion budget %u", &NumberArg) == 1)
-    {
-        RenderView->GetOcclusionCuller().OccluderBudget = NumberArg;
-        UE_LOG("Occluder Budget : %u", NumberArg);
-    }
-
-    else if (sscanf_s(lowerCmd.c_str(), "occlusion res %u", &NumberArg) == 1)
-    {
-        RenderView->GetOcclusionCuller().BufferWidth = static_cast<int32>(std::max(16u, NumberArg));
-        UE_LOG("Occlusion Buffer Width : %u", NumberArg);
-    }
-
-    else if (lowerCmd.compare("cull include occluder") == 0)
-    {
-        RenderView->GetOcclusionCuller().bIncludeOccluderCull = !RenderView->GetOcclusionCuller().bIncludeOccluderCull;
-        UE_LOG("bIncludeOccluderCull : %s", RenderView->GetOcclusionCuller().bIncludeOccluderCull ? "ON" : "OFF");
-    }
-
-    else if (lowerCmd.compare("occlusion dump") == 0)
-    {
-        RenderView->GetOcclusionCuller().bDumpNextFrame = true;
-    }
+        Globals::bEnableFrustumCulling = !Globals::bEnableFrustumCulling;
+        UE_LOG("Culling : %s", Globals::bEnableFrustumCulling ? "ON" : "OFF");
+    }    
 
     else {
         UE_LOG("Unknown command: '%s'\n", Command);

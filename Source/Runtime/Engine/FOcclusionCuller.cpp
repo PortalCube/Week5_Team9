@@ -12,7 +12,7 @@
 #include "Runtime/CoreUObject/FStatsManager.h"
 #include "Runtime/Rendering/FMesh.h"
 #include "Runtime/Asset/UStaticMesh.h"
-#include "Runtime/Engine/FSceneTransforms.h"
+//#include "Runtime/Engine/FSceneTransforms.h"
 
 namespace
 {
@@ -698,7 +698,8 @@ uint32 FOcclusionCuller::Cull(const FSceneView& View, const UScene& Scene,
 	{
 		SCOPE_CYCLE_COUNTER("OcclusionRaster");
 
-		const FSceneTransforms& Transforms = Scene.GetSceneTransforms();
+		//const FSceneTransforms& Transforms = Scene.GetSceneTransforms();
+
 
 		for (size_t k = 0; k < OccluderCount; ++k)
 		{
@@ -711,7 +712,8 @@ uint32 FOcclusionCuller::Cull(const FSceneView& View, const UScene& Scene,
 
 			// 월드 행렬은 UpdateDirtyBounds에서 이미 최신 (BatchIndex == SceneIndex)
 			// GetGlobalTransform() 재계산이 필요 없다
-			const FMatrix& World = Transforms.WorldMatrices[Index];
+			//const FMatrix& World = Transforms.WorldMatrices[Index];
+			const FMatrix& World = Prim->GetGlobalTransformMatrix();
 			Buffer.RasterizeBox(World * ClipVP, Shape.Center, Shape.Extent);
 		}
 

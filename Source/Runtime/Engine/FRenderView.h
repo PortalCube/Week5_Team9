@@ -20,8 +20,7 @@ class UScene;
 // 커맨드로 제어하는 컬링 옵션
 struct FCullingSettings
 {
-	bool bEnabled = true;   // cull on/off
-	bool bFreeze = false;   // cull freeze (Frustum 고정)
+	//bool bEnabled = true;   // cull on/off
 };
 
 class FRenderView final {
@@ -77,13 +76,12 @@ public:
 	const FCullingSettings& GetCullingSettings() const;
 
 	void SetCullingEnabled(bool pCullingEnable);
-	void SetCullingFreeze(bool pCullingFreeze);
 
 	//렌더 전에 컬링 판정
 	void CullScene(const FSceneView& View, const UScene& Scene);
 
-	void SetOcclusionEnabled(bool bEnable) { bOcclusionEnabled = bEnable; }
-	bool IsOcclusionEnabled() const { return bOcclusionEnabled; }
+	//void SetOcclusionEnabled(bool bEnable) { bOcclusionEnabled = bEnable; }
+	//bool IsOcclusionEnabled() const { return bOcclusionEnabled; }
 	FOcclusionCuller& GetOcclusionCuller() { return OcclusionCuller; }
 
 	//측정 : 다음에 렌더되는 뷰 하나에서 오라클을 실행(한 프레임 멈춤)
@@ -114,7 +112,7 @@ private:
 
 	//Occlusion Culling
 	FOcclusionCuller OcclusionCuller;
-	bool bOcclusionEnabled = false;
+	//bool bOcclusionEnabled = false;
 
 	// [SceneIndex] 오클루전으로 지웠으면 1
 	TArray<uint8> OccludedFlags;

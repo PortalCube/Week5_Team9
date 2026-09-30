@@ -473,7 +473,7 @@ void FImguiStatsWindow::DrawUnits()
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
         "Prims", "%.0f", GetStat(FName("Prims")), Color, TransColor);
 
-    DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
+    /*DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
             "Frustum", "%.2f ms", GetStat(FName("Frustum")), Color, TransColor);
 
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
@@ -496,7 +496,7 @@ void FImguiStatsWindow::DrawUnits()
             "Occluded", "%.0f", GetStat(FName("Occluded")), Color, TransColor);
 
     DrawRow(DrawList, Pos, Y, Width, RowHeight, ValueOffsetX,
-            "OccSkip", "%.0f", GetStat(FName("OcclusionSkipped")), Color, TransColor);
+            "OccSkip", "%.0f", GetStat(FName("OcclusionSkipped")), Color, TransColor);*/
 }
 
 void FImguiStatsWindow::DrawRow(ImDrawList* DrawList,

@@ -63,6 +63,9 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     ImGui::Separator();
     LODSetting(Editor);
 
+    ImGui::Separator();
+    CullingSetting(Editor);
+
     ImGui::End();
 }
 
@@ -258,6 +261,42 @@ void FImguiControlPanelWindow::LODSetting(FEditor& Editor)
     ImGui::Text("LOD0 %u | LOD1 %u | LOD2 %u | LOD3 %u",
         Globals::LODDrawCounts[0], Globals::LODDrawCounts[1],
         Globals::LODDrawCounts[2], Globals::LODDrawCounts[3]);
+}
+
+void FImguiControlPanelWindow::CullingSetting(FEditor& Editor)
+{
+    ImGui::Text("Culling");
+    ImGui::Checkbox("Frustum Culling", &Globals::bEnableFrustumCulling);
+    //ImGui::Text("Frustum 통과 %u", Globals::FrustumVisibleCount);
+
+    ImGui::Checkbox("Occlusion Culling (CPU)", &Globals::bEnableOcclusionCulling);
+
+    // 오클루전이 꺼져 있으면 세부 옵션을 비활성화 표시
+    ImGui::BeginDisabled(!Globals::bEnableOcclusionCulling);
+    {
+        ImGui::SetNextItemWidth(180.0f);
+        ImGui::SliderInt("Occluder 수", &Globals::OccluderBudget, 0, 4096, "%d", ImGuiSliderFlags_Logarithmic);
+
+        // 깊이 버퍼 해상도는 정해진 값 중에서 고른다
+        static const int32 Widths[] = { 256, 512, 1024, 2048 };
+        static const char* WidthLabels[] = { "256", "512", "1024", "2048" };
+        int32 Current = 1;
+        for (int32 i = 0; i < 4; ++i) { if (Widths[i] == Globals::OcclusionBufferWidth) { Current = i; } }
+        ImGui::SetNextItemWidth(180.0f);
+        if (ImGui::Combo("버퍼 가로 해상도", &Current, WidthLabels, 4))
+        {
+            Globals::OcclusionBufferWidth = Widths[Current];
+        }
+
+        ImGui::Checkbox("Occluder 자신도 판정", &Globals::bIncludeOccluderCull);
+
+        if (ImGui::Button("오라클 측정 (1프레임 멈춤)")) { Globals::bRequestOcclusionOracle = true; }
+        ImGui::SameLine();
+        if (ImGui::Button("깊이 버퍼 BMP 저장")) { Globals::bRequestOcclusionDump = true; }
+
+        ImGui::Text("Occlusion 컬링 %u", Globals::OccludedCount);
+    }
+    ImGui::EndDisabled();
 }
 
 void FImguiControlPanelWindow::ActorSpawnSetting(FEditor& Editor)

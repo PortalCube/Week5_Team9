@@ -523,45 +523,64 @@ const FCullingSettings& FRenderView::GetCullingSettings() const
 
 void FRenderView::SetCullingEnabled(bool pCullingEnable)
 {
-    CullingSettings.bEnabled = pCullingEnable;
-}
-
-void FRenderView::SetCullingFreeze(bool pCullingFreeze)
-{
-    CullingSettings.bFreeze = pCullingFreeze;
+    Globals::bEnableFrustumCulling = pCullingEnable;
 }
 
 void FRenderView::CullScene(const FSceneView& View, const UScene& Scene)
 {
     const TArray<FAxisAlignedBoundingBox>& CullDataList = Scene.GetCullDataList();
     
-    //와이어 프레임일때는 뒤가 비쳐 보이니 오클루전을 쓰지 않도록 한다.
-    const bool bUseOcclusion = bOcclusionEnabled && View.ViewMode != EViewModeIndex::VMI_Wireframe;
+    const bool bUseFrustum = Globals::bEnableFrustumCulling;
+
+    //와이어 프레임일때는 뒤가 비쳐 보이니 오클루전을 쓰지 않도록 한다.    
+    const bool bUseOcclusion = Globals::bEnableOcclusionCulling
+        && View.ViewMode != EViewModeIndex::VMI_Wireframe;
+
+    if (Globals::bRequestOcclusionOracle)
+    {
+        bOracleRequested = true;
+        Globals::bRequestOcclusionOracle = false;   // 다음에 렌더되는 뷰 하나만
+    }
 
     OccludedFlags.clear();
-    bCullResultValid = CullingSettings.bEnabled || bUseOcclusion;
+    Globals::OccludedCount = 0;
+    bCullResultValid = bUseFrustum || bUseOcclusion;
 
     //컬링하지 않는다면 종료
-    if (!bCullResultValid) return;
+    if (!bCullResultValid)
+    {
+        Globals::FrustumVisibleCount = static_cast<uint32>(CullDataList.size());
+        return;
+    }
 
-    if (CullingSettings.bEnabled)
+    if (bUseFrustum)
     {
         SCOPE_CYCLE_COUNTER("Frustum");
 		// 매 프레임 그 프레임의 Frustum으로 전체 판정 (이전 결과 재사용 없음)
 		const FFrustum Frustum = GetCullFrustum(View);
-		Culler->Cull(Frustum, CullDataList, VisibleFlags);
-		//const uint32 VisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
+        Globals::FrustumVisibleCount = Culler->Cull(Frustum, CullDataList, VisibleFlags);
     }
     else
     {
         //Frustum 없이 오클루전만
         VisibleFlags.assign(CullDataList.size(), 1);
+        Globals::FrustumVisibleCount = static_cast<uint32>(CullDataList.size());
     }
 
     if (bUseOcclusion)
     {
+        // ImGui 값을 컬러에 반영
+        OcclusionCuller.OccluderBudget = static_cast<uint32>(std::max(0, Globals::OccluderBudget));
+        OcclusionCuller.BufferWidth = std::max(16, Globals::OcclusionBufferWidth);
+        OcclusionCuller.bIncludeOccluderCull = Globals::bIncludeOccluderCull;
+        if (Globals::bRequestOcclusionDump)
+        {
+            OcclusionCuller.bDumpNextFrame = true;
+            Globals::bRequestOcclusionDump = false;
+        }
+
         SCOPE_CYCLE_COUNTER("Occlusion");
-        OcclusionCuller.Cull(View, Scene, VisibleFlags, OccludedFlags);
+        Globals::OccludedCount = OcclusionCuller.Cull(View, Scene, VisibleFlags, OccludedFlags);
     }
 }
 

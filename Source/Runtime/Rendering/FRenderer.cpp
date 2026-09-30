@@ -921,7 +921,7 @@ void FRenderer::QueryVisibility(const TArray<const FDrawCommand*>& Commands, TAr
     }
 
     // 상태를 직접 바인딩했으므로 렌더 상태 캐시를 무효화
-    ClearLastRenderStateKey();
+    ClearLastRenderState();
 }
 
 bool FRenderer::InitializeConstantBuffers() {
@@ -1307,7 +1307,7 @@ void FRenderer::DrawUploadedCommand(const FDrawCommand& Command, bool bApplyView
         );
 
         if (Mesh.HasIndices())
-        {
+        {            
             Context->DrawIndexed(
                 Mesh.IndexCount,
                 0,
