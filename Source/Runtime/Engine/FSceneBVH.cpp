@@ -183,9 +183,10 @@ bool FSceneBVH::ShouldRebuild() const
     return false;
 }
 
-//void FSceneBVH::QueryFrustum(const FFrustum & Frustum, float MinScreenPixels, TArray<UPrimitiveComponent*>&OutVisible) const
-//{
-//}
+bool FSceneBVH::QueryFrustum(const FFrustum & Frustum, float MinScreenPixels, TArray<UPrimitiveComponent*>&OutVisible) const
+{
+
+}
 
 bool FSceneBVH::QueryRay(const FRay &Ray, UPrimitiveComponent*& OutHit, FVector &OutImpact) const
 {
@@ -262,6 +263,47 @@ void FSceneBVH::TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPr
     //왼쪽 혹은 오른쪽만 맞았으면 안맞은 서브트리는 버린다.
     else if (bL) { if (tL < Closest) { TraverseRay(L, Ray, Closest, OutHit, OutImpact); } }
     else if (bR) { if (tR < Closest) { TraverseRay(R, Ray, Closest, OutHit, OutImpact); } }
+}
+
+void FSceneBVH::TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const TArray<FAxisAlignedBoundingBox>& CullDataList, const FVector(&AbsNormals)[FFrustum::PlaneCount], TArray<UPrimitiveComponent*>& OutVisible) const
+{
+	const FSceneBVHNode& N = Nodes[NodeIdx];
+
+	if (!N.Bounds.IsValid()) { return; }
+
+    if(N.bLeafNode)
+    {
+        for (uint32 i = N.ObjStart; i < N.ObjStart + N.ObjCount; ++i)
+        {
+            if (!Objects[i]) { continue; }
+
+            FrustumUtils::IsVisible(Frustum, AbsNormals, CullDataList[i]);
+        }
+        return;
+    }
+
+    const uint32 L = N.Left;
+    const uint32 R = N.Left + 1;
+
+    float tL = 0.0f, tR = 0.0f;
+    const bool bL = Nodes[L].Bounds.IsValid()
+        && FRayCastingManager::RayIntersectsAABB(Ray, Nodes[L].Bounds, tL);
+    const bool bR = Nodes[R].Bounds.IsValid()
+        && FRayCastingManager::RayIntersectsAABB(Ray, Nodes[R].Bounds, tR);
+
+    if (bL && bR)
+    {
+        uint32 Near = L, Far = R;
+        float  tFar = tR;
+        if (tR < tL) { Near = R; Far = L; tFar = tL; }
+
+        TraverseFrustum(Near, Frustum, CullDataList, AbsNormals, OutVisible);
+
+        if (tFar < Closest) { TraverseFrustum(Near, Frustum, CullDataList, AbsNormals, OutVisible); }
+    }
+
+    else if (bL) { if (tL < Closest) { TraverseFrustum(L, Frustum, CullDataList, AbsNormals, OutVisible); } }
+    else if (bR) { if (tR < Closest) { TraverseFrustum(R, Frustum, CullDataList, AbsNormals, OutVisible); } }
 }
 
 //AABB -> 뮐러 트럼보어
