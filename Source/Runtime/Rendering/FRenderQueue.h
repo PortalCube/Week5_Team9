@@ -16,7 +16,7 @@ struct FDrawCommand
 	std::span<const FInstanceData> Instances;
     float Depth = 0.0f;
     int32 DepthBucket = 0;
-    uint64 RenderStateKey = 0;
+    uint64 SortKey = 0;
     uint32 LODIndex = 0;
 };
 

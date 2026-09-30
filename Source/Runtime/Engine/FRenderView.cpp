@@ -78,7 +78,7 @@ namespace
                 TextureId = static_cast<uint64>(PrimaryMaterial.Texture->GetID().GetHash());
             }
 
-            Command.RenderStateKey =
+            Command.SortKey =
                 ((PipelineId & 0xFFFFull) << 48) |
                 ((MaterialId & 0xFFFFull) << 32) |
                 ((TextureId & 0xFFFFull) << 16) |
