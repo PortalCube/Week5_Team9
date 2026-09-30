@@ -129,9 +129,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     //컬링 결과 인덱스를 맞추기 위해 인덱스 for문으로 변경
     for (size_t i = 0; i < Primitives.size(); i++)
     {
-        UPrimitiveComponent* PrimitiveComponent = Primitives[i];
-        if (!PrimitiveComponent) continue;
-
         //컬링을 사용중인데 컬링 되어 버렸다면
         const bool bCulled = bCullResultValid && !VisibleFlags[i];
         const bool bOccluded = i < OccludedFlags.size() && OccludedFlags[i];
@@ -142,6 +139,11 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
         //컬링 되었는데 오라클을 사용하지 않는다면 조기 종료. 오라클을 사용한다면 진행한다.
         if (bCulled && !bCollectForOracleOnly) continue;
+
+
+        UPrimitiveComponent* PrimitiveComponent = Primitives[i];
+        if (!PrimitiveComponent) continue;
+
 
         //bCullResultValid가 false라면 통과
         // bCullResultValid가 true라면 컬링 결과 통과시에만 수집
@@ -247,7 +249,6 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
 
     //컬링 측정
     {
-        SCOPE_CYCLE_COUNTER("Cull");
         CullScene(View, Scene);
     }
 
@@ -564,6 +565,7 @@ void FRenderView::CullScene(const FSceneView& View, const UScene& Scene)
 
     if (CullingSettings.bEnabled)
     {
+        SCOPE_CYCLE_COUNTER("Frustum");
 		// 매 프레임 그 프레임의 Frustum으로 전체 판정 (이전 결과 재사용 없음)
 		const FFrustum Frustum = GetCullFrustum(View);
 		Culler->Cull(Frustum, CullDataList, VisibleFlags);

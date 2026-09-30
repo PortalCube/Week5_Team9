@@ -34,6 +34,6 @@ public:
   FVector2 GetUVScale() const;
   FVector2 GetUVOffset() const;
 
-
+  virtual bool IsOcclusionTarget() const override { return false; }
 };
 

@@ -130,3 +130,8 @@ void UPrimitiveComponent::UpdateMaterialCache()
 		CachedMaterials.push_back(Material);
 	}
 }
+
+bool UPrimitiveComponent::IsOcclusionTarget() const
+{
+    return RenderData.Mesh != nullptr && RenderData.Mesh->Get() != nullptr;
+}

@@ -111,6 +111,9 @@ public:
     FSceneTransforms& GetSceneTransforms() { return SceneTransforms; }
     const FSceneTransforms& GetSceneTransforms() const { return SceneTransforms; }
 
+    //캐시해두는 오클루전 대상 Getter
+    [[nodiscard]] const TArray<uint8>& GetOcclusionTargetFlags() const { return OcclusionTargetFlags; }
+
 private:
   TArray<AActor*> Actors;                        // 액터 목록 (Update용)
   TArray<UPrimitiveComponent*> RenderComponents; // 렌더링큐 (Draw용)
@@ -128,4 +131,7 @@ private:
   // 이번 프레임 재계산 대상
   TArray<UPrimitiveComponent*> DirtyBoundsList;
   FSceneTransforms SceneTransforms;
+
+  //캐시해둘 오클루전 대상
+  TArray<uint8> OcclusionTargetFlags;
 };
