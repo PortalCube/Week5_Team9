@@ -34,6 +34,22 @@ struct FObjectConstants {
 };
 static_assert(sizeof(FObjectConstants) % 16 == 0);
 
+static constexpr uint32 ConstantRangeAlignment = 256u;
+
+static constexpr uint32 AlignConstantRange(uint32 Size)
+{
+	return (Size + ConstantRangeAlignment - 1u)
+		& ~(ConstantRangeAlignment - 1u);
+}
+
+static constexpr uint32 ObjectConstantStride = AlignConstantRange(sizeof(FObjectConstants));
+
+static_assert(ObjectConstantStride % 256u == 0);
+static_assert(sizeof(FObjectConstants) <= ObjectConstantStride);
+
+static constexpr uint32 MaxObjectDrawCount = 16384u;
+
+static constexpr uint32 ObjectConstantUploadBufferSize = ObjectConstantStride * MaxObjectDrawCount;
 
 // Register = b3
 //struct FShaderConstants {

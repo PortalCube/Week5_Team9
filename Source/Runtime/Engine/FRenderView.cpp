@@ -454,10 +454,9 @@ void FRenderView::FlushQueue(const FCamera& Camera)
     auto& ResLib = FRenderResourceLibrary::Get();
     
     // Primitive 큐 처리
-    for (const FDrawCommand& Data : RenderQueue.GetPrimRenderQ())
-    {
-        Renderer.Draw(Data);
-    }
+    Renderer.DrawPrimitiveBatch(
+        RenderQueue.GetPrimRenderQ()
+    );
 
     // Instancing 큐
     if (!RenderQueue.IsInstancingRQEmpty())
