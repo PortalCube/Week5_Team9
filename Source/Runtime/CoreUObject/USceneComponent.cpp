@@ -159,6 +159,18 @@ const FTransform& USceneComponent::GetGlobalTransform() const //나중에 부모
     return CachedGlobal;
 }
 
+const FMatrix* USceneComponent::GetGlobalInverseMatrix() const
+{
+    const FTransform& Global = GetGlobalTransform();
+    if (CachedInverseVersion != GlobalVersion)
+    {
+        // 실패하면 Inverse는 CachedGlobalInverse를 건드리지 않으므로 성공 여부를 따로 기록한다
+        bCachedInverseValid = Global.GetMatrix().Inverse(CachedGlobalInverse);
+        CachedInverseVersion = GlobalVersion;
+    }
+    return bCachedInverseValid ? &CachedGlobalInverse : nullptr;
+}
+
 void USceneComponent::MarkActorTransformDirty()
 {
     bGlobalDirty = true;
