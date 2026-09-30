@@ -11,47 +11,10 @@
 #include "Runtime/Actors/AActor.h"
 #include "ThirdParty/Imgui/imgui.h"
 #include "ThirdParty/Imgui/imgui_internal.h"
-#include "Runtime/Engine/FTimeManager.h"
 #include <Runtime/CoreUObject/FStatsManager.h>
-
-namespace
-{
-    // 피킹 성능을 화면 좌측 상단에 항상 표시한다.
-    void DrawPickingStatsOverlay(const FEditor& Editor)
-    {
-        if (Editor.PickingAttempts <= 0) { return; }
-
-        double DeltaTime = FTimeManager::GetDeltaTime();
-
-        const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
-        const int ResolutionX = static_cast<int>(MainViewport->Size.x);
-        const int ResolutionY = static_cast<int>(MainViewport->Size.y);
-
-        const int FPS = DeltaTime > 0.0 ? static_cast<int>(1.0 / DeltaTime) : 0;
-        const double FrameMs = DeltaTime * 1000.0;
-
-        char Buffer[256];
-        snprintf(Buffer, sizeof(Buffer),
-                 "Resolution : %dx%d\nFPS : %d (%.2f ms)\nPicking Time %.4f ms : Num Attempts %d : Accumulated Time %.4f ms",
-                 ResolutionX, ResolutionY, FPS, FrameMs, Editor.LastPickingMs, Editor.PickingAttempts, Editor.AccumulatedPickingMs);
-
-        const ImVec2 Pos(MainViewport->Pos.x + 12.0f, MainViewport->Pos.y + 6.0f);
-        constexpr float FontSize = 26.0f;
-
-        ImDrawList* DrawList = ImGui::GetForegroundDrawList();
-
-        // 배경이 밝아도 읽히도록 그림자를 먼저 깐다
-        DrawList->AddText(ImGui::GetFont(), FontSize, ImVec2(Pos.x + 2.0f, Pos.y + 2.0f),
-                          IM_COL32(0, 0, 0, 220), Buffer);
-        DrawList->AddText(ImGui::GetFont(), FontSize, Pos,
-                          IM_COL32(0, 255, 0, 255), Buffer);
-    }
-}
 
 void FImguiEditorViewportWindow::Process(FEditor& Editor, float DeltaTime)
 {
-    DrawPickingStatsOverlay(Editor);
-
     //화면이 버튼을 눌러 최대일때 처리
     ApplyPendingViewportMaximize(Editor);
 
@@ -309,6 +272,7 @@ void FImguiEditorViewportWindow::UpdateCamera(FEditor &Editor, FEditorViewportCl
 {
     if (!Input.bFocused)
     {
+        CameraController.ResetVelocity();
         return;
     }
 
@@ -334,6 +298,10 @@ void FImguiEditorViewportWindow::UpdateCamera(FEditor &Editor, FEditorViewportCl
     {
         CameraController.UpdateKeyInput(Camera, DeltaTime);
         return;
+    }
+    else
+    {
+        CameraController.ResetVelocity();
     }
 
 

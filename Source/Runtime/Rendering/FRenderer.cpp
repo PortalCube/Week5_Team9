@@ -660,9 +660,11 @@ TSharedPtr<FRenderPipeline> FRenderer::GetPipeline(const FName &Id) const {
   return FRenderResourceLibrary::Get().GetPipeline(Id);
 }
 
-void FRenderer::ClearLastRenderStateKey()
+void FRenderer::ClearLastRenderState()
 {
-    LastRenderStateKey = 0;
+    LastMesh = nullptr;
+    LastMaterial = nullptr;
+    LastRenderPipeline = nullptr;
 }
 
 bool FRenderer::InitializeDeviceAndSwapChain(HWND Window) {
@@ -992,12 +994,12 @@ void FRenderer::Draw(const FDrawCommand &Command, uint32 Slot,
 
           const FMaterial& Mat = (i < Command.Materials.size()) ? Command.Materials[i] : Command.Materials[0];         
 
-          DrawSection(*Command.Mesh, Mat, Command.Constants, Command.RenderStateKey, Section.StartIndex, Section.IndexCount, Slot, bApplyViewMode);
+          DrawSection(*Command.Mesh, Mat, Command.Constants, Section.StartIndex, Section.IndexCount, Slot, bApplyViewMode);
       }
   }
   else
   {
-      Draw(*Command.Mesh, Command.Materials[0], Command.Constants, Command.RenderStateKey, Slot, bApplyViewMode);
+      Draw(*Command.Mesh, Command.Materials[0], Command.Constants, Slot, bApplyViewMode);
   }
 
 }
@@ -1122,17 +1124,8 @@ void FRenderer::BindObjectConstantRange(uint32 Slot, uint32 ByteOffset)
     );
 }
 
-void FRenderer::BindDrawResources(const FMesh& Mesh, const FMaterial& Material, uint64 RenderStateKey, bool bApplyViewMode)
+void FRenderer::BindDrawResources(const FMesh& Mesh, const FMaterial& Material, bool bApplyViewMode)
 {
-    // RenderStateKey가 0이면 캐싱하지 않고 항상 바인딩합니다.
-    if (RenderStateKey != 0 &&
-        LastRenderStateKey == RenderStateKey)
-    {
-        return;
-    }
-
-    LastRenderStateKey = RenderStateKey;
-
     FRenderPipeline* Pipeline = Material.Pipeline;
 
     if (bApplyViewMode &&
@@ -1144,13 +1137,26 @@ void FRenderer::BindDrawResources(const FMesh& Mesh, const FMaterial& Material, 
         Pipeline = WireframePipeline.get();
     }
 
-    if (Pipeline)
+    if (LastRenderPipeline != Pipeline)
     {
-        Pipeline->Bind(*Context.Get());
+        if (Pipeline)
+        {
+            Pipeline->Bind(*Context.Get());
+        }
+        LastRenderPipeline = Pipeline;
     }
 
-    Material.BindResources(*Context.Get());
-    Mesh.BindResources(*Context.Get());
+    if (LastMaterial != &Material)
+    {
+        Material.BindResources(*Context.Get());
+        LastMaterial = &Material;
+    }
+
+    if (LastMesh != &Mesh)
+    {
+        Mesh.BindResources(*Context.Get());
+        LastMesh = &Mesh;
+    }
 }
 
 void FRenderer::DrawUploadedCommand(const FDrawCommand& Command, bool bApplyViewMode)
@@ -1177,7 +1183,6 @@ void FRenderer::DrawUploadedCommand(const FDrawCommand& Command, bool bApplyView
             BindDrawResources(
                 Mesh,
                 Material,
-                Command.RenderStateKey,
                 bApplyViewMode
             );
 
@@ -1201,7 +1206,6 @@ void FRenderer::DrawUploadedCommand(const FDrawCommand& Command, bool bApplyView
         BindDrawResources(
             Mesh,
             Material,
-            Command.RenderStateKey,
             bApplyViewMode
         );
 

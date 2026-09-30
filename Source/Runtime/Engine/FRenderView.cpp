@@ -54,7 +54,6 @@ namespace
         };
 
         const FMaterialInstance& PrimaryMaterial = Data.Materials[0];
-        
 
         if (Globals::bEnableRenderSort)
         {
@@ -63,28 +62,28 @@ namespace
             uint64 TextureId = 0;
             // 같은 애셋이라도 LOD마다 버퍼가 다르므로 LOD 인덱스를 섞는다.
             uint64 MeshId = static_cast<uint64>(Data.Mesh->GetID().GetHash()) + Data.LODIndex;
-            
+
             if (PrimaryMaterial.Pipeline)
             {
                 PipelineId = static_cast<uint64>(PrimaryMaterial.Pipeline->GetID().GetHash());
             }
-            
+
             if (PrimaryMaterial.Material)
             {
                 MaterialId = static_cast<uint64>(PrimaryMaterial.Material->GetID().GetHash());
             }
-            
+
             if (PrimaryMaterial.Texture)
             {
                 TextureId = static_cast<uint64>(PrimaryMaterial.Texture->GetID().GetHash());
             }
-            
-            Command.RenderStateKey =
+
+            Command.SortKey =
                 ((PipelineId & 0xFFFFull) << 48) |
                 ((MaterialId & 0xFFFFull) << 32) |
                 ((TextureId & 0xFFFFull) << 16) |
                 ((MeshId & 0xFFFFull));
-            
+
             // ============================= Depth 정렬 비활성화 =============================
 
             // AABB의 Min X 값을 Depth로 지정
@@ -116,6 +115,7 @@ namespace
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
     const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
+    RenderQueue.Reserve(Primitives.size());
 
     std::fill(std::begin(Globals::LODDrawCounts), std::end(Globals::LODDrawCounts), 0u);
 
@@ -235,7 +235,7 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
     // 기본 씬 오브젝트 패스
     FlushBasePass(View.Camera);
 
-    Renderer.ClearLastRenderStateKey();
+    Renderer.ClearLastRenderState();
 
     // 에디터 라인 패스
     if (EditorCtx.Grid && (View.ShowFlags & static_cast<uint32>(EEngineShowFlags::SF_Grid)) != 0) {
@@ -262,12 +262,12 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
     
     FlushLinePass(View.Camera);
 
-    Renderer.ClearLastRenderStateKey();
+    Renderer.ClearLastRenderState();
 
     // 후처리 외곽선 패스
     RenderPostProcessPass(View.Camera, EditorCtx.SelectedActor);
 
-    Renderer.ClearLastRenderStateKey();
+    Renderer.ClearLastRenderState();
 }
 
 void FRenderView::BeginView(const FSceneView& View)

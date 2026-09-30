@@ -9,6 +9,7 @@ public:
 	void UpdateKeyInput(FCamera& Camera, float DeltaTime);
 	void UpdateMouseInput(FCamera& Camera) const;
 	void UpdateMouseInput_ORTHOGRAPHIC(FCamera& Camera) const;
+	void ResetVelocity();
 
 	float CameraMoveSpeed = 10.0f;
 	float CameraRotateSpeed = 0.5f;

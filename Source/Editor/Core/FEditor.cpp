@@ -40,6 +40,11 @@ FRenderResourceLibrary *FEditor::GetRendererLibrary() {
 }
 
 void FEditor::Process() {
+  if (FInputManager::Get().IsKeyDown(VK_F11))
+  {
+    bZenMode = !bZenMode;
+  }
+
   // 씬의 액터 업데이트
   
     if (FInputManager::Get().IsKeyPressed(VK_DELETE) && SelectedActor)
