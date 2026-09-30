@@ -25,8 +25,11 @@ private:
 	// 로그가 출력되는 스크롤 영역.
 	void ShowLogRegion(bool bCopyToClipboard);
 
-	// 로그 한 줄. 필터와 레벨 토글에 걸리면 아무것도 그리지 않는다.
-	void ShowLogLine(const char* Line) const;
+	// 필터와 레벨 토글을 기준으로 로그 표시 여부를 판정한다.
+	bool ShouldShowLog(const char* Log) const;
+
+	// 한 로그에서 잘라낸 한 줄을 그린다. OriginalLog는 레벨별 색상 판정에 쓴다.
+	void ShowLogLine(const char* LineBegin, const char* LineEnd, const char* OriginalLog) const;
 
 	// 하단 명령어 입력 칸.
 	void ShowCommandLine();
