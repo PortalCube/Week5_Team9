@@ -1,9 +1,48 @@
 #include "FImguiStatsWindow.h"
 #include "FImguiManager.h"
 #include "Runtime/CoreUObject/FStatsManager.h"
-#include "Runtime/Engine/FTimeManager.h"
+
+#include "ThirdParty/Imgui/implot.h"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
+
+namespace
+{
+    constexpr float FPSHistoryDuration = 3.0f;
+    constexpr float FPSSampleInterval = 0.05f;
+    constexpr float FPSSmoothingFactor = 0.15f;
+    constexpr float FPSGraphPaddingRatio = 0.15f;
+    constexpr float StatsPanelWidth = 220.0f;
+    constexpr float StatsGraphHeight = 60.0f;
+    constexpr float StatsRowHeight = 20.0f;
+}
+
+FImguiStatsWindow::ScrollingBuffer::ScrollingBuffer(size_t InMaxSize)
+    : MaxSize(std::max<size_t>(InMaxSize, 1))
+{
+    Data.reserve(MaxSize);
+}
+
+void FImguiStatsWindow::ScrollingBuffer::AddPoint(float X, float Y)
+{
+    if (Data.size() < MaxSize)
+    {
+        Data.emplace_back(X, Y);
+        return;
+    }
+
+    Data[Offset] = ImVec2(X, Y);
+    Offset = (Offset + 1) % MaxSize;
+}
+
+void FImguiStatsWindow::ScrollingBuffer::Reset()
+{
+    Data.clear();
+    Offset = 0;
+}
+
 
 double FImguiStatsWindow::GetStat(const FName& Name, size_t Range) const
 {
@@ -31,6 +70,7 @@ double FImguiStatsWindow::GetStat(const FName& Name, size_t Range) const
 
 void FImguiStatsWindow::Process(FEditor& Editor, float InDeltaTime) {
 
+
     if (bOpenMemory)
     {
         DrawStatsMemory();
@@ -38,12 +78,127 @@ void FImguiStatsWindow::Process(FEditor& Editor, float InDeltaTime) {
     }
     if (bOpenFPS)
     {
-        DrawStatsFPS();
+        UpdateFPSHistory(InDeltaTime);
+        DrawStatsFPSGraph();
+        DrawStatsFPS(InDeltaTime);
     }
     if (bOpenUnit)
     {
         DrawUnits();
     } 
+}
+
+void FImguiStatsWindow::UpdateFPSHistory(float DeltaTime)
+{
+    if (DeltaTime <= 0.0f || !std::isfinite(DeltaTime))
+    {
+        return;
+    }
+
+    FPSHistoryTime += DeltaTime;
+    FPSSampleAccumulator += DeltaTime;
+
+    const float CurrentFPS = 1.0f / DeltaTime;
+    if (!bHasSmoothedFPS)
+    {
+        SmoothedFPS = CurrentFPS;
+        bHasSmoothedFPS = true;
+    }
+    else
+    {
+        SmoothedFPS += FPSSmoothingFactor * (CurrentFPS - SmoothedFPS);
+    }
+
+    if (FPSHistory.IsEmpty() || FPSSampleAccumulator >= FPSSampleInterval)
+    {
+        FPSHistory.AddPoint(FPSHistoryTime, SmoothedFPS);
+        FPSSampleAccumulator = 0.0f;
+    }
+}
+
+void FImguiStatsWindow::ResetFPSHistory()
+{
+    FPSHistory.Reset();
+    FPSHistoryTime = 0.0f;
+    FPSSampleAccumulator = 0.0f;
+    SmoothedFPS = 0.0f;
+    bHasSmoothedFPS = false;
+}
+
+void FImguiStatsWindow::DrawStatsFPSGraph()
+{
+    if (FPSHistory.IsEmpty())
+    {
+        return;
+    }
+
+    float MinFPS = std::numeric_limits<float>::max();
+    float MaxFPS = std::numeric_limits<float>::lowest();
+    const float HistoryStart = FPSHistoryTime - FPSHistoryDuration;
+
+    for (const ImVec2& Point : FPSHistory.Data)
+    {
+        if (Point.x >= HistoryStart)
+        {
+            MinFPS = std::min(MinFPS, Point.y);
+            MaxFPS = std::max(MaxFPS, Point.y);
+        }
+    }
+
+    if (MinFPS > MaxFPS)
+    {
+        return;
+    }
+
+    const float Range = std::max(MaxFPS - MinFPS, 1.0f);
+    const float Padding = Range * FPSGraphPaddingRatio;
+    const float YMin = std::max(0.0f, MinFPS - Padding);
+    const float YMax = MaxFPS + Padding;
+
+    const ImVec2 FPSGraphSize(StatsPanelWidth, StatsGraphHeight);
+    const ImVec2 ViewportPos = ImGui::GetWindowPos();
+    const ImVec2 ViewportSize = ImGui::GetWindowSize();
+    const ImVec2 GraphPos(
+        ViewportPos.x + ViewportSize.x - StatsPanelWidth,
+        ViewportPos.y + ImGui::GetFrameHeight());
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::SetNextWindowPos(GraphPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(FPSGraphSize);
+    constexpr ImGuiWindowFlags WindowFlags = ImGuiWindowFlags_NoDecoration
+        | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings
+        | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoInputs;
+    if (ImGui::Begin("##FPSGraphOverlay", nullptr, WindowFlags))
+    {
+        ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0.0f, 0.0f));
+        if (ImPlot::BeginPlot("##FPSHistory", FPSGraphSize, ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText | ImPlotFlags_NoInputs)) {
+            ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoTickLabels, ImPlotAxisFlags_NoTickLabels);
+            ImPlot::SetupAxisLimits(ImAxis_X1, HistoryStart, FPSHistoryTime, ImGuiCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, YMin, YMax, ImGuiCond_Always);
+
+            ImPlotSpec Spec;
+            Spec.Offset = static_cast<int>(FPSHistory.Offset);
+            Spec.Stride = sizeof(ImVec2);
+            Spec.FillAlpha = 0.5f;
+
+            ImPlot::PlotLine("FPS", &FPSHistory.Data[0].x, &FPSHistory.Data[0].y,
+                static_cast<int>(FPSHistory.Data.size()), Spec);
+
+            char MaxBuffer[32];
+            char MinBuffer[32];
+            sprintf_s(MaxBuffer, "Max %.1f", MaxFPS);
+            sprintf_s(MinBuffer, "Min %.1f", MinFPS);
+
+            ImPlot::PlotText(MaxBuffer, FPSHistoryTime, MaxFPS, ImVec2(-42.0f, 8.0f));
+            ImPlot::PlotText(MinBuffer, FPSHistoryTime, MinFPS, ImVec2(-42.0f, -8.0f));
+
+            ImPlot::EndPlot();
+        }
+        ImPlot::PopStyleVar();
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+
 }
 
 void FImguiStatsWindow::DrawStatsMemory()
@@ -185,32 +340,33 @@ void FImguiStatsWindow::DrawGPUStatsMemory()
         / (1024.0 * 1024.0), Color, EvenRowColor);
 }
 
-void FImguiStatsWindow::DrawStatsFPS()
+void FImguiStatsWindow::DrawStatsFPS(float DeltaTime)
 {
     ImVec2 ViewportPos = ImGui::GetWindowPos();
     ImVec2 ViewportSize = ImGui::GetWindowSize();
     ImDrawList* DrawList = ImGui::GetWindowDrawList();
 
-    const float Width = 500.0f;
-    const float RowHeight = 20.0f;
+    const FVector4 FPSColor(0.0f, 255.0f, 255.0f, 255.0f);
+    const FVector4 TransColor(0.0f, 0.0f, 0.0f, 128.0f);
 
-    const ImVec2 FPSPos = {
-        ViewportPos.x + ViewportSize.x - 180.0f,
-        ViewportPos.y + ViewportSize.y * 0.25f
-    };
+    const double Fps = DeltaTime > 0.0 ? 1.0 / DeltaTime : 0.0;
+    const double FrameMs = 1000.0 * DeltaTime;
 
-    float Y = FPSPos.y;
-    FVector4 FPSColor(0.0f, 255.0f, 255.0f, 255.0f);
-    FVector4 TransColor(0.0f, 0.0f, 0.0f, 128.0f);
     char Buffer[64];
+    sprintf_s(Buffer, "%.2f FPS (%.2fms)", Fps, FrameMs);
 
-    double DeltaTime = FTimeManager::GetDeltaTime();
+    const ImVec2 FPSPos(
+        ViewportPos.x + ViewportSize.x - StatsPanelWidth,
+        ViewportPos.y + ImGui::GetFrameHeight() + StatsGraphHeight);
 
-    DrawRow(DrawList, FPSPos, Y, Width, RowHeight, 0.0f,
-        "", "%.2f FPS", 1.0f / DeltaTime, FPSColor, TransColor);
-
-    DrawRow(DrawList, FPSPos, Y, Width, RowHeight, 0.0f,
-        "", "%.2f ms", 1000.0f * DeltaTime, FPSColor, TransColor);
+    DrawList->AddRectFilled(
+        FPSPos,
+        ImVec2(FPSPos.x + StatsPanelWidth, FPSPos.y + StatsRowHeight),
+        IM_COL32(TransColor.X, TransColor.Y, TransColor.Z, TransColor.W));
+    DrawList->AddText(
+        FPSPos,
+        IM_COL32(FPSColor.X, FPSColor.Y, FPSColor.Z, FPSColor.W),
+        Buffer);
 }
 
 void FImguiStatsWindow::DrawUnits()
@@ -219,15 +375,16 @@ void FImguiStatsWindow::DrawUnits()
     ImVec2 ViewportSize = ImGui::GetWindowSize();
     ImDrawList* DrawList = ImGui::GetWindowDrawList();
 
-    const float Width = 180.0f;
-    const float RowHeight = 20.0f;
+    const float Width = StatsPanelWidth;
+    const float RowHeight = StatsRowHeight;
     const float ValueOffsetX = 80.0f;
     constexpr double BytesPerMB = 1024.0 * 1024.0;
 
-    // FPS 패널(2줄) 바로 아래에 붙인다.
+    // FPS가 켜져 있으면 그래프 아래 한 줄 바로 밑에, 아니면 기존 위치에 붙인다.
+    const float StatsTop = ViewportPos.y + ImGui::GetFrameHeight() + StatsGraphHeight;
     const ImVec2 Pos = {
-        ViewportPos.x + ViewportSize.x - 180.0f,
-        ViewportPos.y + ViewportSize.y * 0.25f + RowHeight * 2.0f
+        ViewportPos.x + ViewportSize.x - StatsPanelWidth,
+        bOpenFPS ? StatsTop + StatsRowHeight : ViewportPos.y + ViewportSize.y * 0.25f
     };
 
     float Y = Pos.y;
@@ -307,6 +464,10 @@ void FImguiStatsWindow::Toggle(EStatsWindow Window)
 
     case EStatsWindow::FPS:
         bOpenFPS = !bOpenFPS;
+        if (bOpenFPS)
+        {
+            ResetFPSHistory();
+        }
         break;
 
     case EStatsWindow::Unit:
@@ -322,6 +483,7 @@ void FImguiStatsWindow::SetClose()
     bOpenMemory = false;
     bOpenFPS = false;
     bOpenUnit = false;
+    ResetFPSHistory();
 
     RefreshCollecting();
 }

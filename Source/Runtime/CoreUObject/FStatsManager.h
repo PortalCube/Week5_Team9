@@ -25,7 +25,7 @@ struct FStatEntry
     double Avg = 0.0, Max = 0.0;
     double Display = 0.0;
 
-    TDeque<double> Value = {};
+    TArray<double> Value = {};
     int32 DisplayCalls = 0;
 };
 
