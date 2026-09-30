@@ -7,13 +7,6 @@
 
 IMPLEMENT_UCLASS(UStaticMeshComponent, UMeshComponent)
 
-const FRenderData& UStaticMeshComponent::GetRenderData(const FCamera& Camera) const
-{
-	//RenderData.ModelMatrix = GetRenderMatrix(Camera);
-	RenderData.LODIndex = SelectLOD(Camera);
-	return RenderData;
-}
-
 float UStaticMeshComponent::ComputeScreenSize(const FCamera& Camera) const
 {
 	return std::sqrt(ComputeScreenSizeSquared(Camera));
@@ -21,46 +14,81 @@ float UStaticMeshComponent::ComputeScreenSize(const FCamera& Camera) const
 
 float UStaticMeshComponent::ComputeScreenSizeSquared(const FCamera& Camera) const
 {
-	// 매 프레임 오브젝트마다 도는 코드라, 복사와 FVector 연산자 호출 없이 float로만 계산한다.
+	return ComputeScreenSizeSquared(GetWorldBounds(), Camera);
+}
+
+float UStaticMeshComponent::ComputeScreenSizeSquared(const FAxisAlignedBoundingBox& Bounds, const FCamera& Camera)
+{
+	return ComputeScreenSizeSquared(Bounds, MakeLODView(Camera));
+}
+
+UStaticMeshComponent::FLODView UStaticMeshComponent::MakeLODView(const FCamera& Camera)
+{
+	FLODView View;
+	const FVector& CameraPosition = Camera.GetPosition();
+	View.CamX = CameraPosition.X;
+	View.CamY = CameraPosition.Y;
+	View.CamZ = CameraPosition.Z;
+
+	// 배율(1/tan(FOV/2))은 투영이 바뀔 때 FCameraProjection에서 한 번만 계산해 둔다.
+	const FCameraProjection& Projection = Camera.GetProjection();
+	View.bOrthographic = Projection.GetProjectionType() == EProjectionType::Orthographic;
+	const float Multiple = Projection.GetScreenSizeMultiple();
+	View.MultipleSq = Multiple * Multiple;
+	const float Height = std::max(Projection.GetOrthographicHeight(), 1e-4f);
+	View.OrthoHeightSq = Height * Height;
+	return View;
+}
+
+float UStaticMeshComponent::ComputeScreenSizeSquared(const FAxisAlignedBoundingBox& Bounds, const FLODView& View)
+{
+	// 매 프레임 오브젝트마다 도는 코드라, 함수 호출(IsValid, std::max, FVector 연산자) 없이 float로만 계산한다.
 	// 월드 바운드의 Center/Extent는 바운드가 갱신될 때 이미 계산되어 있다.
-	const FAxisAlignedBoundingBox& Bounds = GetWorldBounds();
-	if (!Bounds.IsValid()) { return 1.0f; }
+	if (Bounds.Min.X > Bounds.Max.X || Bounds.Min.Y > Bounds.Max.Y || Bounds.Min.Z > Bounds.Max.Z) { return 1.0f; }
 
 	// 바운딩 박스를 감싸는 구로 근사한다. 반지름 = Extent의 길이.
 	const float EX = Bounds.Extent.X, EY = Bounds.Extent.Y, EZ = Bounds.Extent.Z;
 	const float RadiusSq = EX * EX + EY * EY + EZ * EZ;
 
-	const FCameraProjection& Projection = Camera.GetProjection();
-	if (Projection.GetProjectionType() == EProjectionType::Orthographic)
+	if (View.bOrthographic)
 	{
-		const float Height = std::max(Projection.GetOrthographicHeight(), 1e-4f);
-		return 4.0f * RadiusSq / (Height * Height);
+		return 4.0f * RadiusSq / View.OrthoHeightSq;
 	}
 
 	// 언리얼의 ComputeBoundsScreenSize와 같은 방식. 구의 지름이 화면 높이의 몇 배인지의 제곱을 반환한다.
-	// 배율(1/tan(FOV/2))은 투영이 바뀔 때 FCameraProjection에서 한 번만 계산해 둔다.
-	const FVector& CameraPosition = Camera.GetPosition();
-	const float DX = Bounds.Center.X - CameraPosition.X;
-	const float DY = Bounds.Center.Y - CameraPosition.Y;
-	const float DZ = Bounds.Center.Z - CameraPosition.Z;
-	const float DistanceSq = std::max(DX * DX + DY * DY + DZ * DZ, 1e-8f);
-	const float Multiple = Projection.GetScreenSizeMultiple();
-	return Multiple * Multiple * RadiusSq / DistanceSq;
+	const float DX = Bounds.Center.X - View.CamX;
+	const float DY = Bounds.Center.Y - View.CamY;
+	const float DZ = Bounds.Center.Z - View.CamZ;
+	float DistanceSq = DX * DX + DY * DY + DZ * DZ;
+	DistanceSq = DistanceSq > 1e-8f ? DistanceSq : 1e-8f;
+	return View.MultipleSq * RadiusSq / DistanceSq;
 }
 
 uint32 UStaticMeshComponent::SelectLOD(const FCamera& Camera) const
 {
-	if (!Globals::bEnableLOD) { return 0; }
+	return SelectLOD(RenderData.Mesh, GetWorldBounds(), Camera);
+}
 
-	const UStaticMesh* Mesh = RenderData.Mesh;
-	if (!Mesh || Mesh->GetLODCount() <= 1) { return 0; }
+uint32 UStaticMeshComponent::SelectLOD(const UStaticMesh* Mesh, const FAxisAlignedBoundingBox& WorldBounds, const FCamera& Camera)
+{
+	return SelectLOD(Mesh, WorldBounds, MakeLODView(Camera));
+}
+
+uint32 UStaticMeshComponent::SelectLOD(const UStaticMesh* Mesh, const FAxisAlignedBoundingBox& WorldBounds, const FLODView& View)
+{
+	if (!Globals::bEnableLOD) { return 0; }
+	if (!Mesh) { return 0; }
+
+	const uint32 LODCount = Mesh->GetLODCount();
+	if (LODCount <= 1) { return 0; }
 
 	if (Globals::ForcedLOD >= 0)
 	{
-		return std::min(static_cast<uint32>(Globals::ForcedLOD), Mesh->GetLODCount() - 1);
+		const uint32 Forced = static_cast<uint32>(Globals::ForcedLOD);
+		return Forced < LODCount - 1 ? Forced : LODCount - 1;
 	}
 
-	return Mesh->SelectLODSquared(ComputeScreenSizeSquared(Camera));
+	return Mesh->SelectLODSquared(ComputeScreenSizeSquared(WorldBounds, View));
 }
 
 FAxisAlignedBoundingBox UStaticMeshComponent::GetLocalBounds() const

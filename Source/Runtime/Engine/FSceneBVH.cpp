@@ -388,7 +388,6 @@ void FSceneBVH::TraverseRay(uint32 RootIdx, const FRay& Ray, const FVector& InvD
         const FStackEntry Entry = Stack[--Sp];
         if (Entry.TNear >= Closest) { continue; }
 
-        ++FRayCastingManager::PickProfile.SceneNodes;
         const FSceneBVHNode& N = Nodes[Entry.Node];
 
         //삭제로 비어버린 가지
@@ -486,7 +485,6 @@ void FSceneBVH::TestLeafRay(const FSceneBVHNode& N, const FRay& Ray, const FVect
         //Buil되기 전에는 빈 공간을 남아있으므로 Ray 검사중엔 건너뛴다.
         if (!Objects[i]) { continue; }
 
-        ++FRayCastingManager::PickProfile.ObjectBoxTests;
         float tNear = 0.0f;
         if (!FRayCastingManager::RayIntersectsBoundsInv(Ray.Origin, InvDir, ObjectBounds[i].Min, ObjectBounds[i].Max, tNear)) { continue; }
         if (tNear >= Closest) { continue; }
@@ -558,7 +556,6 @@ void FSceneBVH::TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const F
 //AABB -> 뮐러 트럼보어
 void FSceneBVH::TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBoundingBox& WorldBox, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const
 {
-    ++FRayCastingManager::PickProfile.ObjectBoxTests;
     float tNear = 0.0f;
     if (!FRayCastingManager::RayIntersectsBoundsInv(Ray.Origin, InvDir, WorldBox.Min, WorldBox.Max, tNear)) { return; }
     if (tNear >= Closest) { return; }           //이미 더 가까운 히트가 있으면 삼각형 검사 생략

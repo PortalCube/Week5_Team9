@@ -23,20 +23,6 @@ namespace FRayCastingManager
     // true면 미리 빌드된 Local Mesh BVH를 사용하여 Ray검사
     inline bool bUseMeshBVH = true;
 
-    // 피킹 한 번의 작업량과 구간 시간. 피킹 직전에 Reset하고, 끝나면 로그로 출력한다.
-    struct FPickProfile
-    {
-        uint32 SceneNodes = 0;      // 씬 BVH에서 방문한 노드 수
-        uint32 ObjectBoxTests = 0;  // 월드 AABB를 검사한 오브젝트 수
-        uint32 MeshTests = 0;       // 메시(삼각형) 검사까지 간 오브젝트 수
-        uint32 MeshNodes = 0;       // 메시 BVH에서 방문한 노드 수
-        uint32 Triangles = 0;       // 검사한 삼각형 수
-        double MeshMs = 0.0;        // 메시 검사(광선 로컬 변환 포함)에 쓴 시간의 합
-
-        void Reset() { *this = FPickProfile{}; }
-    };
-    inline FPickProfile PickProfile;
-
     // 마지막으로 클릭한 피킹 광선. 같은 광선으로 반복 측정(벤치마크)할 때 쓴다.
     inline FRay LastPickRay{};
     inline bool bHasLastPickRay = false;

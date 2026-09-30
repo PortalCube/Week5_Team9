@@ -198,7 +198,6 @@ void FImguiControlPanelWindow::RunPickBenchmark(FEditor& Editor, int Iterations)
     FVector ImpactPoint;
     for (int i = 0; i < Iterations; ++i)
     {
-        FRayCastingManager::PickProfile.Reset();
         HitComponent = nullptr;
 
         FScopeCycleCounter Counter;
@@ -218,12 +217,9 @@ void FImguiControlPanelWindow::RunPickBenchmark(FEditor& Editor, int Iterations)
     double Sum = 0.0;
     for (double T : Times) { Sum += T; }
 
-    // 작업량은 매번 같으므로 마지막 반복의 값을 쓴다
-    const FRayCastingManager::FPickProfile& P = FRayCastingManager::PickProfile;
-    UE_LOG("[PickBench] %s x%d | Median %.4f ms | Min %.4f ms | Avg %.4f ms | SceneNodes %u | ObjBox %u | MeshTests %u | MeshNodes %u | Tris %u | Hit UUID %u",
+    UE_LOG("[PickBench] %s x%d | Median %.4f ms | Min %.4f ms | Avg %.4f ms | Hit UUID %u",
         bUseBVH ? "BVH" : "Linear", Iterations,
         Times[Times.size() / 2], Times.front(), Sum / Times.size(),
-        P.SceneNodes, P.ObjectBoxTests, P.MeshTests, P.MeshNodes, P.Triangles,
         HitComponent ? HitComponent->GetUUID() : 0u);
 }
 
