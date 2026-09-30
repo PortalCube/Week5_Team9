@@ -84,14 +84,7 @@ void FRenderer::Shutdown() {
 }
 
 void FRenderer::BeginFrame() {
-  if (Globals::bUseFrameResources) {
-        CurrentFrameResourceIndex = (CurrentFrameResourceIndex + 1) % NumFrameResourceCount;
-  }
-  else
-  {
-	  CurrentFrameResourceIndex = 0;
-  }
-  //CurrentFrameResourceIndex = (CurrentFrameResourceIndex + 1) % NumFrameResourceCount;
+  CurrentFrameResourceIndex = (CurrentFrameResourceIndex + 1) % NumFrameResourceCount;
   BeginGPUTimer();
 
   Context->RSSetViewports(1, &Viewport);
