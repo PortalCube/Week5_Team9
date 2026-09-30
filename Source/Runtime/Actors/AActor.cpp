@@ -13,6 +13,7 @@ void AActor::Initialize()
 	Super::Initialize();
 	Owner = nullptr;
 	bHasBegunPlay = false;
+	bTickEnabled = false;
 }
 
 void AActor::Release()
@@ -248,14 +249,14 @@ void AActor::BeginPlay() {
 }
 
 void AActor::Update(float DeltaTime) {
-	if (!bHasBegunPlay)
+	if (!bTickEnabled || !bHasBegunPlay)
 	{
 		return;
 	}
 
 	for (USceneComponent* Component : AttachedComp)
 	{
-		if (Component)
+		if (Component && Component->IsTickEnabled())
 		{
 			Component->Update(DeltaTime);
 		}

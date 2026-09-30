@@ -13,6 +13,7 @@ class AAnimatedBillboardActor : public AActor
 
 public:
 	explicit AAnimatedBillboardActor();
+	void Initialize() override;
 
 	UAnimatedBillboardComp* GetAnimatedBillboardComponent() const;
 };

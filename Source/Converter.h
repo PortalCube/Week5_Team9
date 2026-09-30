@@ -94,7 +94,7 @@ namespace Converter
 			}
 			else
 			{
-				FResourceLoader::ImportObj(ObjPath, &AssetId);
+				FResourceLoader::ImportObj(ObjPath, &AssetId, true); // 대회 OBJ는 Z-up
 				LoadedObjs.emplace(ObjKey, AssetId);
 			}
 
