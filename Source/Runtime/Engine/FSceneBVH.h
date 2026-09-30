@@ -7,7 +7,6 @@
 #include "Runtime/Geometry/FFrustum.h"
 #include <cstdint>
 
-
 //임시 FPlane, FFrustum, 조훈님이 만들면 그 자료구조로 교체
 //struct FPlane { FVector Normal; float D; };
 
@@ -22,24 +21,33 @@ enum class EIntersection : uint8 { Outside, Intersect, Inside };
 
 //EIntersection TestAABB(const FFrustum& Frustum, const FAxisAlignedBoundingBox& Box);
 
-
 class FSceneBVH
 {
 public:
-    struct FSceneBVHNode
+    struct alignas(16) FSceneBVHNode
     {
         FAxisAlignedBoundingBox Bounds;
-        uint32 Left;
+
+        alignas(16) float ChildCenterX[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        alignas(16) float ChildCenterY[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        alignas(16) float ChildCenterZ[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        alignas(16) float ChildExtentX[4] = { -1.0f, -1.0f, -1.0f, -1.0f };
+        alignas(16) float ChildExtentY[4] = { -1.0f, -1.0f, -1.0f, -1.0f };
+        alignas(16) float ChildExtentZ[4] = { -1.0f, -1.0f, -1.0f, -1.0f };
+
+        uint32 Children[4] = { UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX };
         uint32 Parent = UINT32_MAX;
         uint32 ObjStart = 0;
         uint32 ObjCount = 0;
-        bool bLeafNode = false;
+        uint8  ChildCount = 0;
+        bool   bLeafNode = false;
     };
+
     struct FPrimRef
     {
         FAxisAlignedBoundingBox WorldBox;   //World 기준 AABB 박스
         FVector                 Centroid;   //박스 중심
-        UPrimitiveComponent*    Comp;       //컴포넌트 포인터
+        UPrimitiveComponent* Comp;       //컴포넌트 포인터
     };
 
 public:
@@ -60,6 +68,15 @@ public:
     void RemoveObject(UPrimitiveComponent* C);
 
 private:
+    struct FSubRange
+    {
+        uint32 Start = 0;
+        uint32 Count = 0;
+    };
+
+    void Split2Way(uint32 Start, uint32 Count, FSubRange& OutLeft, FSubRange& OutRight);
+    uint32 Split4Way(uint32 Start, uint32 Count, FSubRange OutRanges[4]);
+
     void BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint32 ParentIdx);
     //RootIdx부터 스택으로 가까운 노드 먼저 순회한다
     void TraverseRay(uint32 RootIdx, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;

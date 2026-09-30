@@ -1,5 +1,78 @@
 #include "pch.h"
 #include "FSceneBVH.h"
+#include "Runtime/Math/FMathSSE.h"
+#include <smmintrin.h>
+#include <algorithm>
+
+void FSceneBVH::Split2Way(uint32 Start, uint32 Count, FSubRange& OutLeft, FSubRange& OutRight)
+{
+    if (Count <= 1)
+    {
+        OutLeft = { Start, Count };
+        OutRight = { 0, 0 };
+        return;
+    }
+
+    FAxisAlignedBoundingBox CentroidBounds;
+    for (uint32 i = Start; i < Start + Count; ++i)
+    {
+        const FPrimRef& P = Prims[i];
+        for (int a = 0; a < 3; ++a)
+        {
+            CentroidBounds.Min[a] = std::min(CentroidBounds.Min[a], P.Centroid[a]);
+            CentroidBounds.Max[a] = std::max(CentroidBounds.Max[a], P.Centroid[a]);
+        }
+    }
+
+    const FVector Extent = CentroidBounds.Max - CentroidBounds.Min;
+    int Axis = 0;
+    if (Extent.Y > Extent[Axis]) Axis = 1;
+    if (Extent.Z > Extent[Axis]) Axis = 2;
+
+    const uint32 Mid = Start + Count / 2;
+    std::nth_element(
+        Prims.begin() + Start,
+        Prims.begin() + Mid,
+        Prims.begin() + Start + Count,
+        [Axis](const FPrimRef& A, const FPrimRef& B) { return A.Centroid[Axis] < B.Centroid[Axis]; });
+
+    OutLeft = { Start, Mid - Start };
+    OutRight = { Mid, Start + Count - Mid };
+}
+
+uint32 FSceneBVH::Split4Way(uint32 Start, uint32 Count, FSubRange OutRanges[4])
+{
+    FSubRange Left, Right;
+    Split2Way(Start, Count, Left, Right);
+
+    uint32 RangeCount = 0;
+
+    if (Left.Count > LeafSize)
+    {
+        FSubRange L0, L1;
+        Split2Way(Left.Start, Left.Count, L0, L1);
+        if (L0.Count > 0) OutRanges[RangeCount++] = L0;
+        if (L1.Count > 0) OutRanges[RangeCount++] = L1;
+    }
+    else if (Left.Count > 0)
+    {
+        OutRanges[RangeCount++] = Left;
+    }
+
+    if (Right.Count > LeafSize)
+    {
+        FSubRange R0, R1;
+        Split2Way(Right.Start, Right.Count, R0, R1);
+        if (R0.Count > 0) OutRanges[RangeCount++] = R0;
+        if (R1.Count > 0) OutRanges[RangeCount++] = R1;
+    }
+    else if (Right.Count > 0)
+    {
+        OutRanges[RangeCount++] = Right;
+    }
+
+    return RangeCount;
+}
 
 void FSceneBVH::Build(const TArray<UPrimitiveComponent*>& Components)
 {
@@ -16,7 +89,7 @@ void FSceneBVH::Build(const TArray<UPrimitiveComponent*>& Components)
     {
         if (!C) continue;
 
-        const FAxisAlignedBoundingBox &Local = C->GetLocalBounds();
+        const FAxisAlignedBoundingBox& Local = C->GetLocalBounds();
 
         //빈 박스는 BVH에서 제외한다.
         if (!Local.IsValid()) { continue; }
@@ -32,7 +105,7 @@ void FSceneBVH::Build(const TArray<UPrimitiveComponent*>& Components)
     if (Prims.empty()) return;
 
     //BVH 최대 크기는 컴포넌트 수*2 를 넘지 않음(리프가 컴포넌트 수 + 부모 노드 수가 그보단 작음)
-    Nodes.reserve(2 * Prims.size());
+    Nodes.reserve(Prims.size());
     Nodes.push_back({});
 
     //재귀 돌면 BVH 구성
@@ -86,8 +159,8 @@ void FSceneBVH::BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint3
             CentroidBounds.Max[a] = std::max(CentroidBounds.Max[a], P.Centroid[a]);
         }
     }
-	Bounds.Center = (Bounds.Min + Bounds.Max) * 0.5f;
-	Bounds.Extent = (Bounds.Max - Bounds.Min) * 0.5f;
+    Bounds.Center = (Bounds.Min + Bounds.Max) * 0.5f;
+    Bounds.Extent = (Bounds.Max - Bounds.Min) * 0.5f;
 
     Nodes[NodeIdx].Bounds = Bounds;
     Nodes[NodeIdx].Parent = ParentIdx;
@@ -106,23 +179,53 @@ void FSceneBVH::BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint3
         return;
     }
 
-    const uint32 Mid = Start + Count / 2;
-    std::nth_element(
-        Prims.begin() + Start,
-        Prims.begin() + Mid,
-        Prims.begin() + Start + Count,
-        [Axis](const FPrimRef& A, const FPrimRef& B) { return A.Centroid[Axis] < B.Centroid[Axis]; });
+    FSubRange Ranges[4];
+    const uint32 NumChildren = Split4Way(Start, Count, Ranges);
 
-    const uint32 LeftIdx = (uint32)Nodes.size();
-    Nodes.push_back({});
-    Nodes.push_back({});
+    if (NumChildren <= 1)
+    {
+        Nodes[NodeIdx].ObjStart = Start;
+        Nodes[NodeIdx].ObjCount = Count;
+        Nodes[NodeIdx].bLeafNode = true;
+        return;
+    }
+
+    const uint32 ChildBase = static_cast<uint32>(Nodes.size());
+    Nodes.resize(ChildBase + NumChildren);
 
     //리프 노드가 아니면 ObjCount = 0
-    Nodes[NodeIdx].Left = LeftIdx;
+    Nodes[NodeIdx].ChildCount = static_cast<uint8>(NumChildren);
     Nodes[NodeIdx].ObjCount = 0;
+    Nodes[NodeIdx].bLeafNode = false;
 
-    BuildRecursive(LeftIdx, Start, Mid - Start, NodeIdx);
-    BuildRecursive(LeftIdx + 1, Mid, Start + Count - Mid, NodeIdx);
+    for (uint32 i = 0; i < NumChildren; ++i)
+    {
+        Nodes[NodeIdx].Children[i] = ChildBase + i;
+        BuildRecursive(ChildBase + i, Ranges[i].Start, Ranges[i].Count, NodeIdx);
+    }
+
+    for (uint32 i = 0; i < NumChildren; ++i)
+    {
+        const uint32 ChildIdx = ChildBase + i;
+        const FAxisAlignedBoundingBox& CB = Nodes[ChildIdx].Bounds;
+        Nodes[NodeIdx].ChildCenterX[i] = CB.Center.X;
+        Nodes[NodeIdx].ChildCenterY[i] = CB.Center.Y;
+        Nodes[NodeIdx].ChildCenterZ[i] = CB.Center.Z;
+        Nodes[NodeIdx].ChildExtentX[i] = CB.Extent.X;
+        Nodes[NodeIdx].ChildExtentY[i] = CB.Extent.Y;
+        Nodes[NodeIdx].ChildExtentZ[i] = CB.Extent.Z;
+    }
+
+    for (uint32 i = NumChildren; i < 4; ++i)
+    {
+        Nodes[NodeIdx].ChildCenterX[i] = 0.0f;
+        Nodes[NodeIdx].ChildCenterY[i] = 0.0f;
+        Nodes[NodeIdx].ChildCenterZ[i] = 0.0f;
+        Nodes[NodeIdx].ChildExtentX[i] = -1.0f;
+        Nodes[NodeIdx].ChildExtentY[i] = -1.0f;
+        Nodes[NodeIdx].ChildExtentZ[i] = -1.0f;
+        Nodes[NodeIdx].Children[i] = UINT32_MAX;
+    }
 }
 
 void FSceneBVH::RefitObject(UPrimitiveComponent* Moved)
@@ -134,7 +237,6 @@ void FSceneBVH::RefitObject(UPrimitiveComponent* Moved)
 
     const FAxisAlignedBoundingBox Local = Moved->GetLocalBounds();
     if (!Local.IsValid()) { return; }
-
 
     //변경된 Transform으로 AABB 다시 넣기
     ObjectBounds[ObjectIndex] = FAxisAlignedBoundingBox(Local, Moved->GetGlobalTransformMatrix());
@@ -168,8 +270,20 @@ void FSceneBVH::RefitFromLeaf(uint32 LeafNodeIndex)
     {
         FSceneBVHNode& N = Nodes[NodeIdx];
 
-        const FAxisAlignedBoundingBox Merged =
-            FAxisAlignedBoundingBox::Union(Nodes[N.Left].Bounds, Nodes[N.Left + 1].Bounds);
+        FAxisAlignedBoundingBox Merged;
+        for (uint8 c = 0; c < N.ChildCount; ++c)
+        {
+            const uint32 ChildIdx = N.Children[c];
+            const FAxisAlignedBoundingBox& CB = Nodes[ChildIdx].Bounds;
+            Merged = FAxisAlignedBoundingBox::Union(Merged, CB);
+
+            N.ChildCenterX[c] = CB.Center.X;
+            N.ChildCenterY[c] = CB.Center.Y;
+            N.ChildCenterZ[c] = CB.Center.Z;
+            N.ChildExtentX[c] = CB.Extent.X;
+            N.ChildExtentY[c] = CB.Extent.Y;
+            N.ChildExtentZ[c] = CB.Extent.Z;
+        }
 
         if (Merged == N.Bounds) { break; }
         N.Bounds = Merged;
@@ -185,7 +299,7 @@ bool FSceneBVH::ShouldRebuild() const
     return false;
 }
 
-bool FSceneBVH::QueryFrustum(const FFrustum & Frustum, float MinScreenPixels, TArray<UPrimitiveComponent*>& OutVisible) const
+bool FSceneBVH::QueryFrustum(const FFrustum& Frustum, float MinScreenPixels, TArray<UPrimitiveComponent*>& OutVisible) const
 {
     OutVisible.clear();
     OutVisible.reserve(Objects.size());
@@ -198,12 +312,12 @@ bool FSceneBVH::QueryFrustum(const FFrustum & Frustum, float MinScreenPixels, TA
         AbsNormals[p] = FrustumUtils::AbsVector(Frustum.Planes[p].Normal);
     }
 
-    if(!Nodes.empty())
+    if (!Nodes.empty())
     {
         TraverseFrustum(0, Frustum, AbsNormals, OutVisible);
     }
 
-    for(UPrimitiveComponent* C : PendingObjects)
+    for (UPrimitiveComponent* C : PendingObjects)
     {
         if (!C) { continue; }
 
@@ -221,7 +335,7 @@ bool FSceneBVH::QueryFrustum(const FFrustum & Frustum, float MinScreenPixels, TA
     return !OutVisible.empty();
 }
 
-bool FSceneBVH::QueryRay(const FRay &Ray, UPrimitiveComponent*& OutHit, FVector &OutImpact) const
+bool FSceneBVH::QueryRay(const FRay& Ray, UPrimitiveComponent*& OutHit, FVector& OutImpact) const
 {
     OutImpact = FVector{};
     float Closest = (std::numeric_limits<float>::max)();
@@ -261,6 +375,14 @@ void FSceneBVH::TraverseRay(uint32 RootIdx, const FRay& Ray, const FVector& InvD
     int32 Sp = 0;
     Stack[Sp++] = { RootIdx, 0.0f };
 
+    const FMathSSE::VectorRegister4Float rayOx = FMathSSE::VectorSetFloat1(Ray.Origin.X);
+    const FMathSSE::VectorRegister4Float rayOy = FMathSSE::VectorSetFloat1(Ray.Origin.Y);
+    const FMathSSE::VectorRegister4Float rayOz = FMathSSE::VectorSetFloat1(Ray.Origin.Z);
+
+    const FMathSSE::VectorRegister4Float rayIdx = FMathSSE::VectorSetFloat1(InvDir.X);
+    const FMathSSE::VectorRegister4Float rayIdy = FMathSSE::VectorSetFloat1(InvDir.Y);
+    const FMathSSE::VectorRegister4Float rayIdz = FMathSSE::VectorSetFloat1(InvDir.Z);
+
     while (Sp > 0)
     {
         const FStackEntry Entry = Stack[--Sp];
@@ -278,34 +400,74 @@ void FSceneBVH::TraverseRay(uint32 RootIdx, const FRay& Ray, const FVector& InvD
             continue;
         }
 
-        //내부 노드: 자식 둘은 항상 연속해 있다
-        const uint32 L = N.Left;
-        const uint32 R = N.Left + 1;
+        const FMathSSE::VectorRegister4Float bCx = FMathSSE::VectorLoadAligned(N.ChildCenterX);
+        const FMathSSE::VectorRegister4Float bCy = FMathSSE::VectorLoadAligned(N.ChildCenterY);
+        const FMathSSE::VectorRegister4Float bCz = FMathSSE::VectorLoadAligned(N.ChildCenterZ);
+        const FMathSSE::VectorRegister4Float bEx = FMathSSE::VectorLoadAligned(N.ChildExtentX);
+        const FMathSSE::VectorRegister4Float bEy = FMathSSE::VectorLoadAligned(N.ChildExtentY);
+        const FMathSSE::VectorRegister4Float bEz = FMathSSE::VectorLoadAligned(N.ChildExtentZ);
 
-        float tL = 0.0f, tR = 0.0f;
-        const bool bL = Nodes[L].Bounds.IsValid()
-            && FRayCastingManager::RayIntersectsBoundsInv(Ray.Origin, InvDir, Nodes[L].Bounds.Min, Nodes[L].Bounds.Max, tL)
-            && tL < Closest;
-        const bool bR = Nodes[R].Bounds.IsValid()
-            && FRayCastingManager::RayIntersectsBoundsInv(Ray.Origin, InvDir, Nodes[R].Bounds.Min, Nodes[R].Bounds.Max, tR)
-            && tR < Closest;
+        const FMathSSE::VectorRegister4Float minX = FMathSSE::VectorSub(bCx, bEx);
+        const FMathSSE::VectorRegister4Float maxX = FMathSSE::VectorAdd(bCx, bEx);
+        const FMathSSE::VectorRegister4Float minY = FMathSSE::VectorSub(bCy, bEy);
+        const FMathSSE::VectorRegister4Float maxY = FMathSSE::VectorAdd(bCy, bEy);
+        const FMathSSE::VectorRegister4Float minZ = FMathSSE::VectorSub(bCz, bEz);
+        const FMathSSE::VectorRegister4Float maxZ = FMathSSE::VectorAdd(bCz, bEz);
 
-        //먼 쪽을 먼저 넣어야 가까운 쪽이 먼저 나온다
-        if (bL && bR)
+        const FMathSSE::VectorRegister4Float t0x = FMathSSE::VectorMul(FMathSSE::VectorSub(minX, rayOx), rayIdx);
+        const FMathSSE::VectorRegister4Float t1x = FMathSSE::VectorMul(FMathSSE::VectorSub(maxX, rayOx), rayIdx);
+        const FMathSSE::VectorRegister4Float tminX = FMathSSE::VectorMin(t0x, t1x);
+        const FMathSSE::VectorRegister4Float tmaxX = FMathSSE::VectorMax(t0x, t1x);
+
+        const FMathSSE::VectorRegister4Float t0y = FMathSSE::VectorMul(FMathSSE::VectorSub(minY, rayOy), rayIdy);
+        const FMathSSE::VectorRegister4Float t1y = FMathSSE::VectorMul(FMathSSE::VectorSub(maxY, rayOy), rayIdy);
+        const FMathSSE::VectorRegister4Float tminY = FMathSSE::VectorMin(t0y, t1y);
+        const FMathSSE::VectorRegister4Float tmaxY = FMathSSE::VectorMax(t0y, t1y);
+
+        const FMathSSE::VectorRegister4Float t0z = FMathSSE::VectorMul(FMathSSE::VectorSub(minZ, rayOz), rayIdz);
+        const FMathSSE::VectorRegister4Float t1z = FMathSSE::VectorMul(FMathSSE::VectorSub(maxZ, rayOz), rayIdz);
+        const FMathSSE::VectorRegister4Float tminZ = FMathSSE::VectorMin(t0z, t1z);
+        const FMathSSE::VectorRegister4Float tmaxZ = FMathSSE::VectorMax(t0z, t1z);
+
+        const FMathSSE::VectorRegister4Float tNear = FMathSSE::VectorMax(FMathSSE::VectorMax(tminX, tminY), FMathSSE::VectorMax(tminZ, FMathSSE::VectorZero()));
+        const FMathSSE::VectorRegister4Float tFar = FMathSSE::VectorMin(FMathSSE::VectorMin(tmaxX, tmaxY), FMathSSE::VectorMin(tmaxZ, FMathSSE::VectorSetFloat1(Closest)));
+
+        const FMathSSE::VectorRegister4Float hitMask = FMathSSE::VectorCompareLE(tNear, tFar);
+        int mask = FMathSSE::VectorMaskBits(hitMask) & ((1 << N.ChildCount) - 1);
+
+        if (mask == 0) { continue; }
+
+        alignas(16) float tNearArr[4];
+        FMathSSE::VectorStoreAligned(tNear, tNearArr);
+
+        struct FChildHit { uint32 Node; float TNear; };
+        FChildHit Hits[4];
+        uint32 HitCount = 0;
+
+        for (uint8 c = 0; c < N.ChildCount; ++c)
         {
-            if (tL <= tR)
+            if (mask & (1 << c))
             {
-                Stack[Sp++] = { R, tR };
-                Stack[Sp++] = { L, tL };
-            }
-            else
-            {
-                Stack[Sp++] = { L, tL };
-                Stack[Sp++] = { R, tR };
+                Hits[HitCount++] = { N.Children[c], tNearArr[c] };
             }
         }
-        else if (bL) { Stack[Sp++] = { L, tL }; }
-        else if (bR) { Stack[Sp++] = { R, tR }; }
+
+        //먼 쪽을 먼저 넣어야 가까운 쪽이 먼저 나온다
+        for (uint32 i = 0; i < HitCount; ++i)
+        {
+            for (uint32 j = i + 1; j < HitCount; ++j)
+            {
+                if (Hits[i].TNear < Hits[j].TNear)
+                {
+                    std::swap(Hits[i], Hits[j]);
+                }
+            }
+        }
+
+        for (uint32 i = 0; i < HitCount; ++i)
+        {
+            Stack[Sp++] = { Hits[i].Node, Hits[i].TNear };
+        }
     }
 }
 
@@ -356,36 +518,41 @@ void FSceneBVH::TestLeafRay(const FSceneBVHNode& N, const FRay& Ray, const FVect
 
 void FSceneBVH::TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const FVector(&AbsNormals)[FFrustum::PlaneCount], TArray<UPrimitiveComponent*>& OutVisible) const
 {
-	const FSceneBVHNode& N = Nodes[NodeIdx];
+    const FSceneBVHNode& N = Nodes[NodeIdx];
 
-	if (!N.Bounds.IsValid()) { return; }
+    if (!N.Bounds.IsValid()) { return; }
 
+    // 현재 노드가 절두체 밖에 있으면 하위 자식 검사 생략
     if (!FrustumUtils::IsVisible(Frustum, AbsNormals, N.Bounds))
     {
         return;
     }
 
-    if(N.bLeafNode)
+    // 리프 노드인 경우 소속 오브젝트들을 순회하며 검사
+    if (N.bLeafNode)
     {
         for (uint32 i = N.ObjStart; i < N.ObjStart + N.ObjCount; ++i)
         {
-			UPrimitiveComponent* C = Objects[i];
-            if (!Objects[i]) { continue; }
+            UPrimitiveComponent* C = Objects[i];
+            if (!C) { continue; }
 
             if (FrustumUtils::IsVisible(Frustum, AbsNormals, ObjectBounds[i]))
             {
-				OutVisible.push_back(Objects[i]);
+                OutVisible.push_back(C);
             }
         }
         return;
     }
 
-    const uint32 L = N.Left;
-    const uint32 R = N.Left + 1;
-
-
-	TraverseFrustum(L, Frustum, AbsNormals, OutVisible);
-	TraverseFrustum(R, Frustum, AbsNormals, OutVisible);
+    // 내부 노드: 유효한 자식들(최대 4개)에 대해 재귀 순회
+    for (uint8 c = 0; c < N.ChildCount; ++c)
+    {
+        const uint32 ChildIdx = N.Children[c];
+        if (ChildIdx != UINT32_MAX)
+        {
+            TraverseFrustum(ChildIdx, Frustum, AbsNormals, OutVisible);
+        }
+    }
 }
 
 //AABB -> 뮐러 트럼보어
