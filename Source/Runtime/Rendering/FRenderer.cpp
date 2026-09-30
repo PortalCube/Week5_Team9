@@ -890,7 +890,7 @@ void FRenderer::QueryVisibility(const TArray<const FDrawCommand*>& Commands, TAr
         {
             Pipeline->Bind(*Context.Get());
         }
-        Material.BindResources(*Context.Get());
+        //Material.BindResources(*Context.Get());
         Command.Mesh->BindResources(*Context.Get());
 
         Context->OMSetDepthStencilState(OracleDepthState.Get(), 0);
