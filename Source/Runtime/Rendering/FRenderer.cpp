@@ -663,7 +663,8 @@ TSharedPtr<FRenderPipeline> FRenderer::GetPipeline(const FName &Id) const {
 void FRenderer::ClearLastRenderState()
 {
     LastMesh = nullptr;
-    LastMaterial = nullptr;
+    LastTexture = nullptr;
+    bHasLastTexture = false;
     LastRenderPipeline = nullptr;
 }
 
@@ -1126,7 +1127,8 @@ void FRenderer::BindObjectConstantRange(uint32 Slot, uint32 ByteOffset)
 
 void FRenderer::BindDrawResources(const FMesh& Mesh, const FMaterial& Material, bool bApplyViewMode)
 {
-    FRenderPipeline* Pipeline = Material.Pipeline;
+    FRenderPipeline* Pipeline = Material.GetPipeline();
+    FTexture* Texture = Material.GetTexture();
 
     if (bApplyViewMode &&
         CurrentRenderMode == EViewModeIndex::VMI_Wireframe)
@@ -1146,10 +1148,12 @@ void FRenderer::BindDrawResources(const FMesh& Mesh, const FMaterial& Material, 
         LastRenderPipeline = Pipeline;
     }
 
-    if (LastMaterial != &Material)
+    if (!bHasLastTexture || LastTexture != Texture)
     {
-        Material.BindResources(*Context.Get());
-        LastMaterial = &Material;
+        ID3D11ShaderResourceView* SRV = Texture ? Texture->GetSRV() : nullptr;
+        Context->PSSetShaderResources(0u, 1u, &SRV);
+        LastTexture = Texture;
+        bHasLastTexture = true;
     }
 
     if (LastMesh != &Mesh)
@@ -1298,22 +1302,16 @@ void FRenderer::DrawInstances(const FCamera &Camera) {
     std::memcpy(MappedResource.pData, InstanceData.data(), RequiredSize);
     Context->Unmap(InstanceBuffer.Get(), 0);
 
-    // 머티리얼 및 파이프라인 바인딩
+    // 머티리얼의 리소스 값을 렌더러가 캐싱하여 바인딩
     const FMaterial *Material = BatchKey.Material;
     if (!Material)
       continue;
-
-    FRenderPipeline *Pipeline = Material->GetPipeline();
-    if (Pipeline) {
-      Pipeline->Bind(*Context.Get());
-    }
-    Material->BindResources(*Context.Get());
 
     // 메시 조회 및 바인딩
     const FMesh *Mesh = BatchKey.Mesh;
     if (!Mesh)
       continue;
-    Mesh->BindResources(*Context.Get());
+    BindDrawResources(*Mesh, *Material, false);
 
     // 슬롯 1에 인스턴스 버퍼 바인딩
     UINT Stride = sizeof(FInstanceData);
@@ -1379,18 +1377,12 @@ void FRenderer::DrawTextInstances(const FDrawCommand &Command) {
   std::memcpy(MappedResource.pData, InstanceData.data(), RequiredSize);
   Context->Unmap(InstanceBuffer.Get(), 0);
 
-  // 머티리얼 및 파이프라인 바인딩
+  // 머티리얼의 리소스 값을 렌더러가 캐싱하여 바인딩
   const FMaterial *Material = &Command.Materials[0];
-
-  FRenderPipeline *Pipeline = Material->GetPipeline();
-  if (Pipeline) {
-    Pipeline->Bind(*Context.Get());
-  }
-  Material->BindResources(*Context.Get());
 
   // 메시 조회 및 바인딩
   const FMesh *Mesh = Command.Mesh;
-  Mesh->BindResources(*Context.Get());
+  BindDrawResources(*Mesh, *Material, false);
 
   // 슬롯 1에 인스턴스 버퍼 바인딩
   UINT Stride = sizeof(FInstanceData);

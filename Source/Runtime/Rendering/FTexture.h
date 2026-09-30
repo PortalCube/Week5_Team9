@@ -6,7 +6,6 @@
 class FTexture final
 {
 	friend class FRenderer;
-	friend class FMaterial;
 
 public:
 	[[nodiscard]] ID3D11ShaderResourceView* GetSRV() const { return TextureSRV.Get(); }
