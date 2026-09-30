@@ -25,7 +25,6 @@ void UScene::Initialize() {
   Super::Initialize();
   bInitialized = true;
 
-  SceneTransforms.Initialize(10000);
 }
 
 void UScene::Release() {
@@ -47,7 +46,6 @@ void UScene::Release() {
   DirtyBoundsList.clear();
   RenderResourceLibrary = nullptr;
   bInitialized = false;
-  SceneTransforms.ShutDown();
 
   Super::Release();
 }
@@ -112,24 +110,6 @@ void UScene::Update(float DeltaTime) {
       Actor->Update(DeltaTime);
     }
   }*/
-
-  const auto& RenderComponents = GetRenderComponents();
-  const int32 PrimCount = static_cast<int32>(RenderComponents.size());
-
-  SceneTransforms.Reserve(PrimCount);
-
-  for(int32 Index : DirtyTransformIndices)
-  {
-    if(Index >= 0 && Index < PrimCount && RenderComponents[Index])
-    {
-		SceneTransforms.SetTransform(Index, RenderComponents[Index]->GetGlobalTransform());
-    }
-  }
-
-  if(PrimCount > 0)
-  {
-    SceneTransforms.UpdateWorldMatrices(*this);
-  }
 }
 
 void UScene::EndPlay() {
@@ -216,7 +196,6 @@ void UScene::AddRenderComponent(UPrimitiveComponent *prim) {
     //처음엔 일단 그리자
     CullDataList.push_back(MakeAlwaysVisibleCullData());
     MarkBoundsDirty(prim);
-    MarkTransformDirty(NewIndex);
   }
 }
 

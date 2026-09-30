@@ -108,7 +108,6 @@ namespace
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
-    const auto& SceneTransforms = Scene.GetSceneTransforms();
     const int32 TotalBatchCount = static_cast<int32>(Scene.GetRenderComponents().size());
 
     //if (Globals::bEnableBatchTransform)
@@ -161,7 +160,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
         if (Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
         {
-            DrawCommand.Constants.World = SceneTransforms.WorldMatrices[Index];
+            DrawCommand.Constants.World = PrimitiveComponent->GetGlobalTransformMatrix();
         }
         else
         {
