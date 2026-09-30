@@ -114,6 +114,8 @@ void FImguiControlPanelWindow::FrameResourceDebugSetting(FEditor& Editor)
     ImGui::Text("Frame Resource Debug");
 
     ImGui::Checkbox("프레임 리소스 사용", &Globals::bUseFrameResources);
+
+    ImGui::Checkbox("SIMD 컬링 사용", &Globals::bUseSIMDCulling);
 }
 
 void FImguiControlPanelWindow::LODSetting(FEditor& Editor)

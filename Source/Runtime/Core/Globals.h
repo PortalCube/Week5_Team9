@@ -28,6 +28,7 @@ namespace Globals
 	inline bool bEnableBatchTransform = true;
 	inline bool bSortTest = false;
 	inline bool bUseFrameResources = true;
+	inline bool bUseSIMDCulling = false;
 
 	// LOD 설정. ForcedLOD가 0 이상이면 화면 크기와 상관없이 해당 LOD로 고정한다.
 	inline bool bEnableLOD = true;
