@@ -4,6 +4,7 @@
 #include "Runtime/Engine/FRayCastingManager.h"
 #include "Runtime/CoreUObject/USceneComponent.h"
 #include "Runtime/Actors/AActor.h"
+#include "Runtime/Geometry/FFrustum.h"
 #include <cstdint>
 
 
@@ -24,6 +25,7 @@ enum class EIntersection : uint8 { Outside, Intersect, Inside };
 
 class FSceneBVH
 {
+public:
     struct FSceneBVHNode
     {
         FAxisAlignedBoundingBox Bounds;
@@ -50,7 +52,7 @@ public:
     void RefitObject(UPrimitiveComponent* Moved);
 
     //Query
-    //void QueryFrustum(const FFrustum& Frustum, float MinScreenPixels, TArray<UPrimitiveComponent*>& OutVisible) const;
+    bool QueryFrustum(const FFrustum& Frustum, float MinScreenPixels, TArray<UPrimitiveComponent*>& OutVisible) const;
     bool QueryRay(const FRay& Ray, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
 
     //BVH Edit
@@ -60,6 +62,7 @@ public:
 private:
     void BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint32 ParentIdx);
     void TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
+    void TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const FVector(&AbsNormals)[FFrustum::PlaneCount], TArray<UPrimitiveComponent*>& OutVisible) const;
     void TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBoundingBox& WorldBox, const FRay& Ray, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
 
     //해당 LeafNode에 영향 받는 BVHNode 모두 갱신

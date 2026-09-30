@@ -6,6 +6,7 @@
 #include "FRenderPipeline.h"
 #include "Runtime/Core/Log.h"
 #include "Runtime/Core/PointerTypes.h"
+#include "Runtime/Core/Globals.h"
 #include "Runtime/CoreUObject/FStatsManager.h"
 #include "Runtime/Engine/FCamera.h"
 #include "Runtime/Rendering/FRenderQueue.h"
@@ -50,8 +51,14 @@ void FRenderer::Shutdown() {
   BlendStateMap.clear();
   SamplerStateMap.clear();
 
-  ObjectConstantBuffer.Reset();
-  ViewConstantBuffer.Reset();
+  //ObjectConstantBuffer.Reset();
+  //ViewConstantBuffer.Reset();
+  for(int32 i = 0; i < NumFrameResourceCount; ++i) 
+  {
+	FrameResources[i].FrameConstantBuffer.Reset();
+    FrameResources[i].ObjectConstantBuffer.Reset();
+    FrameResources[i].ViewConstantBuffer.Reset();
+  }
 
   BackBufferRTV.Reset();
   DepthStencilView.Reset();
@@ -71,6 +78,14 @@ void FRenderer::Shutdown() {
 }
 
 void FRenderer::BeginFrame() {
+  if (Globals::bUseFrameResources) {
+        CurrentFrameResourceIndex = (CurrentFrameResourceIndex + 1) % NumFrameResourceCount;
+  }
+  else
+  {
+	  CurrentFrameResourceIndex = 0;
+  }
+  //CurrentFrameResourceIndex = (CurrentFrameResourceIndex + 1) % NumFrameResourceCount;
   BeginGPUTimer();
 
   Context->RSSetViewports(1, &Viewport);
@@ -850,7 +865,7 @@ bool FRenderer::InitializeConstantBuffers() {
   // b2를 쓰는 Object/Grid 상수 타입이 공유하는 버퍼.
   // 가장 큰 구조체보다 크게 잡아두고, 초과 여부는 UpdateBuffer의
   // static_assert가 잡는다.
-  D3D11_BUFFER_DESC ObjectConstantBufferDesc = {
+  /*D3D11_BUFFER_DESC ObjectConstantBufferDesc = {
       .ByteWidth = ConstantBufferSize,
       .Usage = D3D11_USAGE_DYNAMIC,
       .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
@@ -860,9 +875,11 @@ bool FRenderer::InitializeConstantBuffers() {
   HRESULT Result = Device->CreateBuffer(&ObjectConstantBufferDesc, nullptr, &ObjectConstantBuffer);
   if (FAILED(Result)) {
     return false;
-  }
+  }*/
 
-  D3D11_BUFFER_DESC FrameConstantBufferDesc = {
+  HRESULT Result;
+
+  /*D3D11_BUFFER_DESC FrameConstantBufferDesc = {
       .ByteWidth = sizeof(FFrameConstants),
       .Usage = D3D11_USAGE_DEFAULT,
       .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
@@ -873,9 +890,9 @@ bool FRenderer::InitializeConstantBuffers() {
 
   if (FAILED(Result)) {
     return false;
-  }
+  }*/
 
-  D3D11_BUFFER_DESC ViewConstantBufferDesc = {
+  /*D3D11_BUFFER_DESC ViewConstantBufferDesc = {
       .ByteWidth = sizeof(FViewConstants),
       .Usage = D3D11_USAGE_DEFAULT,
       .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
@@ -886,7 +903,7 @@ bool FRenderer::InitializeConstantBuffers() {
 
   if (FAILED(Result)) {
     return false;
-  }
+  }*/
 
 
   D3D11_BUFFER_DESC LightConstantBufferDesc = {
@@ -902,6 +919,40 @@ bool FRenderer::InitializeConstantBuffers() {
     return false;
   }
 
+  for (int32 i = 0; i < NumFrameResourceCount; i++)
+  {
+	  D3D11_BUFFER_DESC FrameResourceConstantBufferDesc = {
+        .ByteWidth = sizeof(FFrameConstants),
+        .Usage = D3D11_USAGE_DEFAULT,
+        .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+	  };
+	  Result = Device->CreateBuffer(&FrameResourceConstantBufferDesc, nullptr, &FrameResources[i].FrameConstantBuffer);
+	  if (FAILED(Result)) {
+		  return false;
+	  }
+
+	  D3D11_BUFFER_DESC FrameResourceViewConstantBufferDesc = {
+          .ByteWidth = sizeof(FViewConstants),
+          .Usage = D3D11_USAGE_DEFAULT,
+          .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+	  };
+	  Result = Device->CreateBuffer(&FrameResourceViewConstantBufferDesc, nullptr, &FrameResources[i].ViewConstantBuffer);
+	  if (FAILED(Result)) {
+		  return false;
+	  }
+
+	  D3D11_BUFFER_DESC FrameResourceObjectConstantBufferDesc = {
+		  .ByteWidth = ConstantBufferSize,
+		  .Usage = D3D11_USAGE_DYNAMIC,
+		  .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+		  .CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
+	  };
+	  Result = Device->CreateBuffer(&FrameResourceObjectConstantBufferDesc, nullptr, &FrameResources[i].ObjectConstantBuffer);
+	  if (FAILED(Result)) {
+		  return false;
+	  }
+  }
+
   return true;
 }
 
@@ -911,20 +962,33 @@ void FRenderer::UpdateLightConstants(const FLightConstants &Constants, const EVi
 }
 
 void FRenderer::UpdateFrameConstants(const FFrameConstants &Constants) {
-  Context->UpdateSubresource(FrameConstantBuffer.Get(), 0, nullptr, &Constants, 0, 0);
+  /*Context->UpdateSubresource(FrameConstantBuffer.Get(), 0, nullptr, &Constants, 0, 0);
   Context->VSSetConstantBuffers(0, 1, FrameConstantBuffer.GetAddressOf());
-  Context->PSSetConstantBuffers(0, 1, FrameConstantBuffer.GetAddressOf());
+  Context->PSSetConstantBuffers(0, 1, FrameConstantBuffer.GetAddressOf());*/
+
+  Context->UpdateSubresource(GetCurrentFrameResource()->FrameConstantBuffer.Get(), 0, nullptr, &Constants, 0, 0);
+  Context->VSSetConstantBuffers(0, 1, GetCurrentFrameResource()->FrameConstantBuffer.GetAddressOf());
+  Context->PSSetConstantBuffers(0, 1, GetCurrentFrameResource()->FrameConstantBuffer.GetAddressOf());
 }
 
 void FRenderer::UpdateViewConstants(const FViewConstants &Constants) {
-  FViewConstants ShaderConstants = Constants;
+  /*FViewConstants ShaderConstants = Constants;
   ShaderConstants.View = ShaderConstants.View;
   ShaderConstants.Projection = ShaderConstants.Projection.ToD3DMatrix();
 
   Context->UpdateSubresource(ViewConstantBuffer.Get(), 0, nullptr,
                              &ShaderConstants, 0, 0);
   Context->VSSetConstantBuffers(1, 1, ViewConstantBuffer.GetAddressOf());
-  Context->PSSetConstantBuffers(1, 1, ViewConstantBuffer.GetAddressOf());
+  Context->PSSetConstantBuffers(1, 1, ViewConstantBuffer.GetAddressOf());*/
+
+    FViewConstants ShaderConstants = Constants;
+    ShaderConstants.View = ShaderConstants.View;
+    ShaderConstants.Projection = ShaderConstants.Projection.ToD3DMatrix();
+
+    Context->UpdateSubresource(GetCurrentFrameResource()->ViewConstantBuffer.Get(), 0, nullptr,
+        &ShaderConstants, 0, 0);
+    Context->VSSetConstantBuffers(1, 1, GetCurrentFrameResource()->ViewConstantBuffer.GetAddressOf());
+    Context->PSSetConstantBuffers(1, 1, GetCurrentFrameResource()->ViewConstantBuffer.GetAddressOf());
 }
 
 void FRenderer::Draw(const FDrawCommand &Command, uint32 Slot,

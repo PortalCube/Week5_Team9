@@ -86,6 +86,8 @@ void FSceneBVH::BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint3
             CentroidBounds.Max[a] = std::max(CentroidBounds.Max[a], P.Centroid[a]);
         }
     }
+	Bounds.Center = (Bounds.Min + Bounds.Max) * 0.5f;
+	Bounds.Extent = (Bounds.Max - Bounds.Min) * 0.5f;
 
     Nodes[NodeIdx].Bounds = Bounds;
     Nodes[NodeIdx].Parent = ParentIdx;
@@ -183,9 +185,41 @@ bool FSceneBVH::ShouldRebuild() const
     return false;
 }
 
-//void FSceneBVH::QueryFrustum(const FFrustum & Frustum, float MinScreenPixels, TArray<UPrimitiveComponent*>&OutVisible) const
-//{
-//}
+bool FSceneBVH::QueryFrustum(const FFrustum & Frustum, float MinScreenPixels, TArray<UPrimitiveComponent*>& OutVisible) const
+{
+    OutVisible.clear();
+    OutVisible.reserve(Objects.size());
+
+    FVector AbsNormals[FFrustum::PlaneCount];
+
+    // |n|은 평면마다 고정이므로 오브젝트 루프 밖에서 한 번만 계산
+    for (int32 p = 0; p < FFrustum::PlaneCount; ++p)
+    {
+        AbsNormals[p] = FrustumUtils::AbsVector(Frustum.Planes[p].Normal);
+    }
+
+    if(!Nodes.empty())
+    {
+        TraverseFrustum(0, Frustum, AbsNormals, OutVisible);
+    }
+
+    for(UPrimitiveComponent* C : PendingObjects)
+    {
+        if (!C) { continue; }
+
+        const FAxisAlignedBoundingBox Local = C->GetLocalBounds();
+        if (!Local.IsValid()) { continue; }
+
+        const FAxisAlignedBoundingBox World(Local, C->GetGlobalTransformMatrix());
+
+        if (FrustumUtils::IsVisible(Frustum, AbsNormals, World))
+        {
+            OutVisible.push_back(C);
+        }
+    }
+
+    return !OutVisible.empty();
+}
 
 bool FSceneBVH::QueryRay(const FRay &Ray, UPrimitiveComponent*& OutHit, FVector &OutImpact) const
 {
@@ -262,6 +296,40 @@ void FSceneBVH::TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPr
     //왼쪽 혹은 오른쪽만 맞았으면 안맞은 서브트리는 버린다.
     else if (bL) { if (tL < Closest) { TraverseRay(L, Ray, Closest, OutHit, OutImpact); } }
     else if (bR) { if (tR < Closest) { TraverseRay(R, Ray, Closest, OutHit, OutImpact); } }
+}
+
+void FSceneBVH::TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const FVector(&AbsNormals)[FFrustum::PlaneCount], TArray<UPrimitiveComponent*>& OutVisible) const
+{
+	const FSceneBVHNode& N = Nodes[NodeIdx];
+
+	if (!N.Bounds.IsValid()) { return; }
+
+    if (!FrustumUtils::IsVisible(Frustum, AbsNormals, N.Bounds))
+    {
+        return;
+    }
+
+    if(N.bLeafNode)
+    {
+        for (uint32 i = N.ObjStart; i < N.ObjStart + N.ObjCount; ++i)
+        {
+			UPrimitiveComponent* C = Objects[i];
+            if (!Objects[i]) { continue; }
+
+            if (FrustumUtils::IsVisible(Frustum, AbsNormals, ObjectBounds[i]))
+            {
+				OutVisible.push_back(Objects[i]);
+            }
+        }
+        return;
+    }
+
+    const uint32 L = N.Left;
+    const uint32 R = N.Left + 1;
+
+
+	TraverseFrustum(L, Frustum, AbsNormals, OutVisible);
+	TraverseFrustum(R, Frustum, AbsNormals, OutVisible);
 }
 
 //AABB -> 뮐러 트럼보어

@@ -47,7 +47,7 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     RenderStateSort(Editor);
 
     ImGui::Separator();
-	SIMDDebugSetting(Editor);
+	FrameResourceDebugSetting(Editor);
 
     ImGui::Separator();
     LODSetting(Editor);
@@ -109,10 +109,11 @@ void FImguiControlPanelWindow::RenderStateSort(FEditor& Editor)
     }
 }
 
-void FImguiControlPanelWindow::SIMDDebugSetting(FEditor& Editor)
+void FImguiControlPanelWindow::FrameResourceDebugSetting(FEditor& Editor)
 {
-    ImGui::Text("SIMD Debug");
-    ImGui::Checkbox("배치 변환 최적화", &Globals::bEnableBatchTransform);
+    ImGui::Text("Frame Resource Debug");
+
+    ImGui::Checkbox("프레임 리소스 사용", &Globals::bUseFrameResources);
 }
 
 void FImguiControlPanelWindow::LODSetting(FEditor& Editor)
