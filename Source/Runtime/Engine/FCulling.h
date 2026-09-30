@@ -3,6 +3,7 @@
 #include "Runtime/Geometry/FAxisAlignedBoundingBox.h"
 #include "Runtime/Engine/FSceneBVH.h"
 #include "Runtime/Geometry/FFrustum.h"
+#include "Runtime/Math/FMathSSE.h"
 #include <cstdint>
 
 struct FFrustum;
@@ -61,4 +62,5 @@ class FFlatFrustumCuller final : public IPrimitiveCuller
 {
 public:
 	uint32 Cull(const FFrustum& Frustum, const TArray<FAxisAlignedBoundingBox>& CullDataList, TArray<uint8>& OutVisibleFlags) override;
+	uint32 Cull_SIMD(const FFrustum& Frustum, const FAxisAlignedBoundingBox* Boxes, uint32 Count, uint8* OutVisibleFlags);
 };

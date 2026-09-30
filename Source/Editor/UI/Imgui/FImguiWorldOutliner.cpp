@@ -9,6 +9,11 @@
 
 void FImguiWorldOutliner::Process(FEditor& Editor)
 {
+	if (Editor.bHideUI || Editor.bZenMode)
+	{
+		return;
+	}
+
 	ImGui::Begin("World Outliner");
 
 	UScene* Scene = Editor.GetCurrentScene();

@@ -95,7 +95,6 @@ public:
   void BindDrawResources(
       const FMesh& Mesh,
       const FMaterial& Material,
-      uint64 RenderStateKey,
       bool bApplyViewMode
   );
 
@@ -108,7 +107,7 @@ public:
   float GetWidth() const { return Viewport.Width; }
   float GetHeight() const { return Viewport.Height; }
 
-  void ClearLastRenderStateKey();
+  void ClearLastRenderState();
 
 private:
   bool InitializeDeviceAndSwapChain(HWND Window);
@@ -191,7 +190,9 @@ private:
   // 회수에 실패한 프레임에 0을 넣으면 평균이 눌리므로 직전 값을 들고 있는다.
   double LastGPUTimeMs = 0.0;
   
-    uint64 LastRenderStateKey = 0;
+  const FMesh* LastMesh = nullptr;
+  const FMaterial* LastMaterial = nullptr;
+  const FRenderPipeline* LastRenderPipeline = nullptr;
 
   // Draw/DrawSection이 드로우마다 통계 매크로를 부르지 않도록 여기에 모았다가
   // FlushDrawStats에서 한 번에 반영한다.
@@ -220,7 +221,6 @@ public:
       const FMesh &Mesh,
       const FMaterial &Material,
       const TConstants &Constants,
-      uint64 RenderStateKey,
       uint32 Slot = 2,
       bool bApplyViewMode = true
   )
@@ -230,7 +230,6 @@ public:
     BindDrawResources(
         Mesh,
         Material,
-        RenderStateKey,
         bApplyViewMode
     );
 
@@ -249,7 +248,6 @@ public:
       const FMesh& Mesh,
       const FMaterial& Material,
       const TConstants& Constants,
-      uint64 RenderStateKey,
       uint32 StartIndex,
       uint32 IndexCount,
       uint32 Slot = 2,
@@ -261,7 +259,6 @@ public:
       BindDrawResources(
           Mesh,
           Material,
-          RenderStateKey,
           bApplyViewMode
       );
 

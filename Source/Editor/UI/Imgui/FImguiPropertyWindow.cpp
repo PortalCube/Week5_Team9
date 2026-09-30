@@ -30,6 +30,11 @@ namespace
 
 void FImguiPropertyWindow::Process(FEditor& Editor)
 {
+	if (Editor.bHideUI || Editor.bZenMode)
+	{
+		return;
+	}
+
 	ImGui::Begin("Jungle Property Window");
 
 	if (AActor* SelectedActor = Editor.GetSelectedActor())

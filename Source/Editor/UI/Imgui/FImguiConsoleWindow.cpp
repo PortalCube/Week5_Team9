@@ -64,6 +64,11 @@ static const char* Stristr(const char* haystack, const char* needle)
 
 void FImguiConsoleWindow::Process(FEditor& Editor, std::function<void(const char*)> f)
 {
+	if (Editor.bHideUI || Editor.bZenMode)
+	{
+		return;
+	}
+
 	ImGui::Begin("Console Window", nullptr, ImGuiWindowFlags_MenuBar);
 
 	ExecuteFunction = f;

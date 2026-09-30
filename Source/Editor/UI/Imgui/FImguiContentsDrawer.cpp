@@ -21,6 +21,11 @@ FImguiContentsDrawer::FImguiContentsDrawer() : LeftPanelWidth(200.0f)
 
 void FImguiContentsDrawer::Process(FEditor& Editor)
 {
+	if (Editor.bHideUI || Editor.bZenMode)
+	{
+		return;
+	}
+
 	ImGui::Begin("Content Drawer");
 
 	// GetContentRegionAvail은 Begin 다음에 불러야 이 창의 남은 영역이 나온다.

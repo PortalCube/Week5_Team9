@@ -60,7 +60,7 @@ public:
 	void OnWindowSize(UINT Width, UINT Height) override;
 
 	void ExecuteCommand(const char* Command);
-	
+
 private:
 	void BeginFrame();
 	void Tick(float DeltaTime);

@@ -311,6 +311,12 @@ bool FResourceLoader::ImportObj(const std::filesystem::path& ObjFilePath, FStrin
 		*OutAssetId = AssetPath.generic_string();
 	}
 
+	if (FAssetRegistry::GetInstance().Get<UStaticMesh>(AssetID) != nullptr)
+	{
+		UE_LOG("[FResourceLoader::ImportObj] 이미 등록된 스태틱 메시를 재사용합니다. %s", AssetID.ToString().c_str());
+		return true;
+	}
+
 	FArchive Archive;
 	Archive.SetString("Name", ModelName);
 	Archive.SetString("MeshFilePath", RelativeMeshPath.generic_string());
@@ -456,6 +462,11 @@ void FResourceLoader::LoadStaticMeshAsset(const FArchive& Archive, const FName& 
 	namespace fs = std::filesystem;
 
 	FAssetRegistry& Registry = FAssetRegistry::GetInstance();
+	if (Registry.Get<UStaticMesh>(ID) != nullptr)
+	{
+		UE_LOG("[FResourceLoader::LoadStaticMeshAsset] 이미 등록된 스태틱 메시를 재사용합니다. %s", ID.ToString().c_str());
+		return;
+	}
 
 	UStaticMesh* StaticMesh = NewObject<UStaticMesh>();
 	UStaticMeshDesc StaticMeshDesc{};

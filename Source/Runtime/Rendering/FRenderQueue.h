@@ -16,7 +16,7 @@ struct FDrawCommand
 	std::span<const FInstanceData> Instances;
     float Depth = 0.0f;
     int32 DepthBucket = 0;
-    uint64 RenderStateKey = 0;
+    uint64 SortKey = 0;
     uint32 LODIndex = 0;
 };
 
@@ -24,6 +24,12 @@ struct FDrawCommand
 class FRenderQueue
 {
 public:
+    // 큐 용량 사전 예약 (재할당 방지)
+    void Reserve(size_t InCapacity)
+    {
+        primRenderQ.reserve(InCapacity);
+    }
+
     // 아이템 추가
     void Push(FDrawCommand&& Data)
     {

@@ -51,6 +51,7 @@ public:
 
     const std::vector<FMaterial>& GetCachedMaterials() const { return CachedMaterials; }
     void UpdateMaterialCache();
+    void UpdateSortKey();
 
     //오클루전 대상인지
     virtual bool IsOcclusionTarget()const;

@@ -1,6 +1,7 @@
 #include "FImguiStatsWindow.h"
 #include "FImguiManager.h"
 #include "Runtime/CoreUObject/FStatsManager.h"
+#include "Runtime/Engine/FTimeManager.h"
 
 #include "ThirdParty/Imgui/implot.h"
 
@@ -14,6 +15,7 @@ namespace
     constexpr float FPSSampleInterval = 0.05f;
     constexpr float FPSSmoothingFactor = 0.15f;
     constexpr float FPSGraphPaddingRatio = 0.15f;
+    constexpr float FPSLineWeight = 2.0f;
     constexpr float StatsPanelWidth = 220.0f;
     constexpr float StatsGraphHeight = 60.0f;
     constexpr float StatsRowHeight = 20.0f;
@@ -70,6 +72,10 @@ double FImguiStatsWindow::GetStat(const FName& Name, size_t Range) const
 
 void FImguiStatsWindow::Process(FEditor& Editor, float InDeltaTime) {
 
+    if (Editor.bShowBenchmark)
+    {
+        DrawPickingStatsOverlay(Editor);
+    }
 
     if (bOpenMemory)
     {
@@ -86,6 +92,34 @@ void FImguiStatsWindow::Process(FEditor& Editor, float InDeltaTime) {
     {
         DrawUnits();
     } 
+}
+
+void FImguiStatsWindow::DrawPickingStatsOverlay(const FEditor& Editor)
+{
+    const double DeltaTime = FTimeManager::GetDeltaTime();
+    const ImVec2 ViewportPos = ImGui::GetWindowPos();
+    const ImVec2 ViewportSize = ImGui::GetWindowSize();
+
+    const int ResolutionX = static_cast<int>(ViewportSize.x);
+    const int ResolutionY = static_cast<int>(ViewportSize.y - ImGui::GetFrameHeight());
+    const int FPS = DeltaTime > 0.0 ? static_cast<int>(1.0 / DeltaTime) : 0;
+    const double FrameMs = DeltaTime * 1000.0;
+
+    char Buffer[256];
+    snprintf(Buffer, sizeof(Buffer),
+        "Resolution : %dx%d\nFPS : %d (%.2f ms)\nPicking Time %.4f ms : Num Attempts %d : Accumulated Time %.4f ms",
+        ResolutionX, ResolutionY, FPS, FrameMs,
+        Editor.LastPickingMs, Editor.PickingAttempts, Editor.AccumulatedPickingMs);
+
+    const ImVec2 Pos(ViewportPos.x + 12.0f, ViewportPos.y + ImGui::GetFrameHeight() + 6.0f);
+    constexpr float FontSize = 26.0f;
+    ImDrawList* DrawList = ImGui::GetWindowDrawList();
+
+    // 밝은 장면에서도 읽히도록 그림자를 먼저 그린다.
+    DrawList->AddText(ImGui::GetFont(), FontSize, ImVec2(Pos.x + 2.0f, Pos.y + 2.0f),
+        IM_COL32(0, 0, 0, 220), Buffer);
+    DrawList->AddText(ImGui::GetFont(), FontSize, Pos,
+        IM_COL32(0, 255, 0, 255), Buffer);
 }
 
 void FImguiStatsWindow::UpdateFPSHistory(float DeltaTime)
@@ -172,25 +206,37 @@ void FImguiStatsWindow::DrawStatsFPSGraph()
     {
         ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0.0f, 0.0f));
         if (ImPlot::BeginPlot("##FPSHistory", FPSGraphSize, ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText | ImPlotFlags_NoInputs)) {
-            ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoTickLabels, ImPlotAxisFlags_NoTickLabels);
+            constexpr ImPlotAxisFlags AxisFlags = ImPlotAxisFlags_NoTickLabels
+                | ImPlotAxisFlags_NoTickMarks
+                | ImPlotAxisFlags_NoGridLines;
+            ImPlot::SetupAxes(nullptr, nullptr, AxisFlags, AxisFlags);
             ImPlot::SetupAxisLimits(ImAxis_X1, HistoryStart, FPSHistoryTime, ImGuiCond_Always);
             ImPlot::SetupAxisLimits(ImAxis_Y1, YMin, YMax, ImGuiCond_Always);
 
             ImPlotSpec Spec;
             Spec.Offset = static_cast<int>(FPSHistory.Offset);
             Spec.Stride = sizeof(ImVec2);
-            Spec.FillAlpha = 0.5f;
+            Spec.FillAlpha = 1.0f;
+            Spec.LineWeight = FPSLineWeight;
 
             ImPlot::PlotLine("FPS", &FPSHistory.Data[0].x, &FPSHistory.Data[0].y,
                 static_cast<int>(FPSHistory.Data.size()), Spec);
 
-            char MaxBuffer[32];
-            char MinBuffer[32];
-            sprintf_s(MaxBuffer, "Max %.1f", MaxFPS);
-            sprintf_s(MinBuffer, "Min %.1f", MinFPS);
+            char RangeBuffer[64];
+            sprintf_s(RangeBuffer, "[FPS] Min %.1f  Max %.1f", MinFPS, MaxFPS);
 
-            ImPlot::PlotText(MaxBuffer, FPSHistoryTime, MaxFPS, ImVec2(-42.0f, 8.0f));
-            ImPlot::PlotText(MinBuffer, FPSHistoryTime, MinFPS, ImVec2(-42.0f, -8.0f));
+            const ImVec2 PlotPos = ImPlot::GetPlotPos();
+            const ImVec2 PlotSize = ImPlot::GetPlotSize();
+            const ImVec2 TextSize = ImGui::CalcTextSize(RangeBuffer);
+            constexpr float TextPadding = 4.0f;
+            const ImVec2 TextPos(
+                PlotPos.x + TextPadding,
+                PlotPos.y + PlotSize.y - TextSize.y - TextPadding);
+
+            ImGui::GetWindowDrawList()->AddText(
+                TextPos,
+                ImGui::GetColorU32(ImGuiCol_Text),
+                RangeBuffer);
 
             ImPlot::EndPlot();
         }

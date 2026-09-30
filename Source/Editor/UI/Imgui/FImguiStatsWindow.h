@@ -50,6 +50,7 @@ private:
 	void DrawStatsMemory();
 	void DrawGPUStatsMemory();
 	void DrawStatsFPSGraph();
+	void DrawPickingStatsOverlay(const FEditor& Editor);
 	void DrawStatsFPS(float DeltaTime);
 	void DrawUnits();
 	void DrawRow(ImDrawList* DrawList, const ImVec2& Pos, float& Y, const float& Width, const float& RowHeight, const float& ValueOffsetX, const char* Name, const char* Value, double Data, FVector4 Color, FVector4 RowColor);

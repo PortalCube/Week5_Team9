@@ -12,7 +12,7 @@ namespace
 {
 TSharedPtr<FMesh> CreateInternalMesh(FRenderer& Renderer, FMeshDesc Desc)
 {
-  if (Desc.Sections.empty())
+  if (Desc.Sections.empty() && Desc.IndexCount > 0)
   {
     Desc.Sections.push_back(FMeshSection{
         .SectionName = "",

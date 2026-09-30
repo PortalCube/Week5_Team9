@@ -6,6 +6,7 @@
 #include "Editor/Visualizer/IVisualizer.h"
 #include "Runtime/Actors/AActor.h"
 #include "Runtime/CoreUObject/UBillBoardComp.h"
+#include "Runtime/CoreUObject/Mesh/UStaticMeshComponent.h"
 #include "Runtime/CoreUObject/UClass.h"
 #include "Runtime/Engine/FCamera.h"
 #include "Runtime/Engine/FSceneView.h"
@@ -25,7 +26,9 @@ FRenderView::FRenderView(FRenderer &Renderer) : Renderer(Renderer) {}
 
 namespace
 {
-    FDrawCommand GetDrawCommand(const UPrimitiveComponent& Component, const FCamera& Camera)
+    // LODView는 뷰(카메라)당 한 번 만든 값을 넘긴다. 오브젝트마다 카메라 값을 다시 읽지 않기 위함.
+    FDrawCommand GetDrawCommand(const UPrimitiveComponent& Component, const FCamera& Camera,
+        const FAxisAlignedBoundingBox& WorldBounds, const UStaticMeshComponent::FLODView& LODView)
     {
         const FRenderData& Data = Component.GetRenderData(Camera);
 
@@ -35,11 +38,16 @@ namespace
         }
 
         const FMaterialInstance& Material = Data.Materials[0];
+        const uint32 LODIndex = UStaticMeshComponent::SelectLOD(Data.Mesh, WorldBounds, LODView);
+
+        // vector에서 span으로 바로 변환하면 ranges 내부 템플릿 호출이 여러 번 생긴다.
+        // Instances처럼 포인터와 크기로 직접 만든다.
+        const TArray<FMaterial>& CachedMaterials = Component.GetCachedMaterials();
 
         FDrawCommand Command
         {
-            .Mesh = Data.Mesh->Get(Data.LODIndex),
-            .Materials = Component.GetCachedMaterials(),
+            .Mesh = Data.Mesh->Get(LODIndex),
+            .Materials = std::span<const FMaterial>(CachedMaterials.data(), CachedMaterials.size()),
             .Constants =
             {
                 Material.Color,
@@ -50,41 +58,15 @@ namespace
             },
             .Type = Data.Type,
 			.Instances = std::span<const FInstanceData>(Data.Instances.data(), Data.Instances.size()),
-            .LODIndex = Data.LODIndex,
+            .LODIndex = LODIndex,
         };
-
-        const FMaterialInstance& PrimaryMaterial = Data.Materials[0];
-        
 
         if (Globals::bEnableRenderSort)
         {
-            uint64 PipelineId = 0;
-            uint64 MaterialId = 0;
-            uint64 TextureId = 0;
             // 같은 애셋이라도 LOD마다 버퍼가 다르므로 LOD 인덱스를 섞는다.
-            uint64 MeshId = static_cast<uint64>(Data.Mesh->GetID().GetHash()) + Data.LODIndex;
-            
-            if (PrimaryMaterial.Pipeline)
-            {
-                PipelineId = static_cast<uint64>(PrimaryMaterial.Pipeline->GetID().GetHash());
-            }
-            
-            if (PrimaryMaterial.Material)
-            {
-                MaterialId = static_cast<uint64>(PrimaryMaterial.Material->GetID().GetHash());
-            }
-            
-            if (PrimaryMaterial.Texture)
-            {
-                TextureId = static_cast<uint64>(PrimaryMaterial.Texture->GetID().GetHash());
-            }
-            
-            Command.RenderStateKey =
-                ((PipelineId & 0xFFFFull) << 48) |
-                ((MaterialId & 0xFFFFull) << 32) |
-                ((TextureId & 0xFFFFull) << 16) |
-                ((MeshId & 0xFFFFull));
-            
+            const uint64 MeshId = static_cast<uint64>(Data.Mesh->GetID().GetHash()) + Data.LODIndex;
+            Command.SortKey = Data.SortKey | (MeshId & 0xFFFFull);
+
             // ============================= Depth 정렬 비활성화 =============================
 
             // AABB의 Min X 값을 Depth로 지정
@@ -115,18 +97,11 @@ namespace
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
-    const int32 TotalBatchCount = static_cast<int32>(Scene.GetRenderComponents().size());
-
-    //if (Globals::bEnableBatchTransform)
-    //{
-    //    ReserveScratchMVPBuffer(TotalBatchCount);
-    //    if (TotalBatchCount > 0)
-    //    {
-    //        SceneTransforms.ComputeBatchMVP(View.ViewProj, ScratchMVPBuffer, TotalBatchCount);
-    //    }
-    //}
-
     const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
+    // Primitives[i]의 SceneIndex는 i이므로 CullDataList[i]가 그 컴포넌트의 월드 바운드다 (VisibleFlags와 같은 규칙)
+    const TArray<FAxisAlignedBoundingBox>& CullDataList = Scene.GetCullDataList();
+    const UStaticMeshComponent::FLODView LODView = UStaticMeshComponent::MakeLODView(View.Camera);
+    RenderQueue.Reserve(Primitives.size());
 
     std::fill(std::begin(Globals::LODDrawCounts), std::end(Globals::LODDrawCounts), 0u);
 
@@ -167,7 +142,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
             bSelected = true;
         }
 
-        FDrawCommand DrawCommand = GetDrawCommand(*PrimitiveComponent, View.Camera);
+        FDrawCommand DrawCommand = GetDrawCommand(*PrimitiveComponent, View.Camera, CullDataList[i], LODView);
             
         // 인스턴싱 및 텍스트는 인스턴스 배열을 사용하므로 바로 푸시
         if (DrawCommand.Type == ERenderType::Text || DrawCommand.Type == ERenderType::Instancing)
@@ -179,7 +154,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
 		int32 Index = PrimitiveComponent->GetBatchIndex();
 
-        if (Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
+        if (!PrimitiveComponent->Cast<UBillBoardComp>())
         {
             DrawCommand.Constants.World = PrimitiveComponent->GetGlobalTransformMatrix();
         }
@@ -248,8 +223,6 @@ void FRenderView::PrepareRender()
 
 void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const FEditorRenderContext& EditorCtx)
 {
-
-
     // 뷰포트 시작
     BeginView(View);
 
@@ -279,7 +252,7 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
         bOracleRequested = false;
     }
 
-    Renderer.ClearLastRenderStateKey();
+    Renderer.ClearLastRenderState();
 
     // 에디터 라인 패스
     if (EditorCtx.Grid && (View.ShowFlags & static_cast<uint32>(EEngineShowFlags::SF_Grid)) != 0) {
@@ -306,12 +279,12 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
     
     FlushLinePass(View.Camera);
 
-    Renderer.ClearLastRenderStateKey();
+    Renderer.ClearLastRenderState();
 
     // 후처리 외곽선 패스
     RenderPostProcessPass(View.Camera, EditorCtx.SelectedActor);
 
-    Renderer.ClearLastRenderStateKey();
+    Renderer.ClearLastRenderState();
 }
 
 void FRenderView::BeginView(const FSceneView& View)
@@ -377,7 +350,7 @@ void FRenderView::RenderOverlayPass(const FCamera& Camera, const FSceneView& Sce
     if (TextComp && (SceneView.ShowFlags & static_cast<uint64>(EEngineShowFlags::SF_BillboardText)))
     {
         Renderer.ClearDepth();
-        FDrawCommand Command = GetDrawCommand(*TextComp, Camera);
+        FDrawCommand Command = GetDrawCommand(*TextComp, Camera, TextComp->GetWorldBounds(), UStaticMeshComponent::MakeLODView(Camera));
         if (!Command.Instances.empty())
         {
             Renderer.AddTextInstanceArray(Command);
@@ -449,7 +422,7 @@ void FRenderView::DrawStencilMask(const FCamera& Camera,
     if (!PrimComp) return;
 
     const FMatrix ModelMatrix = PrimComp->GetRenderMatrix(Camera);
-    FDrawCommand DrawCommand = GetDrawCommand(*PrimComp, Camera);
+    FDrawCommand DrawCommand = GetDrawCommand(*PrimComp, Camera, PrimComp->GetWorldBounds(), UStaticMeshComponent::MakeLODView(Camera));
 
     DrawCommand.Constants.DisableShading = true;
     DrawCommand.Constants.World = ModelMatrix;
