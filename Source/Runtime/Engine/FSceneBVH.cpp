@@ -86,6 +86,8 @@ void FSceneBVH::BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint3
             CentroidBounds.Max[a] = std::max(CentroidBounds.Max[a], P.Centroid[a]);
         }
     }
+	Bounds.Center = (Bounds.Min + Bounds.Max) * 0.5f;
+	Bounds.Extent = (Bounds.Max - Bounds.Min) * 0.5f;
 
     Nodes[NodeIdx].Bounds = Bounds;
     Nodes[NodeIdx].Parent = ParentIdx;
