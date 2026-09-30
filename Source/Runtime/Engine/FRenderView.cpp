@@ -232,8 +232,11 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
         CullScene(View, Scene);
     }
 
-    // 씬 컴포넌트 수집
-    CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
+    // 씬 컴포넌트 수집 (LOD 선택 포함). 독립 카운터라 부모인 Draw 수치에는 영향이 없다.
+    {
+        SCOPE_CYCLE_COUNTER_IMPL(__COUNTER__, "Collect", true);
+        CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
+    }
 
     if (Globals::bEnableRenderSort)
     {

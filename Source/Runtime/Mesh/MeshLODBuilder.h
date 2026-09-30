@@ -24,7 +24,16 @@ namespace MeshLODBuilder
 	// 정적 메시에 기본으로 적용하는 LOD 설정 (LOD1부터)
 	const TArray<FLODSetting>& GetDefaultSettings();
 
+	// GPU 효율을 위해 메시를 제자리에서 최적화한다. 삼각형의 모양은 바뀌지 않는다.
+	// 중복 정점 병합 → 퇴화/중복 삼각형 제거 → (섹션별) 정점 캐시 → (섹션별) 오버드로우 → 정점 fetch 순서.
+	// 섹션의 StartIndex/IndexCount는 결과에 맞게 갱신되고, 섹션 개수와 순서는 유지된다.
+	void OptimizeMesh(
+		TArray<FVertexData>& Vertices,
+		TArray<uint32>& Indices,
+		TArray<FMeshSection>& Sections);
+
 	// 섹션별로 단순화한다. 섹션 경계는 잠가서 머티리얼 사이에 틈이 생기지 않게 한다.
+	// 결과는 OptimizeMesh까지 적용된 상태다.
 	void BuildLOD(
 		const TArray<FVertexData>& Vertices,
 		const TArray<uint32>& Indices,
