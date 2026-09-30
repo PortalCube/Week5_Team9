@@ -31,5 +31,6 @@ namespace FRayCastingManager
     bool RayIntersectsBoundsInv(const FVector& Origin, const FVector& InvDir, const FVector& Min, const FVector& Max, float& OutTNear);
     bool IntersectMeshBVH(const FRay& ObjectRay, const FMesh& Mesh, float& OutClosestHit);
     bool RayIntersectsMesh(const FRay& Ray, const FMesh& Mesh, const FMatrix& ModelMatrix, float& OutDistance, FVector& OutImpactPoint, float& ClosestHit, bool bBVH = false);
+    bool RayIntersectsMeshWithInversedModel(const FRay& Ray, const FMesh& Mesh, const FMatrix& InversedModelMatrix, float& OutDistance, FVector& OutImpactPoint, float& ClosestHit, bool bBVH = false);
     bool RayIntersectsTriangle(const FRay& Ray, const FVector& A, const FVector& B, const FVector& C, float& OutT);
 };

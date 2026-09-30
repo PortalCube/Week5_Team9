@@ -280,7 +280,12 @@ void FSceneBVH::TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBounding
 
     float Dist = 0.0f;
     FVector Impact{};
-    if (FRayCastingManager::RayIntersectsMesh(Ray, *Mesh, C->GetGlobalTransformMatrix(), Dist, Impact, Closest, true))
+
+    //역행렬이 없으면(스케일 0 등) 로컬 공간으로 옮길 수 없으니 맞지 않은 것으로 본다
+    const FMatrix* InvWorld = C->GetGlobalInverseMatrix();
+    if (!InvWorld) { return; }
+
+    if (FRayCastingManager::RayIntersectsMeshWithInversedModel(Ray, *Mesh, *InvWorld, Dist, Impact, Closest, true))
     {
         OutHit = C;
         OutImpact = Impact;

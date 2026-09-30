@@ -285,17 +285,22 @@ static bool IntersectIndexedTriangles(const FRay& ObjectRay, const FMesh& Mesh, 
 
 bool FRayCastingManager::RayIntersectsMesh(const FRay& Ray, const FMesh& Mesh, const FMatrix& ModelMatrix, float& OutDistance, FVector& OutImpactPoint, float &ClosestHit, bool bBVH)
 {
-	const size_t VertexCount = bUseFlattenedTriangles
-		? Mesh.GetTriangleVertices().size()
-		: Mesh.GetPositions().size();
-	if (VertexCount < 3)
+	// Ray를 Object 좌표계로 변환
+	FMatrix InvM;
+	if (!ModelMatrix.Inverse(InvM))
 	{
 		return false;
 	}
 
-	// Ray를 Object 좌표계로 변환
-	FMatrix InvM;
-	if (!ModelMatrix.Inverse(InvM))
+	return RayIntersectsMeshWithInversedModel(Ray, Mesh, InvM, OutDistance, OutImpactPoint, ClosestHit, bBVH);
+}
+
+bool FRayCastingManager::RayIntersectsMeshWithInversedModel(const FRay& Ray, const FMesh& Mesh, const FMatrix& InvM, float& OutDistance, FVector& OutImpactPoint, float& ClosestHit, bool bBVH)
+{
+	const size_t VertexCount = bUseFlattenedTriangles
+		? Mesh.GetTriangleVertices().size()
+		: Mesh.GetPositions().size();
+	if (VertexCount < 3)
 	{
 		return false;
 	}
