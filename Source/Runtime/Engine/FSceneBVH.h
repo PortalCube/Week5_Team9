@@ -61,9 +61,9 @@ public:
 
 private:
     void BuildRecursive(uint32 NodeIdx, uint32 Start, uint32 Count, uint32 ParentIdx);
-    void TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
+    void TraverseRay(uint32 NodeIdx, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
+    void TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBoundingBox& WorldBox, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
     void TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const FVector(&AbsNormals)[FFrustum::PlaneCount], TArray<UPrimitiveComponent*>& OutVisible) const;
-    void TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBoundingBox& WorldBox, const FRay& Ray, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const;
 
     //해당 LeafNode에 영향 받는 BVHNode 모두 갱신
     void RefitFromLeaf(uint32 LeafNodeIndex);

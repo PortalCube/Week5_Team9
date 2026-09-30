@@ -69,14 +69,15 @@ EGizmoHandle FGizmo::HitTest(const FTransform& Transform, const FRay& Ray, const
 	float ClosestDistance = (std::numeric_limits<float>::max)();
 	EGizmoHandle ClosestHandle = EGizmoHandle::None;
 
-	float HitDistance;
+	// RayIntersectsMesh는 이 값보다 가까운 교차만 인정하고 갱신하므로 반드시 최대값으로 시작한다.
+	float HitDistance, Dummyfloat = (std::numeric_limits<float>::max)();
 	FVector ImpactPoint;
 	if (FRayCastingManager::RayIntersectsMesh(
 			Ray,
 			*GizmoMesh,
 			Scale * ObjectRotation * Translation,
 			HitDistance,
-			ImpactPoint) &&
+			ImpactPoint, Dummyfloat) &&
 		HitDistance < ClosestDistance)
 	{
 		ClosestDistance = HitDistance;
@@ -87,7 +88,7 @@ EGizmoHandle FGizmo::HitTest(const FTransform& Transform, const FRay& Ray, const
 		*GizmoMesh,
 		Scale * YAxisRotation * ObjectRotation * Translation,
 		HitDistance,
-		ImpactPoint) &&
+		ImpactPoint, Dummyfloat) &&
 		HitDistance < ClosestDistance)
 	{
 		ClosestDistance = HitDistance;
@@ -98,7 +99,7 @@ EGizmoHandle FGizmo::HitTest(const FTransform& Transform, const FRay& Ray, const
 		*GizmoMesh,
 		Scale * ZAxisRotation * ObjectRotation * Translation,
 		HitDistance,
-		ImpactPoint) &&
+		ImpactPoint, Dummyfloat) &&
 		HitDistance < ClosestDistance)
 	{
 		ClosestDistance = HitDistance;

@@ -226,10 +226,13 @@ bool FSceneBVH::QueryRay(const FRay &Ray, UPrimitiveComponent*& OutHit, FVector 
     OutImpact = FVector{};
     float Closest = (std::numeric_limits<float>::max)();
 
+    //광선 방향은 순회 내내 같으므로 역수를 한 번만 구한다
+    const FVector InvDir = FRayCastingManager::MakeInvDir(Ray.Direction);
+
     //1) 트리 순회
     if (!Nodes.empty())
     {
-        TraverseRay(0, Ray, Closest, OutHit, OutImpact);
+        TraverseRay(0, Ray, InvDir, Closest, OutHit, OutImpact);
     }
 
     //2) 아직 트리에 흡수되지 않은 대기열. 빠뜨리면 최근 스폰분이 조용히 누락된다
@@ -242,13 +245,13 @@ bool FSceneBVH::QueryRay(const FRay &Ray, UPrimitiveComponent*& OutHit, FVector 
 
         //대기열은 바운드 캐시가 없으므로 즉석 계산
         const FAxisAlignedBoundingBox World(Local, C->GetGlobalTransformMatrix());
-        TestObjectRay(C, World, Ray, Closest, OutHit, OutImpact);
+        TestObjectRay(C, World, Ray, InvDir, Closest, OutHit, OutImpact);
     }
 
     return OutHit != nullptr;
 }
 
-void FSceneBVH::TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const
+void FSceneBVH::TraverseRay(uint32 NodeIdx, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const
 {
     const FSceneBVHNode& N = Nodes[NodeIdx];
 
@@ -264,7 +267,7 @@ void FSceneBVH::TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPr
             //Buil되기 전에는 빈 공간을 남아있으므로 Ray 검사중엔 건너뛴다.
             if (!Objects[i]) { continue; }
 
-            TestObjectRay(Objects[i], ObjectBounds[i], Ray, Closest, OutHit, OutImpact);
+            TestObjectRay(Objects[i], ObjectBounds[i], Ray, InvDir, Closest, OutHit, OutImpact);
         }
         return;
     }
@@ -275,9 +278,9 @@ void FSceneBVH::TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPr
 
     float tL = 0.0f, tR = 0.0f;
     const bool bL = Nodes[L].Bounds.IsValid()
-        && FRayCastingManager::RayIntersectsAABB(Ray, Nodes[L].Bounds, tL);
+        && FRayCastingManager::RayIntersectsBoundsInv(Ray.Origin, InvDir, Nodes[L].Bounds.Min, Nodes[L].Bounds.Max, tL);
     const bool bR = Nodes[R].Bounds.IsValid()
-        && FRayCastingManager::RayIntersectsAABB(Ray, Nodes[R].Bounds, tR);
+        && FRayCastingManager::RayIntersectsBoundsInv(Ray.Origin, InvDir, Nodes[R].Bounds.Min, Nodes[R].Bounds.Max, tR);
 
     //둘 다 Ray가 맞았으면
     if (bL && bR)
@@ -287,15 +290,15 @@ void FSceneBVH::TraverseRay(uint32 NodeIdx, const FRay& Ray, float& Closest, UPr
         float  tFar = tR;
         if (tR < tL) { Near = R; Far = L; tFar = tL; }
 
-        TraverseRay(Near, Ray, Closest, OutHit, OutImpact);
+        TraverseRay(Near, Ray, InvDir, Closest, OutHit, OutImpact);
 
         //먼 쪽 박스 진입점이 이미 찾은 히트보다 뒤면 서브트리 전체를 버린다
-        if (tFar < Closest) { TraverseRay(Far, Ray, Closest, OutHit, OutImpact); }
+        if (tFar < Closest) { TraverseRay(Far, Ray, InvDir, Closest, OutHit, OutImpact); }
     }
 
     //왼쪽 혹은 오른쪽만 맞았으면 안맞은 서브트리는 버린다.
-    else if (bL) { if (tL < Closest) { TraverseRay(L, Ray, Closest, OutHit, OutImpact); } }
-    else if (bR) { if (tR < Closest) { TraverseRay(R, Ray, Closest, OutHit, OutImpact); } }
+    else if (bL) { if (tL < Closest) { TraverseRay(L, Ray, InvDir, Closest, OutHit, OutImpact); } }
+    else if (bR) { if (tR < Closest) { TraverseRay(R, Ray, InvDir, Closest, OutHit, OutImpact); } }
 }
 
 void FSceneBVH::TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const FVector(&AbsNormals)[FFrustum::PlaneCount], TArray<UPrimitiveComponent*>& OutVisible) const
@@ -333,10 +336,10 @@ void FSceneBVH::TraverseFrustum(uint32 NodeIdx, const FFrustum& Frustum, const F
 }
 
 //AABB -> 뮐러 트럼보어
-void FSceneBVH::TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBoundingBox& WorldBox, const FRay& Ray, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const
+void FSceneBVH::TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBoundingBox& WorldBox, const FRay& Ray, const FVector& InvDir, float& Closest, UPrimitiveComponent*& OutHit, FVector& OutImpact) const
 {
     float tNear = 0.0f;
-    if (!FRayCastingManager::RayIntersectsAABB(Ray, WorldBox, tNear)) { return; }
+    if (!FRayCastingManager::RayIntersectsBoundsInv(Ray.Origin, InvDir, WorldBox.Min, WorldBox.Max, tNear)) { return; }
     if (tNear >= Closest) { return; }           //이미 더 가까운 히트가 있으면 삼각형 검사 생략
 
     const UStaticMesh* Asset = C->GetMeshAsset();
@@ -345,10 +348,13 @@ void FSceneBVH::TestObjectRay(UPrimitiveComponent* C, const FAxisAlignedBounding
 
     float Dist = 0.0f;
     FVector Impact{};
-    if (FRayCastingManager::RayIntersectsMesh(Ray, *Mesh, C->GetGlobalTransformMatrix(), Dist, Impact)
-        && Dist < Closest)
+
+    //역행렬이 없으면(스케일 0 등) 로컬 공간으로 옮길 수 없으니 맞지 않은 것으로 본다
+    const FMatrix* InvWorld = C->GetGlobalInverseMatrix();
+    if (!InvWorld) { return; }
+
+    if (FRayCastingManager::RayIntersectsMeshWithInversedModel(Ray, *Mesh, *InvWorld, Dist, Impact, Closest, true))
     {
-        Closest = Dist;
         OutHit = C;
         OutImpact = Impact;
     }
