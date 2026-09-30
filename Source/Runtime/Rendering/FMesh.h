@@ -80,7 +80,7 @@ private:
 	//=================
 	//Mesh BVH
 	TArray<FMeshBVHNode> BVHNodes;
-	uint32 LeafSize = 8;
+	uint32 LeafSize = 16;
 	//=================
 
 	D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;

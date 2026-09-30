@@ -76,7 +76,7 @@ private:
     TArray<FAxisAlignedBoundingBox> ObjectBounds;   //Objects의 index에 해당하는 prim의 BoundingBox
     TArray<uint32> LeafOfObject;                    //여려개의 BVHIndex -> 하나의 Leaf BVHNode 맵핑
 
-    uint32 LeafSize = 16;
+    uint32 LeafSize = 8;
 
     TArray<UPrimitiveComponent*> PendingObjects;
     uint32 PendingLimit = 256;
