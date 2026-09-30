@@ -9,6 +9,11 @@ constexpr wchar_t ObjFilter[] = L"Scene Files (*.obj)\0*.obj\0All Files (*.*)\0*
 
 void FImguiToolbar::Process(FEditor& Editor, FImguiConsoleWindow& ConsoleWindow, FImguiControlPanelWindow& ControlPanelWindow, FImguiPropertyWindow& PropertyWindow)
 {
+    if (Editor.bZenMode)
+    {
+        return;
+    }
+
     static FString CurrentScenePath;
 
 	if (ImGui::BeginMainMenuBar()) 

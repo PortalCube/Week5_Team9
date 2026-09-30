@@ -22,6 +22,11 @@
 
 void FImguiControlPanelWindow::Process(FEditor& Editor)
 {
+    if (Editor.bHideUI || Editor.bZenMode)
+    {
+        return;
+    }
+
     const uint64 Count = UObject::GetTotalAllocationCount();
     const uint64 Bytes = UObject::GetTotalAllocationBytes();
     ImGui::Begin("Jungle Control Panel");

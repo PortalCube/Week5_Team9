@@ -36,6 +36,8 @@ public:
   // 피킹 경로 선택 및 측정. 검증이 끝나면 제거한다.
   bool bUseBVHPicking = true;
   bool bHideUI = false;
+  // F11. bHideUI가 숨기는 창에 더해 툴바까지 숨긴다.
+  bool bZenMode = false;
   bool bShowBenchmark = true;
   double LastPickingMs = 0.0;
   double AccumulatedPickingMs = 0.0;
