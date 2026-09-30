@@ -63,11 +63,14 @@ void FEditorApplication::BeginFrame()
 void FEditorApplication::Tick(float DeltaTime) {
   ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
   EditorViewportWindow.Process(Editor, DeltaTime);
-  WorldOutliner.Process(Editor);
-  ControlPanelWindow.Process(Editor);
-  PropertyWindow.Process(Editor);
-  ConsoleWindow.Process(Editor, [this](const char* Command) {ExecuteCommand(Command);});
-  ContentsDrawer.Process(Editor);
+  if (!Editor.bHideUI)
+  {
+    WorldOutliner.Process(Editor);
+    ControlPanelWindow.Process(Editor);
+    PropertyWindow.Process(Editor);
+    ConsoleWindow.Process(Editor, [this](const char* Command) {ExecuteCommand(Command);});
+    ContentsDrawer.Process(Editor);
+  }
   Editor.Process();
 }
 

@@ -24,7 +24,7 @@ public:
 	FString ToNarrow(const wchar_t* Wide);
 	bool PickSceneFile(FString& OutPath, bool bSave);
 	void ShowFileBar(FString CurrentScenePath, FEditor& Editor);
-	void ShowViewBar(FEditor& Editor, FImguiConsoleWindow& ConsoleWindow);	
+	void ShowViewBar(FEditor& Editor, FImguiConsoleWindow& ConsoleWindow);
 
 	bool PickObjFile(FString& OutPath);
 

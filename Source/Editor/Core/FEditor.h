@@ -35,6 +35,8 @@ public:
 
   // 피킹 경로 선택 및 측정. 검증이 끝나면 제거한다.
   bool bUseBVHPicking = true;
+  bool bHideUI = false;
+  bool bShowBenchmark = false;
   double LastPickingMs = 0.0;
   double AccumulatedPickingMs = 0.0;
   int32 PickingAttempts = 0;

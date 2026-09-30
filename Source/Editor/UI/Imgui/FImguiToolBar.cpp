@@ -140,6 +140,9 @@ void FImguiToolbar::ShowViewBar(FEditor& Editor, FImguiConsoleWindow& ConsoleWin
 
         }
 
+        ImGui::MenuItem("Hide UI", nullptr, &Editor.bHideUI);
+        ImGui::MenuItem("Show Benchmark UI", nullptr, &Editor.bShowBenchmark);
+
         ImGui::EndMenu();
     }
 
