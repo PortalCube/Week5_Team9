@@ -56,7 +56,7 @@ namespace
         const FMaterialInstance& PrimaryMaterial = Data.Materials[0];
         
 
-        if (Globals::bSortTest)
+        if (Globals::bEnableRenderSort)
         {
             uint64 PipelineId = 0;
             uint64 MaterialId = 0;
@@ -229,7 +229,7 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
     // 씬 컴포넌트 수집
     CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
 
-    if (Globals::bSortTest)
+    if (Globals::bEnableRenderSort)
     {
         RenderQueue.Sort();
     }

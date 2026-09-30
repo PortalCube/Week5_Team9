@@ -131,7 +131,7 @@ void FImguiControlPanelWindow::BVHDebugSetting(FEditor& Editor)
 void FImguiControlPanelWindow::RenderStateSort(FEditor& Editor)
 {
     ImGui::Text("Render State Sort");
-    ImGui::Checkbox("정렬 활성화", &Globals::bSortTest);
+    ImGui::Checkbox("정렬 활성화", &Globals::bEnableRenderSort);
 
     if (ImGui::Button("1000 random spawn"))
     {

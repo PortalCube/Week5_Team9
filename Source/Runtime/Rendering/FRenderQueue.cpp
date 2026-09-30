@@ -7,12 +7,14 @@ void FRenderQueue::Sort()
 	std::sort(primRenderQ.begin(), primRenderQ.end(),
 		[](const FDrawCommand& A, const FDrawCommand& B)
 		{
-			if (A.DepthBucket != B.DepthBucket)
-			{
-				return A.DepthBucket < B.DepthBucket;
-			}
-
 			return A.RenderStateKey < B.RenderStateKey;
+
+			//if (A.DepthBucket != B.DepthBucket)
+			//{
+			//	return A.DepthBucket < B.DepthBucket;
+			//}
+
+			//return A.RenderStateKey < B.RenderStateKey;
 			
 			// ↓ 정렬 비용 처리후 활성화
 
