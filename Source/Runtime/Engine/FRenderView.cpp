@@ -115,17 +115,6 @@ namespace
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
-    const int32 TotalBatchCount = static_cast<int32>(Scene.GetRenderComponents().size());
-
-    //if (Globals::bEnableBatchTransform)
-    //{
-    //    ReserveScratchMVPBuffer(TotalBatchCount);
-    //    if (TotalBatchCount > 0)
-    //    {
-    //        SceneTransforms.ComputeBatchMVP(View.ViewProj, ScratchMVPBuffer, TotalBatchCount);
-    //    }
-    //}
-
     const TArray<UPrimitiveComponent*>& Primitives = Scene.GetRenderComponents();
 
     std::fill(std::begin(Globals::LODDrawCounts), std::end(Globals::LODDrawCounts), 0u);
@@ -165,7 +154,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
 		int32 Index = PrimitiveComponent->GetBatchIndex();
 
-        if (Index >= 0 && Index < TotalBatchCount && !PrimitiveComponent->Cast<UBillBoardComp>())
+        if (!PrimitiveComponent->Cast<UBillBoardComp>())
         {
             DrawCommand.Constants.World = PrimitiveComponent->GetGlobalTransformMatrix();
         }
