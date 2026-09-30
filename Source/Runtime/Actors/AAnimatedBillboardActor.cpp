@@ -26,6 +26,12 @@ AAnimatedBillboardActor::AAnimatedBillboardActor()
 	}
 }
 
+void AAnimatedBillboardActor::Initialize()
+{
+	Super::Initialize();
+	bTickEnabled = true;
+}
+
 UAnimatedBillboardComp* AAnimatedBillboardActor::GetAnimatedBillboardComponent() const
 {
 	return RootComponent ? RootComponent->Cast<UAnimatedBillboardComp>() : nullptr;

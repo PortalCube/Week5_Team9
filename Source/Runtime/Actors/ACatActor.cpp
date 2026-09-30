@@ -18,6 +18,12 @@ ACatActor::ACatActor()
 	CatStaticMeshComp->SetMesh(Registry.Get<UStaticMesh>("StaticMesh/oiia/oiia.json"));
 }
 
+void ACatActor::Initialize()
+{
+	Super::Initialize();
+	bTickEnabled = true;
+}
+
 void ACatActor::Update(float DeltaTime)
 {
 	Super::Update(DeltaTime);

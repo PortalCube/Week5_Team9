@@ -13,6 +13,7 @@ class ACatActor : public AActor
 public:
 	explicit ACatActor();
 
+	void Initialize() override;
 	virtual void Update(float DeltaTime) override;
 
 private:

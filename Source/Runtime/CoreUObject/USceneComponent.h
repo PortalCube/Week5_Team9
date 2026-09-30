@@ -33,6 +33,7 @@ public:
 
     [[nodiscard]] bool IsRegistered() const { return Scene != nullptr; }
     [[nodiscard]] bool HasBegunPlay() const { return bHasBegunPlay; }
+    [[nodiscard]] bool IsTickEnabled() const { return bTickEnabled; }
 
 	virtual void Serialize(FArchive& Archive) const override;
 	virtual void Deserialize(const FArchive& Archive) override;
@@ -75,6 +76,7 @@ protected:
     USceneComponent* SceneOwner = nullptr;
     UScene* Scene = nullptr;
     bool bHasBegunPlay = false;
+    bool bTickEnabled = false;
     bool bInheritRotation = true;
 
     int32 BatchIndex = -1;

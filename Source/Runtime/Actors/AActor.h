@@ -18,6 +18,7 @@ class AActor : public UObject
 protected:
 	USceneComponent* RootComponent = nullptr;
 	TArray<USceneComponent*> AttachedComp;
+	bool bTickEnabled = false;
 
 	explicit AActor() = default;
 
