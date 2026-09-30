@@ -36,6 +36,6 @@ public:
 	static void LoadAssets();
 
 	// Import Obj by UI
-	static bool ImportObj(const std::filesystem::path& ObjFilePath, FString* OutAssetId = nullptr);
+	static bool ImportObj(const std::filesystem::path& ObjFilePath, FString* OutAssetId = nullptr, bool bZUp = false);
 
 };
